@@ -1,0 +1,146 @@
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.App {
+  text-align: center;
+}
+body{
+  background-color: #03001b;
+}
+.container{
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* Profile Input Styles */
+.profile-input:hover {
+  border-color: rgba(14, 165, 233, 0.5) !important;
+}
+
+.profile-input:focus, .profile-input-focused {
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15) !important;
+  background-color: #0f172a !important;
+}
+
+.ant-form-item-label label {
+  font-size: 13px !important;
+}
+
+/* ===========================
+   Global Button Styles
+=========================== */
+.ant-btn {
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  padding: 8px 15px;
+  height: auto !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3) !important;
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.5) !important;
+  transform: translateY(-2px) !important;
+}
+
+.ant-btn-primary:active {
+  transform: translateY(0px) !important;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.4) !important;
+}
+
+.ant-btn-default {
+  background-color: #1e293b !important;
+  border: 1px solid rgba(14, 165, 233, 0.3) !important;
+  color: #cbd5e1 !important;
+}
+
+.ant-btn-default:hover {
+  background-color: #334155 !important;
+  border-color: rgba(14, 165, 233, 0.6) !important;
+  color: #fff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2) !important;
+}
+
+.ant-btn-default:active {
+  transform: translateY(0px) !important;
+}
+
+.ant-btn-text {
+  transition: all 0.2s ease !important;
+}
+
+.ant-btn-text:hover {
+  background: rgba(14, 165, 233, 0.15) !important;
+  color: #0ea5e9 !important;
+  transform: scale(1.05) !important;
+}
+
+/* ===========================
+   Global Search Input Styles
+=========================== */
+/* When Search has allowClear, it renders an affix-wrapper */
+.ant-input-search .ant-input-affix-wrapper {
+  padding: 7px 15px !important;
+  border-radius: 6px 0 0 6px !important;
+  background-color: #0f172a !important;
+  border: 1px solid rgba(14, 165, 233, 0.3) !important;
+  height: auto;
+}
+
+.ant-input-search .ant-input-affix-wrapper:hover,
+.ant-input-search .ant-input-affix-wrapper-focused {
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15) !important;
+}
+
+.ant-input-search .ant-input-affix-wrapper > input.ant-input {
+  background-color: transparent !important;
+  color: #f1f5f9 !important;
+  font-size: 14px !important;
+  border: none !important;
+  box-shadow: none !important;
+  height: auto !important;
+}
+
+/* Fallback if no affix wrapper (no allowClear) */
+.ant-input-search > .ant-input-group > .ant-input {
+  padding: 8px 15px !important;
+  border-radius: 6px 0 0 6px !important;
+  background-color: #0f172a !important;
+  border: 1px solid rgba(14, 165, 233, 0.3) !important;
+  color: #f1f5f9 !important;
+  font-size: 14px !important;
+}
+.ant-input-search > .ant-input-group > .ant-input:focus,
+.ant-input-search > .ant-input-group > .ant-input:hover {
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15) !important;
+}
+
+/* Fix the border-radius for the attached search button */
+.ant-input-search .ant-input-wrapper .ant-input-group-addon .ant-btn {
+  border-radius: 0 6px 6px 0 !important;
+  background-color: #1e293b !important;
+  border: 1px solid rgba(14, 165, 233, 0.3) !important;
+  border-left: none !important;
+  color: #cbd5e1 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.ant-input-search .ant-input-wrapper .ant-input-group-addon .ant-btn:hover {
+  background-color: #334155 !important;
+  color: #38bdf8 !important;
+}
