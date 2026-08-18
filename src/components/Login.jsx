@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Form, Input, Button, Card, message, Typography } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { login } from "../Services/authService";
+import "./css/Auth.css";
 
 const { Title } = Typography;
 
@@ -26,53 +27,56 @@ function Login({ onLoginSuccess, onSwitchForm }) {
   };
 
   return (
-    <div className="login-page" style={{
-      display: "flex", justifyContent: "center",
-      alignItems: "center", height: "100vh", background: "#141414"
-    }}>
-      <Card className="login-card"
-        style={{
-          width: 400,
-          background: "linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%)",
-          border: "1px solid rgba(59, 130, 246, 0.25)",
-          borderRadius: 16,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-        }}
-        styles={{ body: { padding: "32px 28px" } }}
-      >
-        <Title className="login-title" level={2} style={{ textAlign: "center", marginBottom: 30, color: "#f1f5f9" }}>
-          Net World Login
-        </Title>
+    <div className="auth-page">
+      <div className="auth-glow auth-glow-1" />
+      <div className="auth-glow auth-glow-2" />
 
-        <Form className="login-form" name="login" onFinish={onFinish} autoComplete="off" layout="vertical">
+      <Card className="auth-card auth-card-login">
+        <div className="auth-header">
+          <div className="auth-logo">N</div>
+          <Title className="auth-title" level={2}>
+            Net World Login
+          </Title>
+        </div>
 
-          <Form.Item className="login-field" name="identifier"
-            rules={[{ required: true, message: "Please enter email or phone!" }]}>
-            <Input className="login-input"
-              prefix={<UserOutlined style={{ color: "#38bdf8" }} />}
+        <Form className="auth-form" name="login" onFinish={onFinish} autoComplete="off" layout="vertical">
+          <Form.Item
+            className="auth-field"
+            name="identifier"
+            rules={[{ required: true, message: "Please enter email or phone!" }]}
+          >
+            <Input
+              className="auth-input"
+              prefix={<UserOutlined className="auth-input-icon" />}
               placeholder="Email / Phone"
               size="large"
             />
           </Form.Item>
 
-          <Form.Item className="login-field" name="password"
-            rules={[{ required: true, message: "Please enter password!" }]}>
-            <Input.Password className="login-input" prefix={<LockOutlined style={{ color: "#38bdf8" }} />}
-              placeholder="Password" size="large" />
+          <Form.Item
+            className="auth-field"
+            name="password"
+            rules={[{ required: true, message: "Please enter password!" }]}
+          >
+            <Input.Password
+              className="auth-input"
+              prefix={<LockOutlined className="auth-input-icon" />}
+              placeholder="Password"
+              size="large"
+            />
           </Form.Item>
 
-          <Form.Item className="login-field">
-            <Button className="login-btn" type="primary" htmlType="submit"
-              loading={loading} block size="large">
+          <Form.Item className="auth-field auth-submit">
+            <Button className="auth-btn" type="primary" htmlType="submit" loading={loading} block size="large">
               Login
             </Button>
           </Form.Item>
         </Form>
 
-        <div className="login-footer" style={{ textAlign: "center", marginTop: 16 }}>
-          <Typography.Text className="login-footer-text" style={{ color: "#94a3b8" }}>
+        <div className="auth-footer">
+          <Typography.Text className="auth-footer-text">
             Don't have an account?{" "}
-            <a className="login-switch-link" onClick={onSwitchForm} style={{ cursor: "pointer", color: "#38bdf8", fontWeight: 600 }}>
+            <a className="auth-switch-link" onClick={onSwitchForm}>
               Register here
             </a>
           </Typography.Text>

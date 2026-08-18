@@ -6,7 +6,8 @@ import Register from './components/Register';
 import UserProfile from "./components/UserProfile";
 import { FiLogOut, FiUser, FiSettings } from 'react-icons/fi';
 import { getToken, getUser, logout } from './Services/authService';
-import { Dropdown, ConfigProvider, theme, Button, Avatar } from 'antd';
+import { Dropdown, ConfigProvider, Avatar } from 'antd';
+import { networldTheme } from './theme';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -51,7 +52,7 @@ function App() {
   };
 
   return (
-    <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
+    <ConfigProvider theme={networldTheme}>
       <div className="App">
         {isAuthenticated ? (
           <>
