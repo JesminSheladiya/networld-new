@@ -146,7 +146,7 @@ function NetworkBackground({ density = 70 }) {
               landCells.push(gy * gw + gx);
               pctx.beginPath();
               pctx.arc(gx * step + step / 2, gy * step + step / 2, dotR, 0, Math.PI * 2);
-              pctx.fillStyle = "rgba(96, 165, 250, 0.45)";
+              pctx.fillStyle = "rgba(96, 165, 250, 0.28)";
               pctx.fill();
             }
           }
@@ -155,7 +155,7 @@ function NetworkBackground({ density = 70 }) {
         matrixCanvas = pc;
 
         // interactive nodes = random subset of land dots (prerender space)
-        const target = Math.max(500, Math.min(2400, Math.round(density * 22)));
+        const target = Math.max(350, Math.min(1400, Math.round(density * 13)));
         particles = [];
         if (landCells.length) {
           for (let k = 0; k < target; k++) {
@@ -189,8 +189,8 @@ function NetworkBackground({ density = 70 }) {
     };
 
     /* ── hover → rebuild active cluster (land nodes only) ───── */
-    const R_FACTOR = 0.065;
-    const MAX_MEMBERS = 22;
+    const R_FACTOR = 0.1;
+    const MAX_MEMBERS = 10;
 
     const buildCluster = () => {
       cluster = [];
@@ -299,7 +299,7 @@ function NetworkBackground({ density = 70 }) {
       if (mouse.inside && cluster.length > 1) {
         const R = Math.min(W, H) * R_FACTOR;
         const g = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, R * 1.8);
-        g.addColorStop(0, "rgba(96, 165, 250, 0.06)");
+        g.addColorStop(0, "rgba(96, 165, 250, 0.05)");
         g.addColorStop(1, "rgba(96, 165, 250, 0)");
         ctx.fillStyle = g;
         ctx.beginPath();
@@ -312,7 +312,7 @@ function NetworkBackground({ density = 70 }) {
         ctx.lineWidth = 1;
         ctx.lineCap = "round";
         for (const [a, b, nd] of clusterEdges) {
-          const alpha = 0.5 * (1 - nd * 0.7);
+          const alpha = 0.42 * (1 - nd * 0.7);
           if (alpha <= 0.02) continue;
           ctx.strokeStyle = `rgba(96, 165, 250, ${alpha.toFixed(3)})`;
           ctx.beginPath();
@@ -328,12 +328,12 @@ function NetworkBackground({ density = 70 }) {
         const cy = c.y - lvy;
         if (cx < -10 || cx > W + 10 || cy < -10 || cy > H + 10) continue;
         ctx.beginPath();
-        ctx.arc(cx, cy, 7, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(56, 189, 248, 0.14)";
+        ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(56, 189, 248, 0.1)";
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(cx, cy, 3.2, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(147, 197, 253, 0.9)";
+        ctx.arc(cx, cy, 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(147, 197, 253, 0.75)";
         ctx.fill();
       }
 
@@ -345,11 +345,11 @@ function NetworkBackground({ density = 70 }) {
         ctx.arc(
           sxOf(particles[i].x),
           particles[i].y - lvy,
-          isActive ? 4.6 : 3.2,
+          isActive ? 3 : 2,
           0,
           Math.PI * 2
         );
-        ctx.fillStyle = "rgba(191, 219, 254, 1)";
+        ctx.fillStyle = "rgba(191, 219, 254, 0.85)";
         ctx.fill();
       }
 
