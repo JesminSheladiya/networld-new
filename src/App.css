@@ -9,9 +9,9 @@
 }
 
 body {
-  background-color: #0b1120;
-  background-image: radial-gradient(1000px 520px at 85% -10%, rgba(37, 99, 235, 0.14), transparent 60%),
-    radial-gradient(820px 460px at -5% 110%, rgba(14, 165, 233, 0.1), transparent 60%);
+  background-color: #060b18;
+  background-image: radial-gradient(1000px 520px at 85% -10%, rgba(37, 99, 235, 0.1), transparent 60%),
+    radial-gradient(820px 460px at -5% 110%, rgba(14, 165, 233, 0.08), transparent 60%);
   background-attachment: fixed;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -32,7 +32,7 @@ body {
 .profile-input-focused {
   border-color: #0ea5e9 !important;
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15) !important;
-  background-color: #0f172a !important;
+  background-color: rgba(15, 23, 42, 0.5) !important;
 }
 
 .ant-form-item-label label {
@@ -44,39 +44,43 @@ body {
    Global Button Styles
 =========================== */
 .ant-btn {
-  border-radius: 8px !important;
+  border-radius: 10px !important;
   font-weight: 600 !important;
-  padding: 6px 16px;
-  height: 38px !important;
+  padding: 0 16px;
+  height: 40px !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .ant-btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-  border: none !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.72) 0%, rgba(37, 99, 235, 0.72) 100%) !important;
+  border: 1px solid rgba(96, 165, 250, 0.22) !important;
   color: #fff !important;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .ant-btn-primary:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5) !important;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.82) 0%, rgba(29, 78, 216, 0.82) 100%) !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
   transform: translateY(-1px) !important;
 }
 
 .ant-btn-primary:active {
   transform: translateY(0px) !important;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
 }
 
 .ant-btn-default {
-  background-color: #1e293b !important;
+  background-color: rgba(30, 41, 59, 0.5) !important;
   border: 1px solid rgba(37, 99, 235, 0.3) !important;
   color: #cbd5e1 !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .ant-btn-default:hover {
-  background-color: #334155 !important;
+  background-color: rgba(51, 65, 85, 0.6) !important;
   border-color: rgba(37, 99, 235, 0.6) !important;
   color: #fff !important;
   transform: translateY(-1px) !important;
@@ -102,15 +106,17 @@ body {
 .ant-input-search .ant-input-affix-wrapper {
   padding: 6px 14px !important;
   border-radius: 8px 0 0 8px !important;
-  background-color: #0f172a !important;
-  border: 1px solid rgba(37, 99, 235, 0.3) !important;
+  background-color: rgba(15, 23, 42, 0.5) !important;
+  border: 1px solid rgba(37, 99, 235, 0.22) !important;
   height: auto;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .ant-input-search .ant-input-affix-wrapper:hover,
 .ant-input-search .ant-input-affix-wrapper-focused {
-  border-color: #2563eb !important;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12) !important;
 }
 
 .ant-input-search .ant-input-affix-wrapper > input.ant-input {
@@ -126,23 +132,25 @@ body {
 .ant-input-search > .ant-input-group > .ant-input {
   padding: 8px 15px !important;
   border-radius: 8px 0 0 8px !important;
-  background-color: #0f172a !important;
-  border: 1px solid rgba(37, 99, 235, 0.3) !important;
+  background-color: rgba(15, 23, 42, 0.5) !important;
+  border: 1px solid rgba(37, 99, 235, 0.22) !important;
   color: #f1f5f9 !important;
   font-size: 14px !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .ant-input-search > .ant-input-group > .ant-input:focus,
 .ant-input-search > .ant-input-group > .ant-input:hover {
-  border-color: #2563eb !important;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12) !important;
 }
 
 /* Fix the border-radius for the attached search button */
 .ant-input-search .ant-input-wrapper .ant-input-group-addon .ant-btn {
   border-radius: 0 8px 8px 0 !important;
-  background-color: #1e293b !important;
-  border: 1px solid rgba(37, 99, 235, 0.3) !important;
+  background-color: rgba(30, 41, 59, 0.5) !important;
+  border: 1px solid rgba(37, 99, 235, 0.22) !important;
   border-left: none !important;
   color: #cbd5e1 !important;
   box-shadow: none !important;
@@ -150,6 +158,87 @@ body {
 }
 
 .ant-input-search .ant-input-wrapper .ant-input-group-addon .ant-btn:hover {
-  background-color: #334155 !important;
-  color: #38bdf8 !important;
+  background-color: rgba(51, 65, 85, 0.6) !important;
+  color: rgba(56, 189, 248, 0.9) !important;
+}
+
+/* ===========================
+   Glass Surfaces (global)
+=========================== */
+
+/* Select / dropdown menus */
+.ant-select-dropdown {
+  background: #0d1424 !important;
+  border: 1px solid rgba(37, 99, 235, 0.3) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5) !important;
+}
+
+.ant-select-item-option-active {
+  background-color: #1e293b !important;
+}
+
+.ant-select-item-option-selected {
+  background-color: #1e3a8a !important;
+  color: #93c5fd !important;
+}
+
+/* Modals (fallback, page-scoped classes refine further) */
+.ant-modal-content {
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+}
+
+/* Message / notification popups */
+.ant-message-notice-content,
+.ant-notification-notice {
+  background: rgba(13, 21, 38, 0.85) !important;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(37, 99, 235, 0.15) !important;
+  border-radius: 10px !important;
+}
+
+/* ===========================
+   Tooltip — NetWorld design (all tooltips)
+=========================== */
+.ant-tooltip {
+  --antd-arrow-background-color: #1c2a45 !important;
+}
+
+.ant-tooltip .ant-tooltip-inner {
+  background: linear-gradient(160deg, #1c2a45 0%, #131d33 100%) !important;
+  border: 1px solid rgba(125, 211, 252, 0.3) !important;
+  color: #eaf2ff !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  line-height: 1.4 !important;
+  padding: 5px 10px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  border-radius: 6px !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5) !important;
+  white-space: nowrap;
+}
+
+.ant-tooltip .ant-tooltip-arrow {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.ant-tooltip .ant-tooltip-arrow::before {
+  background: var(--antd-arrow-background-color, #1c2a45) !important;
+  border: none !important;
+}
+
+.ant-tooltip .ant-tooltip-arrow::after {
+  background: rgba(125, 211, 252, 0.3) !important;
+  box-shadow: none !important;
+}
+
+/* Dark theme default gives white tooltip — force our palette everywhere */
+.ant-tooltip-inner,
+.ant-tooltip .ant-tooltip-inner {
+  color: #eaf2ff !important;
 }

@@ -7,8 +7,6 @@ import {
     Typography,
     Card,
     Layout,
-    ConfigProvider,
-    theme,
     Select,
     message,
     Spin,
@@ -402,7 +400,7 @@ function ContactsTable({ refreshTrigger }) {
     ];
 
     return (
-        <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
+        <>
             {contextHolder}
             <Layout className="contacts-layout">
                 <Content className="contacts-content">
@@ -411,7 +409,7 @@ function ContactsTable({ refreshTrigger }) {
                             className="contacts-header-row"
                             align="center"
                             style={{
-                                marginBottom: 24,
+                                marginBottom: 20,
                                 width: "100%",
                                 justifyContent: "space-between",
                             }}
@@ -442,20 +440,23 @@ function ContactsTable({ refreshTrigger }) {
                                 >
                                     Relation Suggestions
                                 </Button>
-
                             </Space>
                         </Space>
 
-                        <Spin spinning={loading} tip="Processing..." size="large" className="spin-container">
-                            <Table
-                                bordered
-                                columns={columns}
-                                dataSource={filteredData}
-                                pagination={{ pageSize: 5 }}
-                                className="contacts-table"
-                                size="middle"
-                            />
-                            {showSuggestions && (
+                        <div className="ct-table-panel">
+                            <Spin spinning={loading} tip="Processing..." size="large" className="spin-container">
+                                <Table
+                                    bordered
+                                    columns={columns}
+                                    dataSource={filteredData}
+                                    pagination={{ pageSize: 5 }}
+                                    className="contacts-table"
+                                    size="middle"
+                                />
+                            </Spin>
+                        </div>
+
+                        {showSuggestions && (
                                 <div className="suggestions-panel">
                                     <div className="suggestions-panel-header">
                                         <div className="suggestions-header-left">
@@ -768,15 +769,15 @@ function ContactsTable({ refreshTrigger }) {
                                                                                             <span className="suggestion-rel-chip" style={{ color: rColor, background: rBg, border: `1px solid ${rBorder}` }}>
                                                                                                 {(s.inferredRelation || "").toUpperCase()}
                                                                                             </span>
-                                                                                            <Tooltip title="Edit Relation">
-                                                                                                <Button
-                                                                                                    size="small"
-                                                                                                    type="text"
-                                                                                                    icon={<EditOutlined style={{ color: "#64748b", fontSize: 12 }} />}
-                                                                                                    onClick={() => handleStartEdit(s)}
-                                                                                                    style={{ padding: 0, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}
-                                                                                                />
-                                                                                            </Tooltip>
+                                <Tooltip title="Edit Relation">
+                                    <Button
+                                        size="small"
+                                        type="text"
+                                        icon={<EditOutlined style={{ color: "#64748b", fontSize: 14 }} />}
+                                        onClick={() => handleStartEdit(s)}
+                                        style={{ padding: 0, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8 }}
+                                    />
+                                </Tooltip>
                                                                                         </div>
                                                                                         <div className="suggestion-card-actions">
                                                                                             <Tooltip title="Send Request">
@@ -806,6 +807,7 @@ function ContactsTable({ refreshTrigger }) {
 
                             {/* Edit Connection Relation Modal */}
                             <Modal
+                                className="contacts-modal"
                                 title="Edit Relation"
                                 open={!!editingConnection}
                                 onCancel={() => setEditingConnection(null)}
@@ -882,11 +884,10 @@ function ContactsTable({ refreshTrigger }) {
                                 )}
                             </Modal>
 
-                        </Spin>
                     </Card>
                 </Content>
             </Layout>
-        </ConfigProvider>
+        </>
     );
 }
 

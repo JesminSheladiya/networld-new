@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Form, Input, Button, Card, message, Typography, Select } from "antd";
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from "@ant-design/icons";
 import { register } from "../Services/authService";
+import NetworkBackground from "./NetworkBackground";
 import "./css/Auth.css";
 
 const { Title } = Typography;
@@ -37,6 +38,8 @@ function Register({ onRegisterSuccess, onSwitchForm }) {
 
   return (
     <div className="auth-page">
+      <NetworkBackground />
+      <div className="auth-vignette" />
       <div className="auth-glow auth-glow-1" />
       <div className="auth-glow auth-glow-2" />
 

@@ -12,8 +12,9 @@ export const COLORS = {
   sky: "#0ea5e9",
 
   bgDeep: "#0b1120",
-  bgSurface: "#0f172a",
-  bgElevated: "#111827",
+  bgSurface: "rgba(15, 23, 42, 0.55)",
+  bgElevated: "rgba(17, 24, 39, 0.6)",
+  bgGlass: "rgba(13, 21, 38, 0.75)",
   bgHover: "rgba(37, 99, 235, 0.12)",
 
   border: "#1e293b",
@@ -43,10 +44,11 @@ export const networldTheme = {
 
     colorBgBase: COLORS.bgDeep,
     colorBgContainer: COLORS.bgElevated,
-    colorBgLayout: COLORS.bgDeep,
+    colorBgElevated: "#111827",
+    colorBgLayout: "rgba(6, 11, 24, 0.4)",
 
     colorBorder: COLORS.border,
-    colorBorderSecondary: "#0f172a",
+    colorBorderSecondary: "rgba(15, 23, 42, 0.6)",
 
     colorText: COLORS.text,
     colorTextSecondary: COLORS.textSecondary,
@@ -75,6 +77,18 @@ export const networldTheme = {
     },
     Form: {
       itemMarginBottom: 18,
+    },
+    Modal: {
+      contentBg: "rgba(13, 21, 38, 0.85)",
+      headerBg: "rgba(16, 26, 48, 0.6)",
+      footerBg: "rgba(16, 26, 48, 0.4)",
+    },
+    Drawer: {
+      colorBgElevated: "rgba(13, 21, 38, 0.85)",
+    },
+    Table: {
+      headerBg: "rgba(16, 26, 48, 0.6)",
+      rowHoverBg: "rgba(37, 99, 235, 0.08)",
     },
   },
 };

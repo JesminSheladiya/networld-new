@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Form, Input, Button, Card, message, Typography } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { login } from "../Services/authService";
+import NetworkBackground from "./NetworkBackground";
 import "./css/Auth.css";
 
 const { Title } = Typography;
@@ -28,6 +29,8 @@ function Login({ onLoginSuccess, onSwitchForm }) {
 
   return (
     <div className="auth-page">
+      <NetworkBackground />
+      <div className="auth-vignette" />
       <div className="auth-glow auth-glow-1" />
       <div className="auth-glow auth-glow-2" />
 

@@ -1,9 +1,14 @@
+/* ============================================================
+   Contacts page (Net World)
+   Design system: deep blue, dark navy surfaces, Inter font
+   ============================================================ */
+
 /* ===========================
    Page Layout & Card
 =========================== */
 .contacts-layout {
   background: transparent;
-  padding: 80px 20px 40px 20px;
+  padding: 76px 24px 40px 24px;
 }
 
 .contacts-content {
@@ -13,7 +18,7 @@
 
 .contacts-card {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1180px;
   margin: 0 auto;
   background: transparent;
   border: none;
@@ -28,6 +33,86 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+/* Page title */
+.ct-page-title.ant-typography {
+  color: #f1f5f9 !important;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ===========================
+   Contacts Table Panel (Discovery Hub jaisa design)
+=========================== */
+.ct-table-panel {
+  background: linear-gradient(160deg, rgba(15, 26, 49, 0.55) 0%, rgba(13, 21, 38, 0.5) 100%) !important;
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+/* ===========================
+   Header Search (Search contacts)
+=========================== */
+.ct-search-contacts.ant-input-search .ant-input-affix-wrapper {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px 0 0 10px;
+  background: rgba(13, 20, 36, 0.55);
+  border: 1px solid #1e293b;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ct-search-contacts.ant-input-search .ant-input-affix-wrapper:hover,
+.ct-search-contacts.ant-input-search .ant-input-affix-wrapper-focused {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.ct-search-contacts .ant-input-search .ant-input {
+  color: #f1f5f9;
+  font-size: 14px;
+}
+
+.ct-search-contacts .ant-input-search .ant-input::placeholder {
+  color: #64748b;
+}
+
+.ct-search-contacts .ant-input-group-addon .ant-btn {
+  height: 40px;
+  width: 44px;
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(37, 99, 235, 0.75));
+  border: none;
+  color: #fff;
+  box-shadow: none;
+  transform: none;
+}
+
+.ct-search-contacts .ant-input-group-addon .ant-btn:hover {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.82), rgba(29, 78, 216, 0.82));
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* ===========================
+   Header Button (Relation Suggestions)
+=========================== */
+.ct-btn-suggestions.ant-btn-primary {
+  height: 40px;
+  border-radius: 10px;
+  padding: 0 18px;
+  font-weight: 600;
+  font-size: 14px;
 }
 
 /* ===========================
@@ -35,43 +120,67 @@
 =========================== */
 .contacts-table {
   min-width: 900px;
+  border-radius: 12px;
+  overflow: hidden;
 }
+
+.contacts-table .ant-table {
+  background: transparent;
+}
+
 .contacts-table .ant-table-thead > tr > th {
-  background: #1e293b !important;
+  background: rgba(16, 26, 48, 0.6) !important;
   color: #38bdf8 !important;
   font-weight: 600;
-  text-transform: uppercase;
-  font-size: 13px;
-  border-bottom: 1px solid rgba(59, 130, 246, 0.3) !important;
-  letter-spacing: 0.5px;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.18) !important;
+  padding: 13px 12px;
 }
 
 .contacts-table .ant-table-tbody > tr > td {
-  background: #0f172a !important;
-  color: #f1f5f9 !important;
-  border-bottom: 1px solid #1e293b !important;
+  background: rgba(13, 21, 38, 0.45) !important;
+  color: #e2e8f0 !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
   font-size: 14px;
-  padding: 12px 10px;
+  padding: 12px 12px;
 }
 
 .contacts-table .ant-table-tbody > tr:hover > td {
-  background: rgba(59, 130, 246, 0.08) !important;
-  transition: background 0.3s ease;
+  background: rgba(37, 99, 235, 0.07) !important;
+  transition: background 0.25s ease;
+}
+
+.contacts-table .ant-table-pagination {
+  margin: 16px 0 4px;
 }
 
 /* ===========================
-   Action Buttons
+   Action Buttons (table)
 =========================== */
+.col-actions .ant-btn {
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+}
+
+.suggestion-card .ant-btn {
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+}
 .contacts-table .action-edit,
 .contacts-table .action-delete {
-  height: 32px !important;
+  height: 30px !important;
   line-height: 1 !important;
-  padding: 0 8px !important;
-  font-size: 14px !important;
-  border-radius: 6px !important;
+  padding: 0 10px !important;
+  font-size: 13px !important;
+  border-radius: 8px !important;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   transition: all 0.2s ease;
 }
 
@@ -79,7 +188,7 @@
   color: #38bdf8 !important;
 }
 .contacts-table .action-edit:hover {
-  background: rgba(59, 130, 246, 0.15) !important;
+  background: rgba(37, 99, 235, 0.15) !important;
   color: #fff !important;
 }
 
@@ -87,36 +196,97 @@
   color: #f87171 !important;
 }
 .contacts-table .action-delete:hover {
-  background: rgba(239, 68, 68, 0.2) !important;
+  background: rgba(239, 68, 68, 0.18) !important;
   color: #fff !important;
 }
 
 /* ===========================
-   Modal
+   Modal (Edit Relation)
 =========================== */
-.contacts-modal .ant-modal-header {
-  background: transparent !important;
-  border-bottom: none !important;
+.contacts-modal .ant-modal-content {
+  background: rgba(13, 21, 38, 0.82) !important;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 14px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
 }
 
-.contacts-modal .ant-modal-content {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.97) 0%, rgb(2 0 15) 100%) !important;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(12px);
+.contacts-modal .ant-modal-header {
+  background: rgba(16, 26, 48, 0.6) !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  padding: 16px 20px;
+  margin: 0;
 }
 
 .contacts-modal .ant-modal-title {
-  color: #38bdf8 !important;
+  color: #f1f5f9 !important;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.2px;
+}
+
+.contacts-modal .ant-modal-body {
+  padding: 20px;
+  color: #94a3b8;
+}
+
+.contacts-modal .ant-modal-body strong {
+  color: #38bdf8;
   font-weight: 600;
-  font-size: 18px;
-  margin-bottom: 8px;
+}
+
+.contacts-modal .ant-modal-footer {
+  padding: 14px 20px;
+  margin: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.contacts-modal .ant-modal-footer .ant-btn {
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.contacts-modal .ant-modal-close {
+  color: #64748b;
+}
+.contacts-modal .ant-modal-close:hover {
+  color: #f1f5f9;
+}
+
+.contacts-modal .ant-select-selector {
+  height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+  background: #0d1424 !important;
+  border-color: #1e293b !important;
+  border-radius: 10px !important;
+  color: #f1f5f9 !important;
+}
+
+.contacts-modal .ant-select-focused .ant-select-selector {
+  border-color: rgba(59, 130, 246, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+.contacts-modal .ant-input {
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(13, 20, 36, 0.55) !important;
+  border-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+.contacts-modal .ant-input:hover,
+.contacts-modal .ant-input:focus {
+  border-color: rgba(59, 130, 246, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
 }
 
 /* ===========================
-   Form & Inputs
+   Form & Inputs (legacy)
 =========================== */
 .contacts-form .ant-form-item-label > label {
   color: #e2e8f0 !important;
@@ -126,19 +296,19 @@
 
 .contacts-form input,
 .contacts-form .ant-select-selector {
-  background: #0f172a !important;
-  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  background: #0d1424 !important;
+  border: 1px solid #1e293b !important;
   color: #f8fafc !important;
-  border-radius: 6px !important;
-  height: 44px !important;
+  border-radius: 10px !important;
+  height: 42px !important;
   font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .contacts-form input:focus,
 .contacts-form .ant-select-focused .ant-select-selector {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
+  border-color: rgba(59, 130, 246, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .profile-upload-wrapper {
@@ -170,7 +340,7 @@
 
 .profile-avatar-label:hover .ant-avatar {
   transform: scale(1.03);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
 }
 
 .profile-avatar-edit-icon {
@@ -180,8 +350,8 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: rgba(15, 23, 42, 0.95);
-  border: 2px solid rgba(15, 23, 42, 0.95);
+  background: rgba(13, 21, 38, 0.7);
+  border: 2px solid rgba(13, 21, 38, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -192,15 +362,17 @@
 
 .profile-avatar-label:hover .profile-avatar-edit-icon {
   transform: scale(1.05);
-  background: #0f172a;
+  background: rgba(16, 26, 48, 0.6);
 }
 
 /* ===========================
    Select Dropdown
 =========================== */
 .ant-select-dropdown {
-  background: #0f172a !important;
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: #0d1424 !important;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  border-radius: 10px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
 }
 
 .ant-select-item {
@@ -208,12 +380,12 @@
 }
 
 .ant-select-item-option-active {
-  background: rgba(59, 130, 246, 0.15) !important;
+  background: #1e293b !important;
 }
 
 .ant-select-item-option-selected {
-  background: rgba(59, 130, 246, 0.25) !important;
-  color: #38bdf8 !important;
+  background: #1e3a8a !important;
+  color: #93c5fd !important;
 }
 .ant-select-show-search .ant-select-selector input {
   border: none !important;
@@ -225,38 +397,74 @@
    Suggestions Panel (Base)
 =========================== */
 .suggestions-panel {
-  margin-top: 24px;
-  background: linear-gradient(145deg, rgba(15,23,42,0.96) 0%, rgba(10,14,26,0.98) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  border-radius: 16px;
+  margin-top: 20px;
+  background: linear-gradient(160deg, rgba(15, 26, 49, 0.55) 0%, rgba(13, 21, 38, 0.5) 100%) !important;
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(56,189,248,0.08);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
 }
 
 .suggestions-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.06), rgba(59, 130, 246, 0.04));
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  background: rgba(37, 99, 235, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
+.suggestions-close-btn {
+  color: #94a3b8 !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(148, 163, 184, 0.15) !important;
+  background: rgba(148, 163, 184, 0.05) !important;
+  transition: all 0.2s !important;
+}
 .suggestions-close-btn:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(37, 99, 235, 0.15) !important;
   color: #f1f5f9 !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(37, 99, 235, 0.4) !important;
 }
 
 .suggestions-icon-wrap {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.suggestions-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.suggestions-panel-title {
+  color: #f1f5f9;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.2px;
+  text-align: left;
+}
+
+.suggestions-panel-subtitle {
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 2px;
+  text-align: left;
 }
 
 /* ===========================
@@ -264,27 +472,28 @@
 =========================== */
 .discovery-tabs .ant-tabs-nav {
   margin-bottom: 0 !important;
+  padding: 0 16px;
 }
 
 .discovery-tabs .ant-tabs-nav::before {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
 }
 
 .discovery-tabs .ant-tabs-tab {
-  padding: 10px 16px !important;
+  padding: 11px 14px !important;
   transition: all 0.2s ease !important;
 }
 
 .discovery-tabs .ant-tabs-tab:hover {
-  color: #38bdf8 !important;
+  color: #3b82f6 !important;
 }
 
 .discovery-tabs .ant-tabs-tab-active .discovery-tab-label {
-  color: #38bdf8 !important;
+  color: #3b82f6 !important;
 }
 
 .discovery-tabs .ant-tabs-ink-bar {
-  background: linear-gradient(90deg, #38bdf8, #3b82f6) !important;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.75), rgba(37, 99, 235, 0.75)) !important;
   height: 2.5px !important;
   border-radius: 2px !important;
 }
@@ -328,39 +537,46 @@
 }
 
 .discovery-refresh-btn {
-  color: #38bdf8 !important;
-  font-size: 11px !important;
-  border-radius: 6px !important;
-  padding: 2px 8px !important;
+  color: #3b82f6 !important;
+  font-size: 13px !important;
+  border-radius: 8px !important;
+  padding: 2px 10px !important;
   transition: all 0.2s !important;
+  font-weight: 500 !important;
 }
 
 .discovery-refresh-btn:hover {
-  background: rgba(56, 189, 248, 0.1) !important;
-  color: #38bdf8 !important;
+  background: rgba(37, 99, 235, 0.12) !important;
+  color: #60a5fa !important;
 }
 
 .discovery-empty {
   text-align: center;
-  padding: 36px 0;
+  padding: 32px 0;
 }
 
 .discovery-empty-icon {
-  font-size: 32px;
+  font-size: 30px;
   margin-bottom: 10px;
   opacity: 0.5;
 }
 
 .discovery-empty-text {
-  color: #475569;
+  color: #64748b;
   font-size: 13px;
   font-weight: 500;
   text-align: center;
 }
 
+.discovery-empty-sub {
+  color: #475569;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
 .discovery-loading {
   text-align: left;
-  padding: 28px;
+  padding: 24px;
   color: #64748b;
   font-size: 13px;
 }
@@ -379,61 +595,67 @@
   margin-left: 2px;
 }
 
-.discovery-badge-purple {
-  background: rgba(59, 130, 246, 0.2);
-  color: #38bdf8;
-}
-
+.discovery-badge-purple,
 .discovery-badge-indigo {
-  background: rgba(56, 189, 248, 0.2);
-  color: #38bdf8;
+  background: rgba(37, 99, 235, 0.14);
+  color: rgba(96, 165, 250, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 /* ===========================
-   Search Bar
+   Search Bar (Find People tab)
 =========================== */
 .discovery-search-bar {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .discovery-input {
   flex: 1 !important;
-  height: 38px !important;
-  background: #0d1117 !important;
-  border: 1px solid rgba(56, 189, 248, 0.25) !important;
-  color: #f8fafc !important;
+  height: 40px !important;
+  background: rgba(13, 20, 36, 0.55) !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  color: #f1f5f9 !important;
   border-radius: 10px !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   transition: all 0.2s ease !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .discovery-input:hover {
-  border-color: rgba(56, 189, 248, 0.4) !important;
+  border-color: rgba(37, 99, 235, 0.5) !important;
 }
 
-.discovery-input:focus {
-  border-color: #38bdf8 !important;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15) !important;
+.discovery-input:focus,
+.discovery-input-focused {
+  border-color: rgba(59, 130, 246, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+  background: rgba(14, 23, 41, 0.6) !important;
+}
+.discovery-input::placeholder {
+  color: #64748b !important;
 }
 
 .discovery-search-btn {
-  height: 38px !important;
+  height: 40px !important;
   border-radius: 10px !important;
-  background: linear-gradient(135deg, #38bdf8, #3b82f6) !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(37, 99, 235, 0.75)) !important;
   border: none !important;
   color: #fff !important;
   font-weight: 600 !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   padding: 0 18px !important;
   transition: all 0.2s ease !important;
-  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2) !important;
 }
 
 .discovery-search-btn:hover {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.82), rgba(29, 78, 216, 0.82)) !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
 }
 
 /* ===========================
@@ -444,24 +666,24 @@
   align-items: center;
   justify-content: flex-start;
   gap: 14px;
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(148, 163, 184, 0.08);
   text-align: left;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .discovery-row:hover {
-  background: rgba(56, 189, 248, 0.06);
-  border-color: rgba(56, 189, 248, 0.2);
+  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(37, 99, 235, 0.3);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 .discovery-avatar {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -471,7 +693,7 @@
   color: #fff;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  background: linear-gradient(135deg, #38bdf8, #3b82f6);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(37, 99, 235, 0.75));
 }
 
 .discovery-row-info {
@@ -485,7 +707,7 @@
 
 .discovery-row-name {
   color: #e2e8f0;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   text-align: left;
   overflow: hidden;
@@ -495,7 +717,7 @@
 
 .discovery-row-email {
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -511,13 +733,13 @@
 }
 
 .discovery-sent-badge {
-  color: #10b981;
-  font-size: 10px;
+  color: #34d399;
+  font-size: 11px;
   font-weight: 700;
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.12);
   border-radius: 20px;
   padding: 4px 12px;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  border: 1px solid rgba(16, 185, 129, 0.3);
   letter-spacing: 0.3px;
   flex-shrink: 0;
   white-space: nowrap;
@@ -528,14 +750,19 @@
 }
 
 .discovery-relation-select .ant-select-selector {
-  background: rgba(15, 23, 42, 0.8) !important;
-  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  background: #0d1424 !important;
+  border: 1px solid #1e293b !important;
   border-radius: 8px !important;
   height: 32px !important;
   font-size: 12px !important;
   color: #e2e8f0 !important;
   display: flex !important;
   align-items: center !important;
+}
+
+.discovery-relation-select:hover .ant-select-selector,
+.discovery-relation-select.ant-select-focused .ant-select-selector {
+  border-color: rgba(59, 130, 246, 0.65) !important;
 }
 
 .discovery-rel-chip {
@@ -549,10 +776,10 @@
 }
 
 .discovery-send-btn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #38bdf8, #3b82f6);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(37, 99, 235, 0.75));
   border: none;
   color: #fff;
   cursor: pointer;
@@ -561,12 +788,12 @@
   justify-content: center;
   flex-shrink: 0;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(56, 189, 248, 0.3);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
 }
 
 .discovery-send-btn:hover:not(:disabled) {
   transform: scale(1.08);
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .discovery-send-btn:disabled {
@@ -575,14 +802,21 @@
 }
 
 .suggestions-tab-wrap {
-  padding: 18px 22px;
+  padding: 16px 20px;
 }
 
+.suggestions-tab-content {
+  padding: 16px 20px;
+}
+
+/* ===========================
+   Suggestions Tab Header
+=========================== */
 .suggestions-tab-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .suggestions-tab-title {
@@ -594,42 +828,39 @@
 }
 
 .suggestions-tab-subtitle {
-  color: #475569;
-  font-size: 11px;
-  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 2px;
   text-align: left;
 }
 
-.discovery-empty-sub {
-  color: #334155;
-  font-size: 11px;
-  margin-top: 4px;
-}
-
+/* ===========================
+   Suggestion Cards
+=========================== */
 .suggestion-cards-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .suggestion-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 18px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(56,189,248,0.04), rgba(59,130,246,0.02));
-  border: 1px solid rgba(56, 189, 248, 0.15);
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.03);
+  border: 1px solid rgba(37, 99, 235, 0.1);
   text-align: left;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .suggestion-card:hover {
-  background: linear-gradient(135deg, rgba(56,189,248,0.08), rgba(59,130,246,0.04));
-  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.3);
   transform: translateY(-1px);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 
 .suggestion-card-left {
@@ -642,17 +873,17 @@
 }
 
 .suggestion-card-avatar {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 15px;
   flex-shrink: 0;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
 }
 
@@ -668,14 +899,14 @@
 .suggestion-card-name {
   color: #f1f5f9;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.3;
   text-align: left;
 }
 
 .suggestion-card-email {
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 2px;
   text-align: left;
 }
@@ -684,9 +915,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 5px;
-  color: #475569;
-  font-size: 11px;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
   justify-content: flex-start;
   text-align: left;
 }
@@ -695,9 +926,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(37, 99, 235, 0.1);
+  color: rgba(96, 165, 250, 0.85);
+  border: 1px solid rgba(37, 99, 235, 0.15);
   border-radius: 4px;
   padding: 1px 6px;
   font-size: 9px;
@@ -724,12 +955,13 @@
 
 .suggestion-card-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
+/* ── Small action buttons (accept / decline / send / dismiss) ── */
 .suggestion-action-btn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
   border: none;
   cursor: pointer;
@@ -737,59 +969,82 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  font-size: 14px;
 }
 
 .suggestion-action-accept {
-  background: rgba(16, 185, 129, 0.12);
-  color: #6ee7b7;
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.14);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 .suggestion-action-accept:hover {
   background: rgba(16, 185, 129, 0.25);
-  color: #10b981;
+  color: #6ee7b7;
   transform: scale(1.08);
 }
 
 .suggestion-action-dismiss {
-  background: rgba(239, 68, 68, 0.08);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .suggestion-action-dismiss:hover {
   background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
+  color: #fca5a5;
   transform: scale(1.08);
 }
 
+.suggestion-action-send {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(37, 99, 235, 0.75));
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+}
+
+.suggestion-action-send:hover {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.82), rgba(29, 78, 216, 0.82));
+  transform: scale(1.08);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+}
+
 /* ===========================
-   Inferred Tab (Redesigned)
+   Inferred Tab (kept for compatibility)
 =========================== */
 .inferred-tab-wrap {
-  padding: 18px 22px;
+  padding: 16px 20px;
+}
+
+.inferred-tab-content {
+  padding: 16px 20px;
+}
+
+.inferred-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .inferred-card {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 14px 18px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(56,189,248,0.03), rgba(59,130,246,0.015));
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.25s ease;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.03);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  transition: all 0.2s ease;
 }
 
 .inferred-card:hover {
-  background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(59,130,246,0.03));
-  border-color: rgba(56, 189, 248, 0.2);
+  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(37, 99, 235, 0.25);
   transform: translateY(-1px);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 .inferred-card.accepted {
-  background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02));
+  background: rgba(16, 185, 129, 0.06);
   border-color: rgba(16, 185, 129, 0.25);
 }
 
@@ -811,8 +1066,8 @@
 }
 
 .inferred-person-avatar {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -848,7 +1103,7 @@
 .inferred-line {
   width: 20px;
   height: 2px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
   border-radius: 1px;
 }
 
@@ -866,155 +1121,6 @@
   gap: 6px;
   flex-shrink: 0;
   margin-left: auto;
-}
-
-/* ===========================
-   Clickable Avatar (Photo Column)
-=========================== */
-.contacts-table .ant-avatar {
-  transition: all 0.2s ease !important;
-  cursor: pointer;
-}
-
-.contacts-table td .ant-avatar:hover {
-  transform: scale(1.1) !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
-}
-
-.contacts-table td[style*="cursor: pointer"] .ant-avatar:hover {
-  border: 2px solid #38bdf8 !important;
-}
-
-/* ===========================
-   Image Viewer Modal (WhatsApp-like)
-=========================== */
-.image-viewer-modal-circle .ant-modal-content {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-}
-
-.image-viewer-modal-circle .ant-modal-body {
-  padding: 0 !important;
-}
-
-.image-viewer-modal-circle img {
-  width: 80vw;
-  max-width: 500px;
-  max-height: 500px;
-  transition: transform 0.3s ease !important;
-  cursor: pointer;
-}
-
-.image-viewer-modal-circle img:hover {
-  transform: scale(1.02) !important;
-}
-
-/* Hide image crop controls */
-.img-crop-control.img-crop-control-zoom,
-.img-crop-control.img-crop-control-rotation {
-    display: none !important;
-}
-
-/* Icon-only Edit Button Enhancement */
-.contacts-table .action-edit {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.contacts-table .action-edit:hover {
-  background: rgba(56, 189, 248, 0.15) !important;
-  border-radius: 6px !important;
-}
-
-/* ===========================
-   Discovery Panel Header
-=========================== */
-.suggestions-header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.suggestions-panel-title {
-  color: #38bdf8;
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 0.3px;
-  text-align: left;
-}
-
-.suggestions-panel-subtitle {
-  color: #64748b;
-  font-size: 12px;
-  margin-top: 1px;
-  text-align: left;
-}
-
-.suggestions-close-btn {
-  color: #94a3b8 !important;
-  border-radius: 8px !important;
-  font-size: 12px !important;
-  border: 1px solid rgba(255,255,255,0.06) !important;
-  background: rgba(255,255,255,0.03) !important;
-  transition: all 0.2s !important;
-}
-
-/* ===========================
-   Results Label
-=========================== */
-.discovery-results-label {
-  text-align: left;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  padding: 0 2px;
-}
-
-/* ===========================
-   Suggestions Tab Content
-=========================== */
-.suggestions-tab-content {
-  padding: 18px 22px;
-}
-
-.suggestions-loading {
-  text-align: center;
-  padding: 24px 0;
-  color: #475569;
-  font-size: 12px;
-}
-
-.suggestions-empty {
-  text-align: center;
-  padding: 28px 0;
-}
-
-.suggestions-empty-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
-
-.suggestions-empty-text {
-  color: #475569;
-  font-size: 12px;
-  text-align: center;
-}
-
-/* ===========================
-   Inferred Tab Overrides
-=========================== */
-.inferred-tab-content {
-  padding: 18px 22px;
-}
-
-.inferred-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .inferred-confidence-badge {
@@ -1036,4 +1142,130 @@
   font-weight: 700;
   white-space: nowrap;
   letter-spacing: 0.3px;
+}
+
+/* ===========================
+   Table Filter Dropdown (solid, theme matched)
+=========================== */
+
+.contacts-table .ant-table-filter-dropdown,
+.ant-table-filter-dropdown .ant-table-filter-dropdown-search,
+.ant-table-filter-dropdown .ant-popover-inner,
+.ant-table-filter-dropdown .ant-dropdown-menu {
+  background: #0d1424 !important;
+}
+
+.ant-table-filter-dropdown {
+  border: 1px solid rgba(37, 99, 235, 0.3) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5) !important;
+  overflow: hidden;
+}
+
+.ant-table-filter-dropdown .ant-dropdown-menu-item,
+.ant-table-filter-dropdown .ant-checkbox-wrapper {
+  color: #e2e8f0 !important;
+}
+
+.ant-table-filter-dropdown .ant-dropdown-menu-item:hover {
+  background: #1e293b !important;
+}
+
+.ant-table-filter-dropdown .ant-dropdown-menu-item-selected {
+  background: #1e3a8a !important;
+  color: #93c5fd !important;
+}
+
+.ant-table-filter-dropdown .ant-table-filter-dropdown-btns {
+  background: #0d1424 !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+.ant-table-filter-dropdown .ant-table-filter-dropdown-checkall {
+  background: #0d1424 !important;
+}
+
+/* ===========================
+   Clickable Avatar (Photo Column)
+=========================== */
+.contacts-table .ant-avatar {
+  transition: all 0.2s ease !important;
+  cursor: pointer;
+}
+
+.contacts-table td .ant-avatar:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
+}
+
+.contacts-table td[style*="cursor: pointer"] .ant-avatar:hover {
+  border: 2px solid #3b82f6 !important;
+}
+
+/* ===========================
+   Image Viewer Modal (WhatsApp-like)
+=========================== */
+.image-viewer-modal-circle .ant-modal-content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.image-viewer-modal-circle .ant-modal-body {
+  padding: 0 !important;
+}
+
+.image-viewer-modal-circle img {
+  width: 80vw;
+  max-width: 480px;
+  max-height: 480px;
+  transition: transform 0.3s ease !important;
+  cursor: pointer;
+}
+
+.image-viewer-modal-circle img:hover {
+  transform: scale(1.02) !important;
+}
+
+/* Hide image crop controls */
+.img-crop-control.img-crop-control-zoom,
+.img-crop-control.img-crop-control-rotation {
+  display: none !important;
+}
+
+/* ===========================
+   Loading / Empty states
+=========================== */
+.suggestions-loading {
+  text-align: center;
+  padding: 22px 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.suggestions-empty {
+  text-align: center;
+  padding: 26px 0;
+}
+
+.suggestions-empty-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.suggestions-empty-text {
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
+}
+
+.discovery-results-label {
+  text-align: left;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 0 2px;
+  margin-bottom: 6px;
 }
