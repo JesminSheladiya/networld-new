@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Form, Input, Button, Card, message, Typography, Select } from "antd";
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import { register } from "../Services/authService";
 import NetworkBackground from "./NetworkBackground";
 import "./css/Auth.css";
 
 const { Title } = Typography;
 
-function Register({ onRegisterSuccess, onSwitchForm }) {
+function Register({ onRegisterSuccess }) {
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -25,6 +27,7 @@ function Register({ onRegisterSuccess, onSwitchForm }) {
       );
       message.success(`Welcome, ${data.username}! Registration successful.`);
       onRegisterSuccess();
+      navigate("/contacts");
     } catch (error) {
       message.error(
         error.response?.data?.error ||
@@ -150,7 +153,7 @@ function Register({ onRegisterSuccess, onSwitchForm }) {
         <div className="auth-footer">
           <Typography.Text className="auth-footer-text">
             Already have an account?{" "}
-            <a className="auth-switch-link" onClick={onSwitchForm}>
+            <a className="auth-switch-link" onClick={() => navigate("/login")}>
               Login here
             </a>
           </Typography.Text>

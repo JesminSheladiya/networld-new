@@ -1,0 +1,281 @@
+/* ============================================================
+   App Shell (top nav / bottom nav / profile dropdown)
+   ============================================================ */
+
+.nw-shell {
+  min-height: 100vh;
+}
+
+/* ── Desktop top nav ── */
+.nw-topnav {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 28px;
+  height: 64px;
+  background: rgba(9, 14, 26, 0.82);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.18);
+}
+
+.nw-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 800;
+  color: #f1f5f9;
+  font-size: 17px;
+  letter-spacing: 0.3px;
+  user-select: none;
+}
+
+.nw-brand-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+}
+
+.nw-brand-text {
+  background: linear-gradient(90deg, #f1f5f9, #93c5fd);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.nw-topnav-links {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.nw-topnav-link {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.nw-topnav-link:hover {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.06);
+}
+
+.nw-topnav-link.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.75), rgba(37, 99, 235, 0.75));
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.nw-nav-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ── Profile avatar / dropdown ── */
+.nw-avatar-trigger {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.nw-avatar-trigger:hover {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.nw-profile-dropdown {
+  width: 260px;
+  border-radius: 16px;
+  background: #111827;
+  color: #f8fafc;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.nw-profile-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nw-profile-meta {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nw-profile-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nw-profile-email {
+  font-size: 12.5px;
+  color: #94a3b8;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nw-profile-actions {
+  padding: 10px 0;
+}
+
+.nw-profile-action {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #f8fafc;
+  font-size: 14px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.nw-profile-action:hover {
+  background: rgba(248, 250, 252, 0.08);
+}
+
+.nw-profile-action .anticon {
+  color: #7dd3fc;
+  font-size: 16px;
+}
+
+.nw-profile-logout {
+  color: #fca5a5;
+}
+
+.nw-profile-logout .anticon {
+  color: #fca5a5;
+}
+
+/* ── Mobile top bar ── */
+.nw-topbar-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 58px;
+  padding: 0 16px;
+  background: rgba(9, 14, 26, 0.88);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.16);
+}
+
+/* ── Mobile bottom nav (Instagram style) ── */
+.nw-bottomnav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  display: flex;
+  background: rgba(9, 14, 26, 0.92);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-top: 1px solid rgba(37, 99, 235, 0.18);
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+}
+
+.nw-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 0;
+  color: #64748b;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.nw-nav-item.active {
+  color: #38bdf8;
+}
+
+.nw-nav-icon-wrap {
+  position: relative;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.nw-nav-item.active .nw-nav-icon-wrap .anticon {
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.5));
+}
+
+.nw-nav-badge-dot {
+  position: absolute;
+  top: -5px;
+  right: -10px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px rgba(9, 14, 26, 0.9);
+}
+
+/* ── Content ── */
+.nw-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 34px 24px 60px;
+}
+
+.nw-content-compact {
+  padding: 78px 16px 96px;
+}

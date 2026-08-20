@@ -8,6 +8,13 @@
   text-align: center;
 }
 
+.app-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 body {
   background-color: #060b18;
   background-image: radial-gradient(1000px 520px at 85% -10%, rgba(37, 99, 235, 0.1), transparent 60%),
@@ -47,7 +54,6 @@ body {
   border-radius: 10px !important;
   font-weight: 600 !important;
   padding: 0 16px;
-  height: 40px !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
@@ -190,14 +196,14 @@ body {
 }
 
 /* Message / notification popups */
-.ant-message-notice-content,
-.ant-notification-notice {
-  background: rgba(13, 21, 38, 0.85) !important;
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  border: 1px solid rgba(37, 99, 235, 0.15) !important;
-  border-radius: 10px !important;
-}
+/*.ant-message-notice-content,*/
+/*.ant-notification-notice {*/
+/*  background: rgba(13, 21, 38, 0.85) !important;*/
+/*  backdrop-filter: blur(16px) saturate(140%);*/
+/*  -webkit-backdrop-filter: blur(16px) saturate(140%);*/
+/*  border: 1px solid rgba(37, 99, 235, 0.15) !important;*/
+/*  border-radius: 10px !important;*/
+/*}*/
 
 /* ===========================
    Tooltip — NetWorld design (all tooltips)
