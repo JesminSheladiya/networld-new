@@ -83,7 +83,7 @@ function ProfileMenu() {
   );
 }
 
-function AppShell() {
+function AppShellNav() {
   const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
   const { pendingCount, suggestionsCount, setPendingCount, setSuggestionsCount, key: refreshKey } = useRefresh();
 
@@ -113,8 +113,7 @@ function AppShell() {
   }, [refreshKey, fetchCounts]);
 
   return (
-    <RefreshProvider>
-      <div className="nw-shell">
+    <div className="nw-shell">
         {!isCompact ? (
           <header className="nw-topnav">
             <div className="nw-brand">
@@ -177,6 +176,13 @@ function AppShell() {
           <Outlet />
         </main>
       </div>
+  );
+}
+
+function AppShell() {
+  return (
+    <RefreshProvider>
+      <AppShellNav />
     </RefreshProvider>
   );
 }

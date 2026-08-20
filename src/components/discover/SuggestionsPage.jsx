@@ -41,7 +41,9 @@ function SuggestionsPage() {
   const sendRequest = async (s) => {
     try {
       await api.suggestionsSend(s.suggestedUserEmail, s.inferredRelation);
+      const remaining = suggestions.filter((x) => x.suggestedUserEmail !== s.suggestedUserEmail).length;
       setSuggestions((p) => p.filter((x) => x.suggestedUserEmail !== s.suggestedUserEmail));
+      setSuggestionsCount(remaining);
       bump();
     } catch {
       // silent
@@ -51,7 +53,10 @@ function SuggestionsPage() {
   const dismiss = async (s) => {
     try {
       await api.dismissSuggestion(s.pendingRelationId);
+      const remaining = suggestions.filter((x) => x.suggestedUserEmail !== s.suggestedUserEmail).length;
       setSuggestions((p) => p.filter((x) => x.suggestedUserEmail !== s.suggestedUserEmail));
+      setSuggestionsCount(remaining);
+      bump();
     } catch {
       // silent
     }
