@@ -55,13 +55,15 @@ function RequestsPage() {
   return (
     <div className="nw-page">
       <div className="nw-page-head">
-        <div>
-          <h1 className="nw-page-title">Pending Requests</h1>
-          <p className="nw-page-subtitle">People who want to connect with you</p>
+        <div className="nw-find-head-row">
+          <div>
+            <h1 className="nw-page-title">Pending Requests</h1>
+            <p className="nw-page-subtitle">People who want to connect with you</p>
+          </div>
+          <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchPending}>
+            Refresh
+          </Button>
         </div>
-        <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchPending}>
-          Refresh
-        </Button>
       </div>
 
       <div className="nw-discover-panel">
@@ -69,11 +71,13 @@ function RequestsPage() {
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading requests...</span></div>
         ) : pending.length === 0 ? (
           <div className="nw-state-box">
-            <BellOutlined style={{ fontSize: 40, color: "#475569" }} />
+            <BellOutlined style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">No pending requests</span>
+            <span className="nw-state-sub">When someone sends you a connection request, it will show up here</span>
           </div>
         ) : (
           <div className="nw-discover-list">
+            <div className="nw-discover-label">Requests · {pending.length}</div>
             {pending.map((p, i) => {
               const rel = getInverseRelation(p.inferredRelation, p.suggestedUserGender)?.toLowerCase() || "";
               const avColor = AV_COLORS[((p.suggestedUserName || "").charCodeAt(0) || 0) % AV_COLORS.length];

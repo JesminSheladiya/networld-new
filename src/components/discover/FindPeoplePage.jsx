@@ -78,14 +78,15 @@ function FindPeoplePage() {
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Searching...</span></div>
         ) : !query.trim() ? (
           <div className="nw-state-box">
-            <TeamOutlined style={{ fontSize: 40, color: "#475569" }} />
+            <TeamOutlined style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">Search for someone to connect with</span>
+            <span className="nw-state-sub">Search works with both names and email addresses</span>
           </div>
         ) : results.length === 0 ? (
           <div className="nw-state-box"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No users found" /></div>
         ) : (
           <div className="nw-discover-list">
-            <div className="nw-discover-label">RESULTS ({results.length})</div>
+            <div className="nw-discover-label">Results · {results.length}</div>
             {results.map((u) => (
               <div className="nw-find-row" key={u.email}>
                 <div className="nw-find-avatar">

@@ -88,13 +88,15 @@ function SuggestionsPage() {
   return (
     <div className="nw-page">
       <div className="nw-page-head">
-        <div>
-          <h1 className="nw-page-title">Suggestions</h1>
-          <p className="nw-page-subtitle">People you may know, discovered through mutual connections</p>
+        <div className="nw-find-head-row">
+          <div>
+            <h1 className="nw-page-title">Suggestions</h1>
+            <p className="nw-page-subtitle">People you may know, discovered through mutual connections</p>
+          </div>
+          <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchSuggestions}>
+            Refresh
+          </Button>
         </div>
-        <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchSuggestions}>
-          Refresh
-        </Button>
       </div>
 
       <div className="nw-discover-panel">
@@ -102,11 +104,13 @@ function SuggestionsPage() {
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading suggestions...</span></div>
         ) : suggestions.length === 0 ? (
           <div className="nw-state-box">
-            <BulbOutlined style={{ fontSize: 40, color: "#475569" }} />
+            <BulbOutlined style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">No suggestions yet</span>
+            <span className="nw-state-sub">Add more contacts to get smart suggestions from your network</span>
           </div>
         ) : (
           <div className="nw-discover-list">
+            <div className="nw-discover-label">Suggestions · {suggestions.length}</div>
             {suggestions.map((s, i) => {
               const rel = (s.inferredRelation || "").toLowerCase();
               const avColor = AV_COLORS[((s.suggestedUserName || "").charCodeAt(0) || 0) % AV_COLORS.length];

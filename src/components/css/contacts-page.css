@@ -77,6 +77,23 @@
   margin-bottom: 20px;
 }
 
+/* Full-width search override (beats .nw-search base width/height) */
+.nw-search.nw-search-full.ant-input-affix-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  min-height: 46px;
+  padding: 8px 14px;
+}
+
+.nw-search.nw-search-full .ant-input {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+}
+
 /* ── Category tabs (segmented control) ── */
 .nw-chips {
   position: relative;
