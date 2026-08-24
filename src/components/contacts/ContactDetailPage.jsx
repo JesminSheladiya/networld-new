@@ -4,7 +4,6 @@ import { Spin } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { api } from "../../Services/networld";
 import ContactProfile from "../shared/ContactProfile";
-import "./../../components/css/contacts-page.css";
 
 function ContactDetailPage() {
   const navigate = useNavigate();

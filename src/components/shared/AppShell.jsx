@@ -6,7 +6,6 @@ import { getUser, logout } from "../../Services/authService";
 import { api } from "../../Services/networld";
 import { RefreshProvider, useRefresh } from "./RefreshContext";
 import UserProfile from "../UserProfile";
-import "./../../components/css/app-shell.css";
 
 const NAV_ITEMS = [
   { to: "/contacts", label: "Contacts", icon: <TeamOutlined /> },

@@ -234,6 +234,61 @@
   overflow: hidden;
 }
 
+.nw-table-panel.nw-table-empty {
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+.nw-table-empty-inner {
+  padding: 60px 24px;
+}
+
+.nw-table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 24px 4px;
+}
+
+/* Pagination mini size override */
+.nw-table-pagination .ant-pagination-item,
+.nw-table-pagination .ant-pagination-prev button,
+.nw-table-pagination .ant-pagination-next button,
+.nw-table-pagination .ant-pagination-options-size-changer,
+.nw-table-pagination .ant-pagination-jump-prev button,
+.nw-table-pagination .ant-pagination-jump-next button {
+  min-width: 24px !important;
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+}
+
+.nw-table-pagination .ant-pagination-item-link {
+  min-width: 26px !important;
+  height: 26px !important;
+}
+
+.nw-table-pagination .ant-pagination-total-text {
+  line-height: 24px !important;
+  font-size: 11px !important;
+  margin-left: 8px !important;
+}
+
+.nw-table-pagination .ant-select-selector {
+  height: 24px !important;
+  padding: 0 6px !important;
+}
+
+.nw-table-pagination .ant-select-selection-search-input {
+  height: 22px !important;
+}
+
+.nw-table-pagination .ant-pagination-options-quick-jumper input {
+  height: 22px !important;
+  width: 50px !important;
+  padding: 0 6px !important;
+  font-size: 11px !important;
+}
+
 .nw-table .ant-table {
   background: transparent !important;
   color: #e2e8f0;

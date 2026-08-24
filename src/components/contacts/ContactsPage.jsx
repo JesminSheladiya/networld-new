@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Input, Spin, Avatar, Empty, Table, Button, Tooltip } from "antd";
+import { Input, Spin, Avatar, Empty, Table, Button, Tooltip, Pagination } from "antd";
 import { SearchOutlined, EditOutlined } from "@ant-design/icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
-import "./../../components/css/contacts-page.css";
 
 const PAGE_SIZE = 40;
 
@@ -238,18 +237,20 @@ function ContactsPage() {
       {loading ? (
         <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading contacts...</span></div>
       ) : filtered.length === 0 ? (
-        <div className="nw-state-box">
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={
-              searchText.trim()
-                ? "No contacts match your search"
-                : category !== "all"
-                  ? `No ${category} contacts yet`
-                  : "No contacts yet"
-            }
-            className="nw-empty"
-          />
+        <div className="nw-table-panel nw-table-empty">
+          <div className="nw-table-empty-inner">
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={
+                searchText.trim()
+                  ? "No contacts match your search"
+                  : category !== "all"
+                    ? `No ${category} contacts yet`
+                    : "No contacts yet"
+              }
+              className="nw-empty"
+            />
+          </div>
         </div>
       ) : isCompact ? (
         <div className="nw-list-pane nw-list-pane-full">
@@ -287,9 +288,24 @@ function ContactsPage() {
             columns={tableColumns}
             dataSource={tableData}
             rowKey="_rowKey"
-            pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (t) => `${t} contacts` }}
+            pagination={false}
             className="nw-table"
             size="middle"
+          />
+        </div>
+      )}
+      {!loading && filtered.length > 0 && !isCompact && (
+        <div className="nw-table-pagination">
+          <Pagination
+            defaultCurrent={1}
+            pageSize={10}
+            total={filtered.length}
+            showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} items`}
+            showSizeChanger
+            pageSizeOptions={["10", "20", "50", "100"]}
+            showQuickJumper
+            showLessItems
+            size="small"
           />
         </div>
       )}

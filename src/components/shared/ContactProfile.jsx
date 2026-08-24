@@ -4,7 +4,6 @@ import { ArrowLeftOutlined, PhoneOutlined, MailOutlined, EditOutlined } from "@a
 import { api } from "../../Services/networld";
 import RelationChip from "./RelationChip";
 import EditRelationModal from "./EditRelationModal";
-import "./../../components/css/contacts-page.css";
 
 function ContactProfile({ contact, showBack = false, onBack }) {
   const [relations, setRelations] = useState([]);

@@ -4,7 +4,6 @@ import { BulbOutlined, ArrowRightOutlined, EditOutlined, CheckOutlined, CloseOut
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
-import "./../../components/css/discover-pages.css";
 
 const AV_COLORS = ["#3b82f6", "#38bdf8", "#0ea5e9", "#10b981", "#f59e0b"];
 

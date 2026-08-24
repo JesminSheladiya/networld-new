@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Input, Spin, Select, Empty } from "antd";
 import { SearchOutlined, ArrowRightOutlined, TeamOutlined } from "@ant-design/icons";
 import { api } from "../../Services/networld";
-import "./../../components/css/discover-pages.css";
+import { useRefresh } from "../shared/RefreshContext";
 
 function FindPeoplePage() {
   const [query, setQuery] = useState("");
@@ -12,6 +12,7 @@ function FindPeoplePage() {
   const [relMap, setRelMap] = useState({});
   const [sendingMap, setSendingMap] = useState({});
   const [sentMap, setSentMap] = useState({});
+  const { bump } = useRefresh();
 
   useEffect(() => {
     api.relations().then((res) => setRelations(res.data || [])).catch(() => setRelations([]));
@@ -44,6 +45,7 @@ function FindPeoplePage() {
     try {
       await api.send(email, relMap[email]);
       setSentMap((p) => ({ ...p, [email]: true }));
+      bump();
     } catch (e) {
       // error handled silently
       console.error(e);
