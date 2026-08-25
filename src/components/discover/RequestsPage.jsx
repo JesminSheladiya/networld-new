@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Spin, Button } from "antd";
-import { BellOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import { BellOutlined, CheckOutlined, CloseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { getInverseRelation } from "../UserProfile";
@@ -60,7 +60,7 @@ function RequestsPage() {
             <h1 className="nw-page-title">Pending Requests</h1>
             <p className="nw-page-subtitle">People who want to connect with you</p>
           </div>
-          <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchPending}>
+          <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchPending} icon={<ReloadOutlined />}>
             Refresh
           </Button>
         </div>

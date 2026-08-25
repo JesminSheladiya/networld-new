@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Spin, Button, Input, Select, Tooltip } from "antd";
-import { BulbOutlined, ArrowRightOutlined, EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import { BulbOutlined, ArrowRightOutlined, EditOutlined, CheckOutlined, CloseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
@@ -93,7 +93,7 @@ function SuggestionsPage() {
             <h1 className="nw-page-title">Suggestions</h1>
             <p className="nw-page-subtitle">People you may know, discovered through mutual connections</p>
           </div>
-          <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchSuggestions}>
+          <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchSuggestions} icon={<ReloadOutlined />}>
             Refresh
           </Button>
         </div>

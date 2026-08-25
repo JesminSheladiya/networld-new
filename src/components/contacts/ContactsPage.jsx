@@ -7,8 +7,6 @@ import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
 
-const PAGE_SIZE = 40;
-
 function mapContact(item, idx) {
   return {
     key: idx,
@@ -44,14 +42,15 @@ function ContactsPage() {
   const navigate = useNavigate();
   const { key: refreshKey } = useRefresh();
 
-  const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
+const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
   const [dataSource, setDataSource] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState("all");
   const [loading, setLoading] = useState(false);
-  const [visible, setVisible] = useState(PAGE_SIZE);
+  const [totalItems, setTotalItems] = useState(0);
   const [editingContact, setEditingContact] = useState(null);
-  const sentinelRef = useRef(null);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const chipsRef = useRef(null);
   const chipRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
@@ -77,23 +76,29 @@ function ContactsPage() {
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  const fetchConnections = async (search = "") => {
+  const fetchConnections = async (search = "", pageNum = 0, size = 10) => {
     setLoading(true);
     try {
-      const res = await api.connections(search);
-      setDataSource(res.data.map(mapContact));
-      setVisible(PAGE_SIZE);
+      const res = await api.connectionsPaged(pageNum, size, search);
+      const mapped = res.data.content.map(mapContact);
+      setDataSource(mapped);
+      setTotalItems(res.data.totalElements);
     } catch {
-      // silent
+      setDataSource([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const handler = setTimeout(() => fetchConnections(searchText), 350);
+    const handler = setTimeout(() => fetchConnections(searchText, 0, pageSize), 350);
     return () => clearTimeout(handler);
-  }, [searchText, refreshKey]);
+  }, [searchText, pageSize, refreshKey]);
+
+  useEffect(() => {
+    fetchConnections(searchText, page, pageSize);
+  }, [page, category]);
 
   const counts = useMemo(() => {
     const c = { all: dataSource.length, family: 0, friends: 0, others: 0 };
@@ -106,23 +111,11 @@ function ContactsPage() {
     return dataSource.filter((rec) => categoryOf(rec.relation) === category);
   }, [dataSource, category]);
 
-  const shown = useMemo(() => filtered.slice(0, visible), [filtered, visible]);
-
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) setVisible((v) => Math.min(v + PAGE_SIZE, filtered.length));
-      },
-      { rootMargin: "300px" }
-    );
-    observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, [filtered.length]);
-
   const openContact = (rec) => {
     navigate(`/contacts/${encodeURIComponent(rec.email)}`, { state: { contact: rec } });
   };
+
+  useEffect(() => { setPage(0); }, [category, searchText]);
 
   const tableColumns = [
     {
@@ -172,6 +165,11 @@ function ContactsPage() {
       className: "col-relation",
       dataIndex: "relation",
       key: "relation",
+      filters: [...new Set(dataSource.map(item => item.relation).filter(Boolean))].map(r => ({
+        text: r, value: r
+      })),
+      onFilter: (value, record) => record.relation === value,
+      filterMultiple: true,
       render: (relation) => <RelationChip relation={relation} style={{ fontSize: 12 }} />,
     },
     {
@@ -200,8 +198,8 @@ function ContactsPage() {
         <div className="nw-title-row">
           <h1 className="nw-page-title">My Contacts</h1>
           <p className="nw-page-subtitle">
-            {dataSource.length > 0
-              ? `${dataSource.length} ${dataSource.length === 1 ? "person" : "people"} in your network`
+            {totalItems > 0
+              ? `${totalItems} ${totalItems === 1 ? "person" : "people"} in your network`
               : "People connected with you"}
           </p>
         </div>
@@ -255,7 +253,7 @@ function ContactsPage() {
       ) : isCompact ? (
         <div className="nw-list-pane nw-list-pane-full">
           <div className="nw-list">
-            {shown.map((rec) => (
+            {filtered.map((rec) => (
               <button
                 className="nw-list-row"
                 key={rec.key}
@@ -275,11 +273,6 @@ function ContactsPage() {
                 <RelationChip relation={rec.relation} style={{ flexShrink: 0, fontSize: 11 }} />
               </button>
             ))}
-            {visible < filtered.length && (
-              <div ref={sentinelRef} className="nw-load-more">
-                <Spin size="small" /> Loading more...
-              </div>
-            )}
           </div>
         </div>
       ) : (
@@ -297,15 +290,19 @@ function ContactsPage() {
       {!loading && filtered.length > 0 && !isCompact && (
         <div className="nw-table-pagination">
           <Pagination
-            defaultCurrent={1}
-            pageSize={10}
-            total={filtered.length}
+            current={page + 1}
+            pageSize={pageSize}
+            total={totalItems}
             showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} items`}
             showSizeChanger
             pageSizeOptions={["10", "20", "50", "100"]}
             showQuickJumper
             showLessItems
             size="small"
+            onChange={(pg, newPageSize) => {
+              setPage(pg - 1);
+              if (newPageSize !== pageSize) setPageSize(newPageSize);
+            }}
           />
         </div>
       )}

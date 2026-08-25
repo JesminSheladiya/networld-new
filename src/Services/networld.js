@@ -8,6 +8,10 @@ export const api = {
     http.get(`${BASE}/user-relations/connections`, {
       params: search && search.trim() ? { query: search.trim() } : {},
     }),
+  connectionsPaged: (page, size, search) =>
+    http.get(`${BASE}/user-relations/connections/paged`, {
+      params: { page, size, ...(search && search.trim() ? { query: search.trim() } : {}) },
+    }),
   relations: () => http.get(`${API_URL}/relations`),
   searchUsers: (q) => http.get(`${BASE}/user-relations/search-users?query=${encodeURIComponent(q)}`),
   send: (toEmail, relationId) => http.post(`${BASE}/user-relations/send`, { toEmail, relationId }),
