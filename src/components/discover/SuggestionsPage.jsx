@@ -132,8 +132,9 @@ function SuggestionsPage() {
                   {editingEmail === s.suggestedUserEmail ? (
                     <div className="nw-edit-inline">
                       <Select
+                        className="nw-relation-select"
                         size="small"
-                        style={{ width: 132 }}
+                        placeholder="Relation"
                         value={isCustom ? "Custom" : editValue}
                         onChange={(val) => {
                           if (val === "Custom") setIsCustom(true);
@@ -146,15 +147,22 @@ function SuggestionsPage() {
                       />
                       {isCustom && (
                         <Input
+                          className="nw-edit-input"
                           size="small"
                           placeholder="Custom relation..."
-                          style={{ width: 132 }}
+                          autoFocus
                           value={customText}
                           onChange={(e) => setCustomText(e.target.value)}
                         />
                       )}
-                      <Button size="small" type="primary" icon={<CheckOutlined style={{ fontSize: 10 }} />} onClick={() => saveEdit(s.suggestedUserEmail)} />
-                      <Button size="small" icon={<CloseOutlined style={{ fontSize: 10 }} />} onClick={() => setEditingEmail(null)} />
+                      <div className="nw-req-actions">
+                        <button className="nw-act-btn nw-act-accept" title="Save" onClick={() => saveEdit(s.suggestedUserEmail)}>
+                          <CheckOutlined />
+                        </button>
+                        <button className="nw-act-btn nw-act-decline" title="Cancel" onClick={() => setEditingEmail(null)}>
+                          <CloseOutlined />
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="nw-req-right">

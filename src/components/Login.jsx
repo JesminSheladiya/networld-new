@@ -18,7 +18,7 @@ function Login({ onLoginSuccess }) {
       const data = await login(values.identifier, values.password);
       message.success(`Welcome, ${data.username}!`);
       onLoginSuccess();
-      navigate("/contacts");
+      navigate("/contacts", { replace: true });
     } catch (error) {
       message.error(
         error.response?.data?.error ||

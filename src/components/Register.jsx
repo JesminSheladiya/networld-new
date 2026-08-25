@@ -27,7 +27,7 @@ function Register({ onRegisterSuccess }) {
       );
       message.success(`Welcome, ${data.username}! Registration successful.`);
       onRegisterSuccess();
-      navigate("/contacts");
+      navigate("/contacts", { replace: true });
     } catch (error) {
       message.error(
         error.response?.data?.error ||

@@ -273,19 +273,29 @@
 /* ── Inline relation edit (Suggestions) ── */
 .nw-edit-inline {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
   flex-shrink: 0;
 }
 
-.nw-edit-inline .ant-btn {
-  height: 24px;
-  min-width: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
+/* Match antd small controls to the 34px nw-act-btn row */
+.nw-edit-inline .nw-relation-select.ant-select .ant-select-selector {
+  height: 34px;
+  border-radius: 10px;
+}
+
+.nw-edit-inline .nw-relation-select.ant-select .ant-select-selection-item,
+.nw-edit-inline .nw-relation-select.ant-select .ant-select-selection-search-input {
+  height: 32px;
+  line-height: 32px;
+}
+
+.nw-edit-input.ant-input {
+  width: 132px;
+  height: 34px;
+  border-radius: 10px;
 }
 
 @media (max-width: 640px) {

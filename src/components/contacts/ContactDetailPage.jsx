@@ -55,7 +55,14 @@ function ContactDetailPage() {
 
   return (
     <div className="nw-page nw-detail-page">
-      <ContactProfile contact={contact} showBack onBack={() => navigate("/contacts")} />
+      <ContactProfile
+        contact={contact}
+        showBack
+        onBack={() => {
+          if (window.history.length > 1) navigate(-1);
+          else navigate("/contacts", { replace: true });
+        }}
+      />
     </div>
   );
 }

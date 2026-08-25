@@ -30,7 +30,7 @@ function ProfileMenu() {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   const handleProfileUpdate = (updated) => {
@@ -124,6 +124,7 @@ function AppShellNav() {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  replace
                   className={({ isActive }) => (isActive ? "nw-topnav-link active" : "nw-topnav-link")}
                 >
                   {item.icon}
@@ -153,6 +154,7 @@ function AppShellNav() {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  replace
                   className={({ isActive }) => (isActive ? "nw-nav-item active" : "nw-nav-item")}
                 >
                   <span className="nw-nav-icon-wrap">
