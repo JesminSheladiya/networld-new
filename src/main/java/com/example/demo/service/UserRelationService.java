@@ -3,6 +3,9 @@ package com.example.demo.service;
 import com.example.demo.dto.UserRelationSuggestionDTO;
 import com.example.demo.model.*;
 import com.example.demo.repository.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -140,6 +143,21 @@ public class UserRelationService {
                     o.getGender(),
                     ur.getRelation().getRelationName(), null, "ACCEPTED");
         }).collect(Collectors.toList());
+    }
+
+    public Page<UserRelationSuggestionDTO> getMyConnectionsPaged(User currentUser, String query, Pageable pageable) {
+        Page<UserRelation> relations = (query == null || query.isBlank())
+                ? userRelationRepo.findByFromUserAndStatus(currentUser, "ACCEPTED", pageable)
+                : userRelationRepo.searchAcceptedConnections(currentUser, query.trim(), pageable);
+
+        return relations.map(ur -> {
+            User o = ur.getToUser();
+            String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
+            return new UserRelationSuggestionDTO(
+                    ur.getId(), name, o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                    o.getGender(),
+                    ur.getRelation().getRelationName(), null, "ACCEPTED");
+        });
     }
 
     @Transactional

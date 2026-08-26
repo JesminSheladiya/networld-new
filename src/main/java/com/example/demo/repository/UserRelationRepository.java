@@ -2,6 +2,8 @@ package com.example.demo.repository;
 
 import com.example.demo.model.User;
 import com.example.demo.model.UserRelation;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,6 +20,8 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
     List<UserRelation> findByToUserAndStatus(User toUser, String status);
     Optional<UserRelation> findByFromUserAndToUser(User fromUser, User toUser);
     List<UserRelation> findByStatus(String status);
+
+    Page<UserRelation> findByFromUserAndStatus(User fromUser, String status, Pageable pageable);
 
     @Modifying
     @Query("DELETE FROM UserRelation ur WHERE ur.status = 'SUGGESTED' AND (ur.fromUser = :user OR ur.toUser = :user)")
@@ -52,5 +56,22 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
     List<UserRelation> searchAcceptedConnections(
             @Param("fromUser") User fromUser,
             @Param("query") String query
+    );
+
+    @Query("""
+        SELECT ur FROM UserRelation ur
+        JOIN ur.relation r
+        WHERE ur.fromUser = :fromUser
+          AND ur.status = 'ACCEPTED'
+          AND (LOWER(ur.toUser.fullName)  LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.email)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%')))
+    """)
+    Page<UserRelation> searchAcceptedConnections(
+            @Param("fromUser") User fromUser,
+            @Param("query") String query,
+            Pageable pageable
     );
 }
