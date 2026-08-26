@@ -6,6 +6,9 @@ import com.example.demo.model.UserRelation;
 import com.example.demo.repository.UserRelationRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.UserRelationService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -137,6 +140,16 @@ public class UserRelationController {
             @RequestParam(required = false) String query,
             @AuthenticationPrincipal UserDetails ud) {
         return ResponseEntity.ok(userRelationService.getMyConnections(getCurrentUser(ud), query));
+    }
+
+    @GetMapping("/connections/paged")
+    public ResponseEntity<Page<UserRelationSuggestionDTO>> getConnectionsPaged(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal UserDetails ud) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(userRelationService.getMyConnectionsPaged(getCurrentUser(ud), query, pageable));
     }
 
     @PostMapping("/suggestions/send")
