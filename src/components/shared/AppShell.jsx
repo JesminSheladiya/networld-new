@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Dropdown, Avatar } from "antd";
 import { TeamOutlined, SearchOutlined, BellOutlined, BulbOutlined, LogoutOutlined, SettingOutlined } from "@ant-design/icons";
 import { getUser, logout } from "../../Services/authService";
@@ -83,8 +83,21 @@ function ProfileMenu() {
 }
 
 function AppShellNav() {
+  const location = useLocation();
+  const activeIndex = (() => {
+    const p = location.pathname;
+    if (p.startsWith("/contacts")) return 0;
+    const idx = NAV_ITEMS.findIndex((it) => p === it.to);
+    return idx >= 0 ? idx : 0;
+  })();
   const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
   const { pendingCount, suggestionsCount, setPendingCount, setSuggestionsCount, key: refreshKey } = useRefresh();
+  const topNavRef = useRef(null);
+  const topItemRefs = useRef([]);
+  const bottomNavRef = useRef(null);
+  const bottomItemRefs = useRef([]);
+  const [topIndicator, setTopIndicator] = useState({ left: 0, width: 0, ready: false });
+  const [bottomIndicator, setBottomIndicator] = useState({ left: 0, width: 0, ready: false });
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1024px)");
@@ -111,6 +124,35 @@ function AppShellNav() {
     fetchCounts();
   }, [refreshKey, fetchCounts]);
 
+  // ── Sliding indicator (same smooth animation as My Contacts chips) ──
+  useEffect(() => {
+    if (isCompact) return;
+    const el = topItemRefs.current[activeIndex];
+    if (!el || !topNavRef.current) return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      const c = topNavRef.current.getBoundingClientRect();
+      setTopIndicator({ left: r.left - c.left, width: r.width, ready: true });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [activeIndex, isCompact, pendingCount, suggestionsCount]);
+
+  useEffect(() => {
+    if (!isCompact) return;
+    const el = bottomItemRefs.current[activeIndex];
+    if (!el || !bottomNavRef.current) return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      const c = bottomNavRef.current.getBoundingClientRect();
+      setBottomIndicator({ left: r.left - c.left, width: r.width, ready: true });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [activeIndex, isCompact, pendingCount, suggestionsCount]);
+
   return (
     <div className="nw-shell">
         {!isCompact ? (
@@ -119,10 +161,19 @@ function AppShellNav() {
               <span className="nw-brand-dot" />
               <span className="nw-brand-text">Net World</span>
             </div>
-            <nav className="nw-topnav-links">
-              {NAV_ITEMS.map((item) => (
+            <nav className="nw-topnav-links" ref={topNavRef}>
+              <span
+                className="nw-topnav-indicator"
+                style={{
+                  left: topIndicator.left,
+                  width: topIndicator.width,
+                  opacity: topIndicator.ready ? 1 : 0,
+                }}
+              />
+              {NAV_ITEMS.map((item, i) => (
                 <NavLink
                   key={item.to}
+                  ref={(el) => (topItemRefs.current[i] = el)}
                   to={item.to}
                   replace
                   className={({ isActive }) => (isActive ? "nw-topnav-link active" : "nw-topnav-link")}
@@ -149,10 +200,19 @@ function AppShellNav() {
               </div>
               <ProfileMenu />
             </header>
-            <nav className="nw-bottomnav">
-              {NAV_ITEMS.map((item) => (
+            <nav className="nw-bottomnav" ref={bottomNavRef}>
+              <span
+                className="nw-bottomnav-indicator"
+                style={{
+                  left: bottomIndicator.left,
+                  width: bottomIndicator.width,
+                  opacity: bottomIndicator.ready ? 1 : 0,
+                }}
+              />
+              {NAV_ITEMS.map((item, i) => (
                 <NavLink
                   key={item.to}
+                  ref={(el) => (bottomItemRefs.current[i] = el)}
                   to={item.to}
                   replace
                   className={({ isActive }) => (isActive ? "nw-nav-item active" : "nw-nav-item")}
