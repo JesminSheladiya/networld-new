@@ -94,10 +94,7 @@ function AppShellNav() {
   const { pendingCount, suggestionsCount, setPendingCount, setSuggestionsCount, key: refreshKey } = useRefresh();
   const topNavRef = useRef(null);
   const topItemRefs = useRef([]);
-  const bottomNavRef = useRef(null);
-  const bottomItemRefs = useRef([]);
   const [topIndicator, setTopIndicator] = useState({ left: 0, width: 0, ready: false });
-  const [bottomIndicator, setBottomIndicator] = useState({ left: 0, width: 0, ready: false });
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1024px)");
@@ -139,19 +136,6 @@ function AppShellNav() {
     return () => window.removeEventListener("resize", update);
   }, [activeIndex, isCompact, pendingCount, suggestionsCount]);
 
-  useEffect(() => {
-    if (!isCompact) return;
-    const el = bottomItemRefs.current[activeIndex];
-    if (!el || !bottomNavRef.current) return;
-    const update = () => {
-      const r = el.getBoundingClientRect();
-      const c = bottomNavRef.current.getBoundingClientRect();
-      setBottomIndicator({ left: r.left - c.left, width: r.width, ready: true });
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [activeIndex, isCompact, pendingCount, suggestionsCount]);
 
   return (
     <div className="nw-shell">
@@ -200,35 +184,29 @@ function AppShellNav() {
               </div>
               <ProfileMenu />
             </header>
-            <nav className="nw-bottomnav" ref={bottomNavRef}>
-              <span
-                className="nw-bottomnav-indicator"
-                style={{
-                  left: bottomIndicator.left,
-                  width: bottomIndicator.width,
-                  opacity: bottomIndicator.ready ? 1 : 0,
-                }}
-              />
-              {NAV_ITEMS.map((item, i) => (
-                <NavLink
-                  key={item.to}
-                  ref={(el) => (bottomItemRefs.current[i] = el)}
-                  to={item.to}
-                  replace
-                  className={({ isActive }) => (isActive ? "nw-nav-item active" : "nw-nav-item")}
-                >
-                  <span className="nw-nav-icon-wrap">
-                    {item.icon}
-                    {item.to === "/discover/requests" && pendingCount > 0 && (
-                      <span className="nw-nav-badge-dot">{pendingCount > 99 ? "99+" : pendingCount}</span>
-                    )}
-                    {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
-                      <span className="nw-nav-badge-dot">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
-                    )}
-                  </span>
-                  <span className="nw-nav-label">{item.label.split(" ")[0]}</span>
-                </NavLink>
-              ))}
+            <nav className="nw-bottomnav toolbar">
+              <ul>
+                {NAV_ITEMS.map((item, i) => (
+                  <li
+                    key={item.to}
+                    className={activeIndex === i ? "nw-nav-item active menu" : "nw-nav-item menu"}
+                  >
+                    <NavLink to={item.to} replace>
+                      <span className="nw-nav-icon-wrap icon">
+                        {item.icon}
+                        {item.to === "/discover/requests" && pendingCount > 0 && (
+                          <span className="nw-nav-badge-dot">{pendingCount > 99 ? "99+" : pendingCount}</span>
+                        )}
+                        {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
+                          <span className="nw-nav-badge-dot">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
+                        )}
+                      </span>
+                      <span className="nw-nav-label text">{item.label.split(" ")[0]}</span>
+                    </NavLink>
+                  </li>
+                ))}
+                <div className="nw-bottomnav-indicator indicator" />
+              </ul>
             </nav>
           </>
         )}
