@@ -83,20 +83,38 @@ function ContactProfile({ contact, showBack = false, onBack }) {
         footer={null}
         closable={false}
         centered
-        className="image-viewer-modal-circle"
+        width={540}
+        className="image-viewer-modal-circle instagram-dp-modal"
+        styles={{
+          mask: { backgroundColor: "rgba(0,0,0,0.92)", backdropFilter: "blur(4px)" },
+          content: { background: "transparent", boxShadow: "none", padding: 0, border: "none" },
+          body: { padding: 0, background: "transparent" },
+        }}
       >
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 16,
+          }}
+          onClick={() => setImageViewerOpen(false)}
+        >
           <img
             src={contact.profilePicture}
             alt="Profile full view"
             style={{
               objectFit: "cover",
               borderRadius: "50%",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-              border: "4px solid rgba(255, 255, 255, 0.1)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
+              border: "3px solid rgba(255, 255, 255, 0.12)",
               width: "86vw",
-              maxWidth: 360,
-              maxHeight: 360,
+              height: "86vw",
+              maxWidth: 500,
+              maxHeight: 500,
+              aspectRatio: "1 / 1",
+              cursor: "pointer",
+              display: "block",
             }}
             onClick={() => setImageViewerOpen(false)}
           />

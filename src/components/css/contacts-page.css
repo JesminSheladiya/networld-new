@@ -645,3 +645,21 @@
 .ant-table-filter-trigger.ant-table-filter-open {
   color: #38bdf8 !important;
 }
+
+/* ── Instagram DP viewer — only image, no background card ── */
+.instagram-dp-modal .ant-modal-content,
+.image-viewer-modal-circle .ant-modal-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.instagram-dp-modal .ant-modal-body {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.instagram-dp-modal .ant-modal-mask {
+  background: rgba(0, 0, 0, 0.92) !important;
+}

@@ -185,6 +185,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
     const [form] = Form.useForm();
     const [preview, setPreview] = useState(user.profilePicture || null);
     const [newImg, setNewImg] = useState(null);
+    const [dpOpen, setDpOpen] = useState(false);
 
     useEffect(() => {
         // Nothing here for now
@@ -237,7 +238,12 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                         border: "1px solid rgba(99,102,241,0.12)",
                         marginBottom: 14,
                     }}>
-                        <div className="up-avatar-wrapper" style={{ position: "relative" }}>
+                        <div
+                            className="up-avatar-wrapper"
+                            onClick={() => user.profilePicture && setDpOpen(true)}
+                            style={{ position: "relative", cursor: user.profilePicture ? "pointer" : "default" }}
+                            title={user.profilePicture ? "View profile photo" : undefined}
+                        >
                             <UserAvatar name={user.fullName || user.username} pic={user.profilePicture} size={52} />
                             <div className="up-online-dot" style={{
                                 position: "absolute", bottom: 0, right: -2,
@@ -310,6 +316,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
     ];
 
     return (
+        <>
         <Modal
             className="up-modal"
             open={open}
@@ -464,6 +471,47 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                 </Form>
             )}
         </Modal>
+
+            <Modal
+                open={dpOpen}
+                onCancel={() => setDpOpen(false)}
+                footer={null}
+                closable={false}
+                centered
+                width={540}
+                destroyOnClose
+                maskClosable
+                className="instagram-dp-modal"
+                styles={{
+                    mask: { backgroundColor: "rgba(0,0,0,0.92)", backdropFilter: "blur(4px)" },
+                    content: { background: "transparent", boxShadow: "none", padding: 0, border: "none" },
+                    body: { padding: 0, background: "transparent" },
+                }}
+            >
+                <div
+                    style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: 16 }}
+                    onClick={() => setDpOpen(false)}
+                >
+                    <img
+                        src={user.profilePicture}
+                        alt="Profile full view"
+                        style={{
+                            objectFit: "cover",
+                            borderRadius: "50%",
+                            boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
+                            border: "3px solid rgba(255,255,255,0.12)",
+                            width: "86vw",
+                            height: "86vw",
+                            maxWidth: 500,
+                            maxHeight: 500,
+                            aspectRatio: "1 / 1",
+                            cursor: "pointer",
+                            display: "block",
+                        }}
+                    />
+                </div>
+            </Modal>
+        </>
     );
 }
 
