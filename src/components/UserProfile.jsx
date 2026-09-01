@@ -478,7 +478,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                 footer={null}
                 closable={false}
                 centered
-                width={540}
+                width={640}
                 destroyOnClose
                 maskClosable
                 className="instagram-dp-modal"
@@ -502,8 +502,8 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                             border: "3px solid rgba(255,255,255,0.12)",
                             width: "86vw",
                             height: "86vw",
-                            maxWidth: 500,
-                            maxHeight: 500,
+                            maxWidth: 600,
+                            maxHeight: 600,
                             aspectRatio: "1 / 1",
                             cursor: "pointer",
                             display: "block",

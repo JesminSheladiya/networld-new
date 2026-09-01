@@ -83,7 +83,7 @@ function ContactProfile({ contact, showBack = false, onBack }) {
         footer={null}
         closable={false}
         centered
-        width={540}
+        width={640}
         className="image-viewer-modal-circle instagram-dp-modal"
         styles={{
           mask: { backgroundColor: "rgba(0,0,0,0.92)", backdropFilter: "blur(4px)" },
@@ -110,8 +110,8 @@ function ContactProfile({ contact, showBack = false, onBack }) {
               border: "3px solid rgba(255, 255, 255, 0.12)",
               width: "86vw",
               height: "86vw",
-              maxWidth: 500,
-              maxHeight: 500,
+              maxWidth: 600,
+              maxHeight: 600,
               aspectRatio: "1 / 1",
               cursor: "pointer",
               display: "block",

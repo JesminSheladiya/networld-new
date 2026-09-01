@@ -163,15 +163,21 @@ function AppShellNav() {
                   opacity: topIndicator.ready ? 1 : 0,
                 }}
               />
-              {NAV_ITEMS.map((item, i) => (
+              {NAV_ITEMS.map((item, i) => {
+                const isSuggestion = item.to === "/discover/suggestions";
+                const hasSuggestions = isSuggestion && suggestionsCount > 0;
+                return (
                 <NavLink
                   key={item.to}
                   ref={(el) => (topItemRefs.current[i] = el)}
                   to={item.to}
                   replace
-                  className={({ isActive }) => (isActive ? "nw-topnav-link active" : "nw-topnav-link")}
+                  className={({ isActive }) => {
+                    const base = isActive ? "nw-topnav-link active" : "nw-topnav-link";
+                    return hasSuggestions ? `${base} suggestion-has-data` : base;
+                  }}
                 >
-                  {item.icon}
+                  <span className={hasSuggestions ? "suggestion-icon-glow" : undefined}>{item.icon}</span>
                   {item.label}
                   {item.to === "/discover/requests" && pendingCount > 0 && (
                     <span className="nw-nav-badge">{pendingCount > 99 ? "99+" : pendingCount}</span>
@@ -180,7 +186,8 @@ function AppShellNav() {
                     <span className="nw-nav-badge">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
                   )}
                 </NavLink>
-              ))}
+                );
+              })}
             </nav>
             <ProfileMenu />
           </header>
@@ -195,13 +202,16 @@ function AppShellNav() {
             </header>
             <nav className="nw-bottomnav toolbar">
               <ul>
-                {NAV_ITEMS.map((item, i) => (
+                {NAV_ITEMS.map((item, i) => {
+                  const isSuggestion = item.to === "/discover/suggestions";
+                  const hasSuggestions = isSuggestion && suggestionsCount > 0;
+                  return (
                   <li
                     key={item.to}
-                    className={activeIndex === i ? "nw-nav-item active menu" : "nw-nav-item menu"}
+                    className={`${activeIndex === i ? "nw-nav-item active menu" : "nw-nav-item menu"}${hasSuggestions ? " suggestion-has-data" : ""}`}
                   >
                     <NavLink to={item.to} replace>
-                      <span className="nw-nav-icon-wrap icon">
+                      <span className={`nw-nav-icon-wrap icon${hasSuggestions ? " suggestion-icon-glow" : ""}`}>
                         {item.icon}
                         {item.to === "/discover/requests" && pendingCount > 0 && (
                           <span className="nw-nav-badge-dot">{pendingCount > 99 ? "99+" : pendingCount}</span>
@@ -213,7 +223,8 @@ function AppShellNav() {
                       <span className="nw-nav-label text">{item.label.split(" ")[0]}</span>
                     </NavLink>
                   </li>
-                ))}
+                  );
+                })}
                 <div className="nw-bottomnav-indicator indicator" />
               </ul>
             </nav>

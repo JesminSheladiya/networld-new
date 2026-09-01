@@ -95,6 +95,19 @@
   box-shadow: none;
 }
 
+/* Suggestion — yellow glow only on icon, only when count >=1 (desktop) */
+.nw-topnav-link.suggestion-has-data .suggestion-icon-glow {
+  color: #fbbf24 !important;
+  filter: drop-shadow(0 0 7px rgba(251, 191, 36, 0.55)) drop-shadow(0 0 12px rgba(251, 191, 36, 0.30));
+}
+.nw-topnav-link.suggestion-has-data:hover .suggestion-icon-glow {
+  color: #fde68a !important;
+}
+.nw-topnav-link.suggestion-has-data.active .suggestion-icon-glow {
+  color: #fef08a !important;
+  filter: drop-shadow(0 0 9px rgba(251, 191, 36, 0.70)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.38));
+}
+
 .nw-nav-badge {
   min-width: 18px;
   height: 18px;
@@ -227,7 +240,7 @@
 /* codepen :root { --page-bg:#666; --menu-count:4; --theme-color:#ff7800; --app-bg:#eee; --text-color:#333 } */
 /* theme mapping: --app-bg -> #060b18 (page bg), --theme-color -> NetWorld blue gradient, --text-color -> #94a3b8, toolbar bg #fff -> rgba glass */
 .nw-bottomnav {
-  --size: 70px;
+  --size: 65px;
   --menu-count: 4;
   --theme-color: #2563eb;
   --app-bg: #060b18;
@@ -253,10 +266,10 @@
 .nw-bottomnav ul {
   display: flex;
   width: 100%;
-  max-width: 100%;
+  max-width: 600px;
   position: relative;
   list-style: none;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
 }
 
@@ -350,6 +363,17 @@
   transition: 0.5s;
 }
 
+/* Suggestion — yellow glow only on icon, only when count >=1 */
+.nw-bottomnav .suggestion-icon-glow {
+  color: #fbbf24 !important;
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.60)) drop-shadow(0 0 14px rgba(251, 191, 36, 0.32));
+}
+.nw-bottomnav li.active .suggestion-icon-glow,
+.nw-bottomnav li.suggestion-has-data.active .suggestion-icon-glow {
+  color: #fef08a !important;
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.80)) drop-shadow(0 0 20px rgba(251, 191, 36, 0.45)) drop-shadow(0 1px 6px rgba(0, 0, 0, 0.35));
+}
+
 .nw-bottomnav .nw-nav-label,
 .nw-bottomnav .text {
   position: absolute;
@@ -411,13 +435,13 @@
   position: absolute;
   top: 10px;
   left: 28px;
-  min-width: 16px;
-  height: 16px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 4px;
   border-radius: 8px;
   background: #ef4444;
   color: #fff;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   display: inline-flex;
   align-items: center;
