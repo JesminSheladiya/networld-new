@@ -139,6 +139,15 @@ function AppShellNav() {
 
   return (
     <div className="nw-shell">
+      {/* Liquid glass SVG filter — used for backdrop refinement (see freefrontend / Petr Knoll glass) */}
+      <svg width="0" height="0" aria-hidden="true" style={{ position: "absolute", pointerEvents: "none" }}>
+        <defs>
+          <filter id="liquid-glass-filter" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="1" result="turb" seed="2" />
+            <feDisplacementMap in="SourceGraphic" in2="turb" scale="5" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
         {!isCompact ? (
           <header className="nw-topnav">
             <div className="nw-brand">

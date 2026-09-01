@@ -237,22 +237,23 @@
   right: 0;
   bottom: 0;
   z-index: 900;
+  width: 100%;
   height: var(--size);
   display: flex;
   align-items: center;
-  justify-content: center;
-  /* codepen: background:#fff; border-radius:0 0 15px 15px;  -> themed glass, no radius flush */
-  background: #ffffff;
+  justify-content: stretch;
   background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
-  padding-inline: 10px;
+  padding-inline: 0;
   padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid rgba(148, 163, 184, 0.08);
 }
 
 .nw-bottomnav ul {
   display: flex;
-  width: calc(var(--size) * var(--menu-count));
+  width: 100%;
+  max-width: 100%;
   position: relative;
   list-style: none;
   margin: 0;
@@ -265,13 +266,28 @@
   position: absolute;
   height: var(--size);
   width: var(--size);
-  /* codepen: background:var(--theme-color) -> themed gradient */
-  background: var(--theme-color);
-  background: linear-gradient(135deg, #38bdf8 0%, #2563eb 55%, #1d4ed8 100%);
+  /* Liquid glass round button + halka blue tint — deep layered shadows */
+  background: rgba(59, 130, 246, 0.16);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
   top: -50%;
+  left: 0;
   border-radius: 50%;
-  border: 6px solid var(--app-bg);
-  transition: 0.5s;
+  border: 1px solid rgba(125, 211, 252, 0.30);
+  /* page-bg ring + multiple inset refraction layers */
+  box-shadow:
+    0 0 0 6px var(--app-bg),
+    inset 0 0 2px 1px rgba(255, 255, 255, 0.48),
+    inset 0 0 12px 4px rgba(255, 255, 255, 0.14),
+    inset 0 4px 16px rgba(255, 255, 255, 0.10),
+    inset 0 8px 22px rgba(17, 17, 26, 0.06),
+    inset 0 10px 40px rgba(17, 17, 26, 0.07),
+    inset 0 -4px 10px rgba(37, 99, 235, 0.18),
+    inset 0 -8px 18px rgba(37, 99, 235, 0.10),
+    0 12px 32px rgba(37, 99, 235, 0.32),
+    0 6px 14px rgba(0, 0, 0, 0.24),
+    0 2px 6px rgba(0, 0, 0, 0.20);
+  transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s;
   pointer-events: none;
 }
 
@@ -305,7 +321,8 @@
 .nw-bottomnav li.nw-nav-item,
 .nw-bottomnav li.menu {
   list-style: none;
-  width: var(--size);
+  flex: 1;
+  width: auto;
   height: var(--size);
   z-index: 1;
 }
@@ -350,6 +367,8 @@
 .nw-bottomnav li.menu.active .icon {
   transform: translateY(calc(var(--size) * -0.5));
   color: #fff;
+  filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.35));
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.35);
 }
 
 .nw-bottomnav li.nw-nav-item.active .nw-nav-label,
@@ -358,35 +377,40 @@
   transform: translateY(10px);
 }
 
+/* Full-width: indicator centered at 12.5%, 37.5%, 62.5%, 87.5% */
 .nw-bottomnav li.nw-nav-item:nth-child(1).active ~ .nw-bottomnav-indicator,
 .nw-bottomnav li.menu:nth-child(1).active ~ .indicator,
 .nw-bottomnav li.nw-nav-item:nth-child(1).active ~ .indicator,
 .nw-bottomnav li.menu:nth-child(1).active ~ .nw-bottomnav-indicator {
-  transform: translateX(calc(var(--size) * 0));
+  left: calc(12.5% - var(--size) / 2);
+  transform: none;
 }
 .nw-bottomnav li.nw-nav-item:nth-child(2).active ~ .nw-bottomnav-indicator,
 .nw-bottomnav li.menu:nth-child(2).active ~ .indicator,
 .nw-bottomnav li.nw-nav-item:nth-child(2).active ~ .indicator,
 .nw-bottomnav li.menu:nth-child(2).active ~ .nw-bottomnav-indicator {
-  transform: translateX(calc(var(--size) * 1));
+  left: calc(37.5% - var(--size) / 2);
+  transform: none;
 }
 .nw-bottomnav li.nw-nav-item:nth-child(3).active ~ .nw-bottomnav-indicator,
 .nw-bottomnav li.menu:nth-child(3).active ~ .indicator,
 .nw-bottomnav li.nw-nav-item:nth-child(3).active ~ .indicator,
 .nw-bottomnav li.menu:nth-child(3).active ~ .nw-bottomnav-indicator {
-  transform: translateX(calc(var(--size) * 2));
+  left: calc(62.5% - var(--size) / 2);
+  transform: none;
 }
 .nw-bottomnav li.nw-nav-item:nth-child(4).active ~ .nw-bottomnav-indicator,
 .nw-bottomnav li.menu:nth-child(4).active ~ .indicator,
 .nw-bottomnav li.nw-nav-item:nth-child(4).active ~ .indicator,
 .nw-bottomnav li.menu:nth-child(4).active ~ .nw-bottomnav-indicator {
-  transform: translateX(calc(var(--size) * 3));
+  left: calc(87.5% - var(--size) / 2);
+  transform: none;
 }
 
 .nw-nav-badge-dot {
   position: absolute;
-  top: 14px;
-  right: 18px;
+  top: 10px;
+  left: 28px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
