@@ -14,32 +14,29 @@ const NAV_ITEMS = [
   { to: "/discover/suggestions", label: "Suggestions", icon: <BulbOutlined /> },
 ];
 
-// Continuous Smooth Hump Parameters
 const NOTCH = {
-  halfWidth: 34, // Curve transition width
-  height: 16,    // Upward wave height
-  corner: 14,    // Outer container radius
-  edgeMargin: 42 // Safe distance from bar edges for 1st & 4th tab center
+  halfWidth: 22, // = indicator radius → circular notch matching nw-bottomnav-indicator
+  height: 16,    // R=(22²+16²)/2*16≈23.1 matches indicator r=23
+  corner: 16,
 };
 
-// ── Ultra-Smooth Symmetrical SVG Path ──
+// ── Circular Notch — perfect circle matching nw-bottomnav-indicator (r=23) ──
 function buildConvexBarPath(w, h, rawCx) {
-  const { halfWidth: nw, height: nh, corner: r, edgeMargin } = NOTCH;
+  const { halfWidth: nw, height: nh, corner: r } = NOTCH;
 
-  // Clamping CX strictly inside safe edge margins
-  const minCx = Math.max(edgeMargin, nw + r);
-  const maxCx = Math.min(w - edgeMargin, w - (nw + r));
+  const minCx = nw + r;
+  const maxCx = w - (nw + r);
   const cx = Math.max(minCx, Math.min(maxCx, rawCx));
 
   const startX = cx - nw;
   const endX = cx + nw;
+  const R = (nw * nw + nh * nh) / (2 * nh); // ≈23.1
 
   return [
     `M 0,${r}`,
     `Q 0,0 ${r},0`,
     `H ${startX}`,
-    `C ${startX + 14},0 ${cx - 18},-${nh} ${cx},-${nh}`,
-    `C ${cx + 20},-${nh} ${endX - 14},0 ${endX},0`,
+    `A ${R} ${R} 0 0 0 ${endX} 0`,
     `H ${w - r}`,
     `Q ${w},0 ${w},${r}`,
     `V ${h - r}`,
@@ -183,8 +180,8 @@ function AppShellNav() {
     const tabWidth = width / NAV_ITEMS.length;
     const rawCx = (idx + 0.5) * tabWidth;
 
-    const minCx = Math.max(NOTCH.edgeMargin, NOTCH.halfWidth + NOTCH.corner);
-    const maxCx = Math.min(width - NOTCH.edgeMargin, width - (NOTCH.halfWidth + NOTCH.corner));
+    const minCx = NOTCH.halfWidth + NOTCH.corner;
+    const maxCx = width - (NOTCH.halfWidth + NOTCH.corner);
     return Math.max(minCx, Math.min(maxCx, rawCx));
   }, []);
 
