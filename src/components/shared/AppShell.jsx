@@ -9,10 +9,46 @@ import UserProfile from "../UserProfile";
 
 const NAV_ITEMS = [
   { to: "/contacts", label: "Contacts", icon: <TeamOutlined /> },
-  { to: "/discover/find", label: "Find People", icon: <SearchOutlined /> },
+  { to: "/discover/find", label: "Find", icon: <SearchOutlined /> },
   { to: "/discover/requests", label: "Requests", icon: <BellOutlined /> },
   { to: "/discover/suggestions", label: "Suggestions", icon: <BulbOutlined /> },
 ];
+
+// Continuous Smooth Hump Parameters
+const NOTCH = {
+  halfWidth: 34, // Curve transition width
+  height: 16,    // Upward wave height
+  corner: 14,    // Outer container radius
+  edgeMargin: 42 // Safe distance from bar edges for 1st & 4th tab center
+};
+
+// ── Ultra-Smooth Symmetrical SVG Path ──
+function buildConvexBarPath(w, h, rawCx) {
+  const { halfWidth: nw, height: nh, corner: r, edgeMargin } = NOTCH;
+
+  // Clamping CX strictly inside safe edge margins
+  const minCx = Math.max(edgeMargin, nw + r);
+  const maxCx = Math.min(w - edgeMargin, w - (nw + r));
+  const cx = Math.max(minCx, Math.min(maxCx, rawCx));
+
+  const startX = cx - nw;
+  const endX = cx + nw;
+
+  return [
+    `M 0,${r}`,
+    `Q 0,0 ${r},0`,
+    `H ${startX}`,
+    `C ${startX + 14},0 ${cx - 18},-${nh} ${cx},-${nh}`,
+    `C ${cx + 20},-${nh} ${endX - 14},0 ${endX},0`,
+    `H ${w - r}`,
+    `Q ${w},0 ${w},${r}`,
+    `V ${h - r}`,
+    `Q ${w},${h} ${w - r},${h}`,
+    `H ${r}`,
+    `Q 0,${h} 0,${h - r}`,
+    "Z",
+  ].join(" ");
+}
 
 function ProfileMenu() {
   const navigate = useNavigate();
@@ -23,8 +59,8 @@ function ProfileMenu() {
   const fullName = currentUser?.fullName || currentUser?.username || "User";
   const nameParts = fullName.split(" ").filter(Boolean);
   const initials = nameParts.length > 1
-    ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
-    : fullName.slice(0, 2).toUpperCase();
+      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+      : fullName.slice(0, 2).toUpperCase();
   const email = currentUser?.email || "user@mail.com";
   const profileAvatar = currentUser?.profilePicture || currentUser?.avatar || currentUser?.image || null;
 
@@ -39,46 +75,46 @@ function ProfileMenu() {
   };
 
   return (
-    <>
-      <Dropdown
-        trigger={["click"]}
-        placement="bottomRight"
-        dropdownRender={() => (
-          <div className="nw-profile-dropdown">
-            <div className="nw-profile-head">
-              <Avatar size={42} src={profileAvatar} style={{ backgroundColor: "#1f2937", color: "#7dd3fc", borderRadius: "50%" }}>
-                {!profileAvatar && initials}
-              </Avatar>
-              <div className="nw-profile-meta">
-                <div className="nw-profile-name">{fullName}</div>
-                <div className="nw-profile-email">{email}</div>
-              </div>
-            </div>
-            <div className="nw-profile-actions">
-              <button className="nw-profile-action" onClick={() => { setProfileOpen(true); }}>
-                <SettingOutlined /> Profile Settings
-              </button>
-              <button className="nw-profile-action nw-profile-logout" onClick={handleLogout}>
-                <LogoutOutlined /> Sign Out
-              </button>
-            </div>
-          </div>
-        )}
-      >
-        <button className="nw-avatar-trigger">
-          <Avatar size={38} src={profileAvatar} style={{ backgroundColor: "#1f2937", color: "#fff", fontWeight: 700, borderRadius: "50%" }}>
-            {!profileAvatar && initials}
-          </Avatar>
-        </button>
-      </Dropdown>
+      <>
+        <Dropdown
+            trigger={["click"]}
+            placement="bottomRight"
+            dropdownRender={() => (
+                <div className="nw-profile-dropdown">
+                  <div className="nw-profile-head">
+                    <Avatar size={42} src={profileAvatar} style={{ backgroundColor: "#1f2937", color: "#7dd3fc", borderRadius: "50%" }}>
+                      {!profileAvatar && initials}
+                    </Avatar>
+                    <div className="nw-profile-meta">
+                      <div className="nw-profile-name">{fullName}</div>
+                      <div className="nw-profile-email">{email}</div>
+                    </div>
+                  </div>
+                  <div className="nw-profile-actions">
+                    <button className="nw-profile-action" onClick={() => setProfileOpen(true)}>
+                      <SettingOutlined /> Profile Settings
+                    </button>
+                    <button className="nw-profile-action nw-profile-logout" onClick={handleLogout}>
+                      <LogoutOutlined /> Sign Out
+                    </button>
+                  </div>
+                </div>
+            )}
+        >
+          <button className="nw-avatar-trigger">
+            <Avatar size={38} src={profileAvatar} style={{ backgroundColor: "#1f2937", color: "#fff", fontWeight: 700, borderRadius: "50%" }}>
+              {!profileAvatar && initials}
+            </Avatar>
+          </button>
+        </Dropdown>
 
-      <UserProfile
-        open={profileOpen}
-        onClose={() => setProfileOpen(false)}
-        onProfileUpdate={handleProfileUpdate}
-        onRelationAccepted={() => bump()}
-      />
-    </>
+        <UserProfile
+            open={profileOpen}
+            onClose={() => setProfileOpen(false)}
+            onProfileUpdate={handleProfileUpdate}
+            onRelationAccepted={() => bump()}
+        />
+      </>
   );
 }
 
@@ -121,7 +157,6 @@ function AppShellNav() {
     fetchCounts();
   }, [refreshKey, fetchCounts]);
 
-  // ── Sliding indicator (same smooth animation as My Contacts chips) ──
   useEffect(() => {
     if (isCompact) return;
     const el = topItemRefs.current[activeIndex];
@@ -136,99 +171,187 @@ function AppShellNav() {
     return () => window.removeEventListener("resize", update);
   }, [activeIndex, isCompact, pendingCount, suggestionsCount]);
 
+  const bottomBarRef = useRef(null);
+  const bottomPathRef = useRef(null);
+  const bottomIndicatorRef = useRef(null);
+  const bottomAnimRef = useRef({ raf: null, cx: 0 });
+  const bottomPrevWidthRef = useRef(0);
+  const [bottomDims, setBottomDims] = useState({ w: 0, h: 64 });
+
+  const getTargetCx = useCallback((idx, width) => {
+    if (!width) return 0;
+    const tabWidth = width / NAV_ITEMS.length;
+    const rawCx = (idx + 0.5) * tabWidth;
+
+    const minCx = Math.max(NOTCH.edgeMargin, NOTCH.halfWidth + NOTCH.corner);
+    const maxCx = Math.min(width - NOTCH.edgeMargin, width - (NOTCH.halfWidth + NOTCH.corner));
+    return Math.max(minCx, Math.min(maxCx, rawCx));
+  }, []);
+
+  useEffect(() => {
+    if (!isCompact) return;
+    const el = bottomBarRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      setBottomDims({ w: r.width, h: r.height });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isCompact]);
+
+  useEffect(() => {
+    if (!isCompact || !bottomDims.w) return;
+    const targetCx = getTargetCx(activeIndex, bottomDims.w);
+    const widthChanged = bottomPrevWidthRef.current !== bottomDims.w;
+    bottomPrevWidthRef.current = bottomDims.w;
+
+    const applyCx = (cx) => {
+      if (bottomPathRef.current) {
+        bottomPathRef.current.setAttribute("d", buildConvexBarPath(bottomDims.w, bottomDims.h, cx));
+      }
+      if (bottomIndicatorRef.current) {
+        // 46px width circle -> shift by -23px for absolute horizontal center
+        bottomIndicatorRef.current.style.left = `${cx - 23}px`;
+      }
+    };
+
+    if (bottomAnimRef.current.raf) cancelAnimationFrame(bottomAnimRef.current.raf);
+    const fromCx = bottomAnimRef.current.cx || targetCx;
+    const duration = fromCx === targetCx || widthChanged ? 0 : 320;
+    const start = performance.now();
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+    const step = (now) => {
+      const t = duration === 0 ? 1 : Math.min(1, (now - start) / duration);
+      const cx = fromCx + (targetCx - fromCx) * easeOutCubic(t);
+      applyCx(cx);
+      bottomAnimRef.current.cx = cx;
+      if (t < 1) bottomAnimRef.current.raf = requestAnimationFrame(step);
+    };
+    bottomAnimRef.current.raf = requestAnimationFrame(step);
+    return () => {
+      if (bottomAnimRef.current.raf) cancelAnimationFrame(bottomAnimRef.current.raf);
+    };
+  }, [activeIndex, isCompact, bottomDims.w, bottomDims.h, getTargetCx]);
 
   return (
-    <div className="nw-shell">
-      {/* Liquid glass SVG filter — used for backdrop refinement (see freefrontend / Petr Knoll glass) */}
-      <svg width="0" height="0" aria-hidden="true" style={{ position: "absolute", pointerEvents: "none" }}>
-        <defs>
-          <filter id="liquid-glass-filter" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="1" result="turb" seed="2" />
-            <feDisplacementMap in="SourceGraphic" in2="turb" scale="5" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </defs>
-      </svg>
+      <div className="nw-shell">
         {!isCompact ? (
-          <header className="nw-topnav">
-            <div className="nw-brand">
-              <span className="nw-brand-dot" />
-              <span className="nw-brand-text">Net World</span>
-            </div>
-            <nav className="nw-topnav-links" ref={topNavRef}>
-              <span
+            <header className="nw-topnav">
+              <div className="nw-brand">
+                <span className="nw-brand-dot" />
+                <span className="nw-brand-text">Net World</span>
+              </div>
+              <nav className="nw-topnav-links" ref={topNavRef}>
+            <span
                 className="nw-topnav-indicator"
                 style={{
                   left: topIndicator.left,
                   width: topIndicator.width,
                   opacity: topIndicator.ready ? 1 : 0,
                 }}
-              />
-              {NAV_ITEMS.map((item, i) => {
-                const isSuggestion = item.to === "/discover/suggestions";
-                const hasSuggestions = isSuggestion && suggestionsCount > 0;
-                return (
-                <NavLink
-                  key={item.to}
-                  ref={(el) => (topItemRefs.current[i] = el)}
-                  to={item.to}
-                  replace
-                  className={({ isActive }) => {
-                    const base = isActive ? "nw-topnav-link active" : "nw-topnav-link";
-                    return hasSuggestions ? `${base} suggestion-has-data` : base;
-                  }}
-                >
-                  <span className={hasSuggestions ? "suggestion-icon-glow" : undefined}>{item.icon}</span>
-                  {item.label}
-                  {item.to === "/discover/requests" && pendingCount > 0 && (
-                    <span className="nw-nav-badge">{pendingCount > 99 ? "99+" : pendingCount}</span>
-                  )}
-                  {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
-                    <span className="nw-nav-badge">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
-                  )}
-                </NavLink>
-                );
-              })}
-            </nav>
-            <ProfileMenu />
-          </header>
-        ) : (
-          <>
-            <header className="nw-topbar-mobile">
-              <div className="nw-brand">
-                <span className="nw-brand-dot" />
-                <span className="nw-brand-text">Net World</span>
-              </div>
-              <ProfileMenu />
-            </header>
-            <nav className="nw-bottomnav toolbar">
-              <ul>
+            />
                 {NAV_ITEMS.map((item, i) => {
                   const isSuggestion = item.to === "/discover/suggestions";
                   const hasSuggestions = isSuggestion && suggestionsCount > 0;
                   return (
-                  <li
-                    key={item.to}
-                    className={`${activeIndex === i ? "nw-nav-item active menu" : "nw-nav-item menu"}${hasSuggestions ? " suggestion-has-data" : ""}`}
-                  >
-                    <NavLink to={item.to} replace>
-                      <span className={`nw-nav-icon-wrap icon${hasSuggestions ? " suggestion-icon-glow" : ""}`}>
-                        {item.icon}
+                      <NavLink
+                          key={item.to}
+                          ref={(el) => (topItemRefs.current[i] = el)}
+                          to={item.to}
+                          replace
+                          className={({ isActive }) => {
+                            const base = isActive ? "nw-topnav-link active" : "nw-topnav-link";
+                            return hasSuggestions ? `${base} suggestion-has-data` : base;
+                          }}
+                      >
+                        <span className={hasSuggestions ? "suggestion-icon-glow" : undefined}>{item.icon}</span>
+                        {item.label}
                         {item.to === "/discover/requests" && pendingCount > 0 && (
-                          <span className="nw-nav-badge-dot">{pendingCount > 99 ? "99+" : pendingCount}</span>
+                            <span className="nw-nav-badge">{pendingCount > 99 ? "99+" : pendingCount}</span>
                         )}
                         {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
-                          <span className="nw-nav-badge-dot">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
+                            <span className="nw-nav-badge">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
                         )}
-                      </span>
-                      <span className="nw-nav-label text">{item.label.split(" ")[0]}</span>
-                    </NavLink>
-                  </li>
+                      </NavLink>
                   );
                 })}
-                <div className="nw-bottomnav-indicator indicator" />
-              </ul>
-            </nav>
-          </>
+              </nav>
+              <ProfileMenu />
+            </header>
+        ) : (
+            <>
+              <header className="nw-topbar-mobile">
+                <div className="nw-brand">
+                  <span className="nw-brand-dot" />
+                  <span className="nw-brand-text">Net World</span>
+                </div>
+                <ProfileMenu />
+              </header>
+
+              <div className="nw-bottomnav-wrapper">
+                <nav className="nw-bottomnav" ref={bottomBarRef}>
+                  <svg
+                      className="nw-bottomnav-svg"
+                      width={bottomDims.w || "100%"}
+                      height={bottomDims.h || 64}
+                      viewBox={`0 -18 ${bottomDims.w || 1} ${(bottomDims.h || 64) + 18}`}
+                      preserveAspectRatio="none"
+                      aria-hidden="true"
+                  >
+                    <defs>
+                      <linearGradient id="nw-bottombar-fill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#111827" />
+                        <stop offset="100%" stopColor="#0b0f19" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                        ref={bottomPathRef}
+                        d={buildConvexBarPath(
+                            bottomDims.w || 1,
+                            bottomDims.h || 64,
+                            getTargetCx(activeIndex, bottomDims.w || 1)
+                        )}
+                        fill="url(#nw-bottombar-fill)"
+                        stroke="rgba(255, 255, 255, 0.12)"
+                        strokeWidth="1"
+                    />
+                  </svg>
+
+                  <div className="nw-bottomnav-indicator" ref={bottomIndicatorRef} />
+
+                  <ul>
+                    {NAV_ITEMS.map((item, i) => {
+                      const isSuggestion = item.to === "/discover/suggestions";
+                      const hasSuggestions = isSuggestion && suggestionsCount > 0;
+                      const isActive = activeIndex === i;
+                      return (
+                          <li
+                              key={item.to}
+                              className={`nw-nav-item ${isActive ? "active" : ""}${hasSuggestions ? " suggestion-has-data" : ""}`}
+                          >
+                            <NavLink to={item.to} replace>
+                        <span className={`nw-nav-icon ${hasSuggestions ? "suggestion-icon-glow" : ""}`}>
+                          {item.icon}
+                          {item.to === "/discover/requests" && pendingCount > 0 && (
+                              <span className="nw-nav-badge-dot">{pendingCount > 99 ? "99+" : pendingCount}</span>
+                          )}
+                          {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
+                              <span className="nw-nav-badge-dot">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
+                          )}
+                        </span>
+                              {isActive && <span className="nw-nav-label">{item.label}</span>}
+                            </NavLink>
+                          </li>
+                      );
+                    })}
+                  </ul>
+                </nav>
+              </div>
+            </>
         )}
 
         <main className={isCompact ? "nw-content nw-content-compact" : "nw-content"}>
@@ -240,9 +363,9 @@ function AppShellNav() {
 
 function AppShell() {
   return (
-    <RefreshProvider>
-      <AppShellNav />
-    </RefreshProvider>
+      <RefreshProvider>
+        <AppShellNav />
+      </RefreshProvider>
   );
 }
 
