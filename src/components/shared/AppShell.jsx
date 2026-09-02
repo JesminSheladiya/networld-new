@@ -15,28 +15,29 @@ const NAV_ITEMS = [
 ];
 
 const NOTCH = {
-  halfWidth: 22, // = indicator radius → circular notch matching nw-bottomnav-indicator
-  height: 16,    // R=(22²+16²)/2*16≈23.1 matches indicator r=23
-  corner: 16,
+  halfWidth: 32, // Controlled wave width
+  height: 16,    // Wave height
+  corner: 14,    // Outer container radius
 };
 
-// ── Circular Notch — perfect circle matching nw-bottomnav-indicator (r=23) ──
+// ── Strict Dynamic Boundary Clamp SVG Generator ──
 function buildConvexBarPath(w, h, rawCx) {
   const { halfWidth: nw, height: nh, corner: r } = NOTCH;
 
-  const minCx = nw + r;
-  const maxCx = w - (nw + r);
+  // Outer corner 'r' se notch bump ki hard boundary lock (screen width independent)
+  const minCx = nw + r + 4;
+  const maxCx = w - (nw + r + 4);
   const cx = Math.max(minCx, Math.min(maxCx, rawCx));
 
   const startX = cx - nw;
   const endX = cx + nw;
-  const R = (nw * nw + nh * nh) / (2 * nh); // ≈23.1
 
   return [
     `M 0,${r}`,
     `Q 0,0 ${r},0`,
     `H ${startX}`,
-    `A ${R} ${R} 0 0 0 ${endX} 0`,
+    `C ${startX + 12},0 ${cx - 16},-${nh} ${cx},-${nh}`,
+    `C ${cx + 16},-${nh} ${endX - 12},0 ${endX},0`,
     `H ${w - r}`,
     `Q ${w},0 ${w},${r}`,
     `V ${h - r}`,
@@ -173,15 +174,15 @@ function AppShellNav() {
   const bottomIndicatorRef = useRef(null);
   const bottomAnimRef = useRef({ raf: null, cx: 0 });
   const bottomPrevWidthRef = useRef(0);
-  const [bottomDims, setBottomDims] = useState({ w: 0, h: 64 });
+  const [bottomDims, setBottomDims] = useState({ w: 0, h: 60 });
 
   const getTargetCx = useCallback((idx, width) => {
     if (!width) return 0;
     const tabWidth = width / NAV_ITEMS.length;
     const rawCx = (idx + 0.5) * tabWidth;
 
-    const minCx = NOTCH.halfWidth + NOTCH.corner;
-    const maxCx = width - (NOTCH.halfWidth + NOTCH.corner);
+    const minCx = NOTCH.halfWidth + NOTCH.corner + 4;
+    const maxCx = width - (NOTCH.halfWidth + NOTCH.corner + 4);
     return Math.max(minCx, Math.min(maxCx, rawCx));
   }, []);
 
@@ -210,8 +211,8 @@ function AppShellNav() {
         bottomPathRef.current.setAttribute("d", buildConvexBarPath(bottomDims.w, bottomDims.h, cx));
       }
       if (bottomIndicatorRef.current) {
-        // 46px width circle -> shift by -23px for absolute horizontal center
-        bottomIndicatorRef.current.style.left = `${cx - 23}px`;
+        // 44px circle width -> shift by -22px to keep center alignment
+        bottomIndicatorRef.current.style.left = `${cx - 22}px`;
       }
     };
 
@@ -294,8 +295,8 @@ function AppShellNav() {
                   <svg
                       className="nw-bottomnav-svg"
                       width={bottomDims.w || "100%"}
-                      height={bottomDims.h || 64}
-                      viewBox={`0 -18 ${bottomDims.w || 1} ${(bottomDims.h || 64) + 18}`}
+                      height={bottomDims.h || 60}
+                      viewBox={`0 -18 ${bottomDims.w || 1} ${(bottomDims.h || 60) + 18}`}
                       preserveAspectRatio="none"
                       aria-hidden="true"
                   >
@@ -309,7 +310,7 @@ function AppShellNav() {
                         ref={bottomPathRef}
                         d={buildConvexBarPath(
                             bottomDims.w || 1,
-                            bottomDims.h || 64,
+                            bottomDims.h || 60,
                             getTargetCx(activeIndex, bottomDims.w || 1)
                         )}
                         fill="url(#nw-bottombar-fill)"

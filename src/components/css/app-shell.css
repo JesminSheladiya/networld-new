@@ -1,12 +1,12 @@
 /* ============================================================
-   App Shell (Mobile Symmetrical Convex Navigation Bar)
+   App Shell Layout & Mobile Convex Wave Navigation
    ============================================================ */
 
 .nw-shell {
   min-height: 100vh;
 }
 
-/* ── Desktop Top Nav ── */
+/* ── Desktop Navigation ── */
 .nw-topnav {
   position: sticky;
   top: 0;
@@ -201,7 +201,7 @@
   color: #fca5a5;
 }
 
-/* ── Mobile Top Bar ── */
+/* ── Mobile Header ── */
 .nw-topbar-mobile {
   position: fixed;
   top: 0;
@@ -219,16 +219,16 @@
   border-bottom: 1px solid rgba(37, 99, 235, 0.16);
 }
 
-/* ── Mobile Navigation (Aligned Convex Wave Hump) ── */
+/* ── Mobile Bottom Navigation Bar ── */
 .nw-bottomnav-wrapper {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(14px + env(safe-area-inset-bottom));
+  bottom: calc(10px + env(safe-area-inset-bottom));
   z-index: 900;
   display: flex;
   justify-content: center;
-  padding: 0 14px;
+  padding: 0 12px;
 }
 
 .nw-bottomnav {
@@ -236,8 +236,8 @@
   --accent-to: #3b82f6;
   position: relative;
   width: 100%;
-  max-width: 380px;
-  height: 64px;
+  max-width: 390px;
+  height: 60px;
   display: flex;
   align-items: center;
 }
@@ -249,7 +249,7 @@
   width: 100%;
   height: calc(100% + 18px);
   overflow: visible !important;
-  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55));
 }
 
 .nw-bottomnav ul {
@@ -263,20 +263,20 @@
   z-index: 2;
 }
 
-/* Floating Blue Circle Indicator */
+/* Floating Active Circle Indicator */
 .nw-bottomnav-indicator {
   position: absolute;
-  top: -11px;
+  top: -12px;
   left: 0;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   z-index: 1;
   background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow:
           inset 0 1px 2px rgba(255, 255, 255, 0.5),
-          0 8px 20px rgba(59, 130, 246, 0.45);
+          0 6px 16px rgba(59, 130, 246, 0.45);
   pointer-events: none;
   will-change: left;
 }
@@ -299,7 +299,7 @@
   position: relative;
 }
 
-/* Centered active icon inside floating circle */
+/* Icon & Active States */
 .nw-bottomnav .nw-nav-icon {
   position: relative;
   display: flex;
@@ -312,22 +312,26 @@
 }
 
 .nw-bottomnav li.nw-nav-item.active .nw-nav-icon {
-  transform: translateY(-20px);
+  transform: translateY(-16px);
   color: #ffffff;
-  font-size: 1.35em;
+  font-size: 1.3em;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
 }
 
-/* Active text label inside bottom bar */
+/* Label Clamp Protection */
 .nw-bottomnav .nw-nav-label {
   position: absolute;
-  bottom: 8px;
+  bottom: 6px;
   color: #38bdf8;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.2px;
-  animation: nwFadeUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  letter-spacing: 0.1px;
   white-space: nowrap;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  animation: nwFadeUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes nwFadeUp {
@@ -341,18 +345,24 @@
   }
 }
 
-/* Red Notification Badge Positioned Perfectly on Active Circle */
+@media (max-width: 350px) {
+  .nw-bottomnav .nw-nav-label {
+    display: none;
+  }
+}
+
+/* Notification Badge Alignment Fix */
 .nw-nav-badge-dot {
   position: absolute;
-  top: -15px;
-  right: -15px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
+  top: -3px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3.5px;
+  border-radius: 10px;
   background: #ef4444;
-  color: #fff;
-  font-size: 10px;
+  color: #ffffff;
+  font-size: 9.5px;
   font-weight: 800;
   display: inline-flex;
   align-items: center;
@@ -362,7 +372,7 @@
   z-index: 4;
 }
 
-/* ── Main Content Padding ── */
+/* ── Content Layout Padding ── */
 .nw-content {
   max-width: 1000px;
   margin: 0 auto;
