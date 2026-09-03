@@ -14,30 +14,42 @@ const NAV_ITEMS = [
   { to: "/discover/suggestions", label: "Suggestions", icon: <BulbOutlined /> },
 ];
 
-const NOTCH = {
-  halfWidth: 32, // Controlled wave width
-  height: 16,    // Wave height
-  corner: 14,    // Outer container radius
+// 1. Default Notch Configuration (Screen width >= 390px)
+const NOTCH_DEFAULT = {
+  halfWidth: 38, // Wave width
+  height: 18,    // Wave height
+  corner: 20,    // Outer container radius
 };
 
-// ── Strict Dynamic Boundary Clamp SVG Generator ──
-function buildConvexBarPath(w, h, rawCx) {
-  const { halfWidth: nw, height: nh, corner: r } = NOTCH;
+// 2. Mobile Notch Configuration (Screen width < 390px)
+const NOTCH_MOBILE = {
+  halfWidth: 32, // Wave width
+  height: 16,    // Wave height
+  corner: 12,    // Outer container radius
+};
 
-  // Outer corner 'r' se notch bump ki hard boundary lock (screen width independent)
-  const minCx = nw + r + 4;
-  const maxCx = w - (nw + r + 4);
+// Organic Notch Path Generator
+function buildConvexBarPath(w, h, rawCx) {
+  // Screen width threshold updated to 390
+  const isSmallScreen = typeof window !== "undefined" && window.innerWidth < 390;
+  const { halfWidth: nw, height: nh, corner: r } = isSmallScreen ? NOTCH_MOBILE : NOTCH_DEFAULT;
+
+  const minCx = nw + r + 2;
+  const maxCx = w - (nw + r + 2);
   const cx = Math.max(minCx, Math.min(maxCx, rawCx));
 
   const startX = cx - nw;
   const endX = cx + nw;
 
+  const c1 = isSmallScreen ? 12 : 14;
+  const c2 = isSmallScreen ? 14 : 16;
+
   return [
     `M 0,${r}`,
     `Q 0,0 ${r},0`,
     `H ${startX}`,
-    `C ${startX + 12},0 ${cx - 16},-${nh} ${cx},-${nh}`,
-    `C ${cx + 16},-${nh} ${endX - 12},0 ${endX},0`,
+    `C ${startX + c1},0 ${cx - c2},-${nh} ${cx},-${nh}`,
+    `C ${cx + c2},-${nh} ${endX - c1},0 ${endX},0`,
     `H ${w - r}`,
     `Q ${w},0 ${w},${r}`,
     `V ${h - r}`,
@@ -124,6 +136,7 @@ function AppShellNav() {
     const idx = NAV_ITEMS.findIndex((it) => p === it.to);
     return idx >= 0 ? idx : 0;
   })();
+
   const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
   const { pendingCount, suggestionsCount, setPendingCount, setSuggestionsCount, key: refreshKey } = useRefresh();
   const topNavRef = useRef(null);
@@ -172,18 +185,22 @@ function AppShellNav() {
   const bottomBarRef = useRef(null);
   const bottomPathRef = useRef(null);
   const bottomIndicatorRef = useRef(null);
+  const bottomItemRefs = useRef([]);
   const bottomAnimRef = useRef({ raf: null, cx: 0 });
   const bottomPrevWidthRef = useRef(0);
   const [bottomDims, setBottomDims] = useState({ w: 0, h: 60 });
 
-  const getTargetCx = useCallback((idx, width) => {
-    if (!width) return 0;
-    const tabWidth = width / NAV_ITEMS.length;
-    const rawCx = (idx + 0.5) * tabWidth;
+  // Exact DOM Element Center Calculation
+  const getTargetCx = useCallback((idx) => {
+    const barEl = bottomBarRef.current;
+    const itemEl = bottomItemRefs.current[idx];
+    if (!barEl || !itemEl) return 0;
 
-    const minCx = NOTCH.halfWidth + NOTCH.corner + 4;
-    const maxCx = width - (NOTCH.halfWidth + NOTCH.corner + 4);
-    return Math.max(minCx, Math.min(maxCx, rawCx));
+    const barRect = barEl.getBoundingClientRect();
+    const itemRect = itemEl.getBoundingClientRect();
+
+    // Icon/Tab ka exact horizontal center point
+    return (itemRect.left - barRect.left) + (itemRect.width / 2);
   }, []);
 
   useEffect(() => {
@@ -192,7 +209,7 @@ function AppShellNav() {
     if (!el) return;
     const measure = () => {
       const r = el.getBoundingClientRect();
-      setBottomDims({ w: r.width, h: r.height });
+      setBottomDims({ w: r.width, h: r.height || 60 });
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -202,7 +219,7 @@ function AppShellNav() {
 
   useEffect(() => {
     if (!isCompact || !bottomDims.w) return;
-    const targetCx = getTargetCx(activeIndex, bottomDims.w);
+    const targetCx = getTargetCx(activeIndex);
     const widthChanged = bottomPrevWidthRef.current !== bottomDims.w;
     bottomPrevWidthRef.current = bottomDims.w;
 
@@ -211,7 +228,6 @@ function AppShellNav() {
         bottomPathRef.current.setAttribute("d", buildConvexBarPath(bottomDims.w, bottomDims.h, cx));
       }
       if (bottomIndicatorRef.current) {
-        // 44px circle width -> shift by -22px to keep center alignment
         bottomIndicatorRef.current.style.left = `${cx - 22}px`;
       }
     };
@@ -244,14 +260,14 @@ function AppShellNav() {
                 <span className="nw-brand-text">Net World</span>
               </div>
               <nav className="nw-topnav-links" ref={topNavRef}>
-            <span
-                className="nw-topnav-indicator"
-                style={{
-                  left: topIndicator.left,
-                  width: topIndicator.width,
-                  opacity: topIndicator.ready ? 1 : 0,
-                }}
-            />
+                <span
+                    className="nw-topnav-indicator"
+                    style={{
+                      left: topIndicator.left,
+                      width: topIndicator.width,
+                      opacity: topIndicator.ready ? 1 : 0,
+                    }}
+                />
                 {NAV_ITEMS.map((item, i) => {
                   const isSuggestion = item.to === "/discover/suggestions";
                   const hasSuggestions = isSuggestion && suggestionsCount > 0;
@@ -296,7 +312,7 @@ function AppShellNav() {
                       className="nw-bottomnav-svg"
                       width={bottomDims.w || "100%"}
                       height={bottomDims.h || 60}
-                      viewBox={`0 -18 ${bottomDims.w || 1} ${(bottomDims.h || 60) + 18}`}
+                      viewBox={`0 -22 ${bottomDims.w || 1} ${(bottomDims.h || 60) + 22}`}
                       preserveAspectRatio="none"
                       aria-hidden="true"
                   >
@@ -311,11 +327,11 @@ function AppShellNav() {
                         d={buildConvexBarPath(
                             bottomDims.w || 1,
                             bottomDims.h || 60,
-                            getTargetCx(activeIndex, bottomDims.w || 1)
+                            getTargetCx(activeIndex)
                         )}
                         fill="url(#nw-bottombar-fill)"
-                        stroke="rgba(96, 165, 250, 0.25)"
-                        strokeWidth="1"
+                        stroke="rgba(56, 189, 248, 0.35)"
+                        strokeWidth="1.25"
                     />
                   </svg>
 
@@ -329,18 +345,19 @@ function AppShellNav() {
                       return (
                           <li
                               key={item.to}
+                              ref={(el) => (bottomItemRefs.current[i] = el)}
                               className={`nw-nav-item ${isActive ? "active" : ""}${hasSuggestions ? " suggestion-has-data" : ""}`}
                           >
-                            <NavLink to={item.to} replace>
-                        <span className={`nw-nav-icon ${hasSuggestions ? "suggestion-icon-glow" : ""}`}>
-                          {item.icon}
-                          {item.to === "/discover/requests" && pendingCount > 0 && (
-                              <span className="nw-nav-badge-dot">{pendingCount > 99 ? "99+" : pendingCount}</span>
-                          )}
-                          {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
-                              <span className="nw-nav-badge-dot">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
-                          )}
-                        </span>
+                            <NavLink to={item.to} replace aria-label={item.label}>
+                              <span className={`nw-nav-icon ${hasSuggestions ? "suggestion-icon-glow" : ""}`}>
+                                {item.icon}
+                                {item.to === "/discover/requests" && pendingCount > 0 && (
+                                    <span className="nw-nav-badge-dot">{pendingCount > 99 ? "99+" : pendingCount}</span>
+                                )}
+                                {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
+                                    <span className="nw-nav-badge-dot">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
+                                )}
+                              </span>
                               {isActive && <span className="nw-nav-label">{item.label}</span>}
                             </NavLink>
                           </li>
