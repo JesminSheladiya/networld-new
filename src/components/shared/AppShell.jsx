@@ -314,7 +314,7 @@ function AppShellNav() {
                             getTargetCx(activeIndex, bottomDims.w || 1)
                         )}
                         fill="url(#nw-bottombar-fill)"
-                        stroke="rgba(255, 255, 255, 0.12)"
+                        stroke="rgba(96, 165, 250, 0.25)"
                         strokeWidth="1"
                     />
                   </svg>
