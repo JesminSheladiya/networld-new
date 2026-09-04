@@ -157,88 +157,204 @@
 
 /* ── Avatar Dropdown ── */
 .nw-avatar-trigger {
-  border: none;
-  background: transparent;
+  background: rgba(15, 26, 49, 0.5);
   cursor: pointer;
   padding: 2px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  border: 1px solid rgba(147, 197, 253, 0.4);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.nw-avatar-trigger:hover {
+  border-color: rgba(147, 197, 253, 0.7);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+}
+
+.nw-profile-popup {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* ── Glass profile dropdown (matches nw panels + glass reference) ── */
 .nw-profile-dropdown {
-  width: 260px;
-  border-radius: 16px;
-  background: #111827;
-  color: #f8fafc;
+  position: relative;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  border-radius: 22px;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  color: #f1f5f9;
+  background: linear-gradient(160deg, rgba(37, 99, 235, 0.34) 0%, rgba(15, 26, 49, 0.78) 52%, rgba(9, 14, 26, 0.88) 100%);
+  border: 1px solid rgba(147, 197, 253, 0.32);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 24px 70px rgba(0, 0, 0, 0.55),
+    0 0 44px rgba(37, 99, 235, 0.18);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  animation: nw-profile-pop 0.18s ease-out;
 }
 
-.nw-profile-head {
+@keyframes nw-profile-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Scoped under .nw-profile-dropdown: contacts-page.css reuses
+   .nw-profile-head / .nw-profile-name / .nw-profile-actions for the
+   contact detail page, so these need higher specificity to win. */
+.nw-profile-dropdown .nw-profile-head {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
-  padding: 18px 18px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 13px;
+  margin: 0;
+  padding: 18px 20px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(191, 219, 254, 0.22);
 }
 
-.nw-profile-meta {
+.nw-profile-dropdown .nw-profile-avatar {
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 50% !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.nw-profile-dropdown .nw-profile-avatar img {
+  object-fit: cover;
+}
+
+.nw-profile-dropdown .nw-profile-meta {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
 }
 
-.nw-profile-name {
-  font-size: 15px;
+.nw-profile-dropdown .nw-profile-name {
+  margin: 0;
+  font-size: 16px;
   font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0.2px;
+  text-align: left;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.nw-profile-email {
+.nw-profile-dropdown .nw-profile-email {
+  margin: 2px 0 0;
   font-size: 12.5px;
-  color: #94a3b8;
-  margin-top: 2px;
+  line-height: 1.4;
+  text-align: left;
+  color: rgba(191, 219, 254, 0.75);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.nw-profile-actions {
-  padding: 10px 0;
+.nw-profile-dropdown .nw-profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: auto;
+  margin: 0;
+  padding: 10px 10px 12px;
 }
 
-.nw-profile-action {
+.nw-profile-dropdown .nw-profile-actions-bottom {
+  padding-top: 6px;
+}
+
+.nw-profile-dropdown .nw-profile-divider {
+  height: 1px;
+  margin: 2px 20px 4px;
+  background: rgba(191, 219, 254, 0.22);
+}
+
+.nw-profile-dropdown .nw-profile-action {
   width: 100%;
   border: none;
   background: transparent;
-  color: #f8fafc;
-  font-size: 14px;
+  color: rgba(241, 245, 249, 0.92);
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.4;
   text-align: left;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 18px;
+  gap: 13px;
+  margin: 0;
+  padding: 11px 12px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: background 0.2s;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.nw-profile-action:hover {
-  background: rgba(248, 250, 252, 0.08);
+.nw-profile-dropdown .nw-profile-action:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
 }
 
-.nw-profile-action .anticon {
-  color: #7dd3fc;
-  font-size: 16px;
+.nw-profile-dropdown .nw-profile-action-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
-.nw-profile-logout {
+.nw-profile-dropdown .nw-profile-action-icon .anticon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 18px;
+  color: rgba(219, 234, 254, 0.9);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: color 0.15s ease;
+}
+
+.nw-profile-dropdown .nw-profile-action-icon .anticon svg {
+  display: block;
+}
+
+.nw-profile-dropdown .nw-profile-action:hover .nw-profile-action-icon .anticon {
+  color: #fff;
+}
+
+.nw-profile-dropdown .nw-profile-logout,
+.nw-profile-dropdown .nw-profile-logout .nw-profile-action-icon .anticon {
   color: #fca5a5;
+}
+
+.nw-profile-dropdown .nw-profile-logout:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fecaca;
+}
+
+.nw-profile-dropdown .nw-profile-logout:hover .nw-profile-action-icon .anticon {
+  color: #fecaca;
 }
 
 /* ── Mobile Header ── */
@@ -313,7 +429,7 @@
 
 .nw-bottomnav-indicator {
   position: absolute;
-  top: -9px;
+  top: -7px;
   left: 0;
   width: 44px;
   height: 44px;

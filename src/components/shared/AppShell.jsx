@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Dropdown, Avatar } from "antd";
-import { TeamOutlined, SearchOutlined, BellOutlined, BulbOutlined, LogoutOutlined, SettingOutlined } from "@ant-design/icons";
+import { TeamOutlined, SearchOutlined, BellOutlined, BulbOutlined, PoweroffOutlined, SettingOutlined } from "@ant-design/icons";
 import { getUser, logout } from "../../Services/authService";
 import { api } from "../../Services/networld";
 import { RefreshProvider, useRefresh } from "./RefreshContext";
@@ -89,10 +89,21 @@ function ProfileMenu() {
         <Dropdown
             trigger={["click"]}
             placement="bottomRight"
+            popupClassName="nw-profile-popup"
             dropdownRender={() => (
                 <div className="nw-profile-dropdown">
                   <div className="nw-profile-head">
-                    <Avatar size={42} src={profileAvatar} style={{ backgroundColor: "#1f2937", color: "#7dd3fc", borderRadius: "50%" }}>
+                    <Avatar
+                        size={44}
+                        src={profileAvatar}
+                        className="nw-profile-avatar"
+                        style={{
+                          background: "linear-gradient(135deg, rgba(59, 130, 246, 0.85), rgba(37, 99, 235, 0.85))",
+                          color: "#fff",
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                    >
                       {!profileAvatar && initials}
                     </Avatar>
                     <div className="nw-profile-meta">
@@ -102,10 +113,15 @@ function ProfileMenu() {
                   </div>
                   <div className="nw-profile-actions">
                     <button className="nw-profile-action" onClick={() => setProfileOpen(true)}>
-                      <SettingOutlined /> Profile Settings
+                      <span className="nw-profile-action-icon"><SettingOutlined /></span>
+                      <span>Account Settings</span>
                     </button>
+                  </div>
+                  <div className="nw-profile-divider" />
+                  <div className="nw-profile-actions nw-profile-actions-bottom">
                     <button className="nw-profile-action nw-profile-logout" onClick={handleLogout}>
-                      <LogoutOutlined /> Sign Out
+                      <span className="nw-profile-action-icon"><PoweroffOutlined /></span>
+                      <span>Logout</span>
                     </button>
                   </div>
                 </div>
@@ -199,7 +215,7 @@ function AppShellNav() {
     const barRect = barEl.getBoundingClientRect();
     const itemRect = itemEl.getBoundingClientRect();
 
-    // Icon/Tab ka exact horizontal center point
+    // Exact horizontal center point of the Icon/Tab
     return (itemRect.left - barRect.left) + (itemRect.width / 2);
   }, []);
 
