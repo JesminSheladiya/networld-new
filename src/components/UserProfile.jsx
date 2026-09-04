@@ -214,14 +214,6 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                                 {user.fullName || user.username}
                             </div>
                             <div className="up-profile-email" style={{ color: "#64748b", fontSize: 12, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</div>
-                            <div className="up-profile-role" style={{
-                                display: "inline-block", marginTop: 6,
-                                background: "rgba(56,189,248,0.12)", color: "#38bdf8",
-                                border: "1px solid rgba(56,189,248,0.3)",
-                                borderRadius: 20, padding: "1px 9px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-                            }}>
-                                {(user.role || "USER").toUpperCase()}
-                            </div>
                         </div>
                     </div>
 

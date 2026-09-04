@@ -1,11 +1,5 @@
 import axios from "axios";
-
-// Keep contacts URL in .env as before
-// REACT_APP_API_URL=http://localhost:8080/api/contacts
-
-// Derive API base safely
-const CONTACTS_URL = process.env.REACT_APP_API_URL || "http://localhost:8080/api/contacts";
-const API_BASE = CONTACTS_URL.replace(/\/api\/contacts.*/, '/api');
+import { API_BASE } from "./apiBase";
 
 
 axios.interceptors.request.use((config) => {

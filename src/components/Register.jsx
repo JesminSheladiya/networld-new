@@ -3,14 +3,16 @@ import { Form, Input, Button, Card, message, Typography, Select } from "antd";
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { register } from "../Services/authService";
+import { useAuth } from "../context/AuthContext";
 import NetworkBackground from "./NetworkBackground";
 import "./css/Auth.css";
 
 const { Title } = Typography;
 
-function Register({ onRegisterSuccess }) {
+function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -26,7 +28,7 @@ function Register({ onRegisterSuccess }) {
         values.gender
       );
       message.success(`Welcome, ${data.username}! Registration successful.`);
-      onRegisterSuccess();
+      authLogin();
       navigate("/contacts", { replace: true });
     } catch (error) {
       message.error(

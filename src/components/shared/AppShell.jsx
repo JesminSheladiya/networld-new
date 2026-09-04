@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Dropdown, Avatar } from "antd";
 import { TeamOutlined, SearchOutlined, BellOutlined, BulbOutlined, PoweroffOutlined, SettingOutlined } from "@ant-design/icons";
-import { getUser, logout } from "../../Services/authService";
+import { getUser } from "../../Services/authService";
+import { useAuth } from "../../context/AuthContext";
 import { api } from "../../Services/networld";
 import { RefreshProvider, useRefresh } from "./RefreshContext";
 import UserProfile from "../UserProfile";
@@ -64,7 +65,9 @@ function ProfileMenu() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(getUser());
   const [profileOpen, setProfileOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const { bump } = useRefresh();
+  const { logout: authLogout } = useAuth();
 
   const fullName = currentUser?.fullName || currentUser?.username || "User";
   const nameParts = fullName.split(" ").filter(Boolean);
@@ -75,8 +78,9 @@ function ProfileMenu() {
   const profileAvatar = currentUser?.profilePicture || currentUser?.avatar || currentUser?.image || null;
 
   const handleLogout = () => {
-    logout();
+    authLogout();
     navigate("/login", { replace: true });
+    setDropdownOpen(false);
   };
 
   const handleProfileUpdate = (updated) => {
@@ -84,17 +88,21 @@ function ProfileMenu() {
     setProfileOpen(false);
   };
 
+  const closeDropdown = () => setDropdownOpen(false);
+
   return (
       <>
         <Dropdown
             trigger={["click"]}
             placement="bottomRight"
             popupClassName="nw-profile-popup"
+            open={dropdownOpen}
+            onVisibleChange={setDropdownOpen}
             dropdownRender={() => (
                 <div className="nw-profile-dropdown">
                   <div className="nw-profile-head">
                     <Avatar
-                        size={44}
+                        size={38}
                         src={profileAvatar}
                         className="nw-profile-avatar"
                         style={{
@@ -112,9 +120,9 @@ function ProfileMenu() {
                     </div>
                   </div>
                   <div className="nw-profile-actions">
-                    <button className="nw-profile-action" onClick={() => setProfileOpen(true)}>
+                    <button className="nw-profile-action" onClick={() => { setProfileOpen(true); closeDropdown(); }}>
                       <span className="nw-profile-action-icon"><SettingOutlined /></span>
-                      <span>Account Settings</span>
+                      <span>Profile Settings</span>
                     </button>
                   </div>
                   <div className="nw-profile-divider" />

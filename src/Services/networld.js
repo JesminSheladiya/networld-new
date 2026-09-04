@@ -1,7 +1,5 @@
 import { http } from "./https";
-
-const BASE = process.env.REACT_APP_API_URL?.replace("/api/contacts", "/api") || "http://localhost:8080/api";
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080/api/contacts";
+import { API_BASE as BASE, CONTACTS_URL as API_URL } from "./apiBase";
 
 export const api = {
   connections: (search) =>

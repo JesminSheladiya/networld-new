@@ -3,21 +3,23 @@ import { Form, Input, Button, Card, message, Typography } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { login } from "../Services/authService";
+import { useAuth } from "../context/AuthContext";
 import NetworkBackground from "./NetworkBackground";
 import "./css/Auth.css";
 
 const { Title } = Typography;
 
-function Login({ onLoginSuccess }) {
+function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
   const onFinish = async (values) => {
     setLoading(true);
     try {
       const data = await login(values.identifier, values.password);
       message.success(`Welcome, ${data.username}!`);
-      onLoginSuccess();
+      authLogin();
       navigate("/contacts", { replace: true });
     } catch (error) {
       message.error(
