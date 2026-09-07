@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Modal, Tooltip } from "antd";
-import {
-    RotateLeftOutlined,
-    ReloadOutlined,
-} from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faRotateLeft, faArrowsRotate } from "@fortawesome/free-solid-svg-icons";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import "./css/ProfilePictureEditor.css";
@@ -282,12 +280,12 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
                     <div className="ppe-midbtns">
                         <Tooltip title="Rotate (R)" placement="top">
                             <button className="ppe-action" onClick={handleRotate} aria-label="Rotate">
-                                <RotateLeftOutlined />
+                                <FontAwesomeIcon icon={faRotateLeft} />
                             </button>
                         </Tooltip>
                         <Tooltip title="Reset" placement="top">
                             <button className="ppe-action" onClick={handleReset} aria-label="Reset">
-                                <ReloadOutlined />
+                                <FontAwesomeIcon icon={faArrowsRotate} />
                             </button>
                         </Tooltip>
                     </div>

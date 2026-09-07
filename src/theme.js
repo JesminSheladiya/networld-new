@@ -81,7 +81,6 @@ export const networldTheme = {
     Modal: {
       contentBg: "rgba(13, 21, 38, 0.85)",
       headerBg: "rgba(16, 26, 48, 0.6)",
-      footerBg: "rgba(16, 26, 48, 0.4)",
     },
     Drawer: {
       colorBgElevated: "rgba(13, 21, 38, 0.85)",

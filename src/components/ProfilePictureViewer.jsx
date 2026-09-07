@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Modal } from "antd";
-import { CloseOutlined } from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import "./css/ProfilePictureViewer.css";
 
 function ProfilePictureViewer({ open, onClose, src, name }) {
@@ -150,7 +151,7 @@ function ProfilePictureViewer({ open, onClose, src, name }) {
                     <div className="ppv-title">{name}</div>
                     <div className="ppv-actions">
                         <button className="ppv-close-btn" onClick={() => isFullscreen ? setIsFullscreen(false) : onClose()} aria-label="Close">
-                            <CloseOutlined />
+                            <FontAwesomeIcon icon={faXmark} />
                         </button>
                     </div>
                 </div>

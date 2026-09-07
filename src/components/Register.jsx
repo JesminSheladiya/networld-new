@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Form, Input, Button, Card, message, Typography, Select } from "antd";
-import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUser, faEnvelope } from "@fortawesome/free-regular-svg-icons";
+import { faPhone, faLock, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { register } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
@@ -80,7 +82,7 @@ function Register() {
           >
             <Input
               className="auth-input"
-              prefix={<UserOutlined className="auth-input-icon" />}
+              prefix={<FontAwesomeIcon icon={faUser} className="auth-input-icon" />}
               placeholder="Enter Name"
               size="large"
               ref={firstInputRef}
@@ -98,7 +100,7 @@ function Register() {
           >
             <Input
               className="auth-input"
-              prefix={<MailOutlined className="auth-input-icon" />}
+              prefix={<FontAwesomeIcon icon={faEnvelope} className="auth-input-icon" />}
               placeholder="Email"
               size="large"
               autoComplete="email"
@@ -116,7 +118,7 @@ function Register() {
           >
             <Input
               className="auth-input"
-              prefix={<PhoneOutlined className="auth-input-icon" />}
+              prefix={<FontAwesomeIcon icon={faPhone} className="auth-input-icon" />}
               placeholder="Phone (10 digits)"
               size="large"
             />
@@ -132,9 +134,12 @@ function Register() {
           >
             <Input.Password
               className="auth-input"
-              prefix={<LockOutlined className="auth-input-icon" />}
+              prefix={<FontAwesomeIcon icon={faLock} className="auth-input-icon" />}
               placeholder="Password"
               size="large"
+              iconRender={(visible) => (
+                <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" />
+              )}
             />
           </Form.Item>
 

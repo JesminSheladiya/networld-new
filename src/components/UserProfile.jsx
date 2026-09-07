@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Modal, Form, Input, Button, message, Avatar, Upload, Select } from "antd";
-import {
-    UserOutlined, PhoneOutlined, LockOutlined, EditOutlined,
-    CameraOutlined,
-} from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUser, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
+import { faPhone, faCamera, faLock, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { updateProfile } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
 import ProfilePictureViewer from "./ProfilePictureViewer";
@@ -181,8 +180,8 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
     };
 
     const infoRows = [
-        { label: "Phone", value: user.phone || "—", icon: <PhoneOutlined /> },
-        { label: "Username", value: user.username || "—", icon: <UserOutlined /> },
+        { label: "Phone", value: user.phone || "—", icon: <FontAwesomeIcon icon={faPhone} /> },
+        { label: "Username", value: user.username || "—", icon: <FontAwesomeIcon icon={faUser} /> },
     ];
 
     return (
@@ -198,8 +197,8 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
             title={
                 <span style={{ display: "flex", alignItems: "center", gap: 8, color: "#f1f5f9", fontSize: 14, fontWeight: 700, letterSpacing: 0.3 }}>
                     {editing
-                        ? <EditOutlined style={{ color: "#38bdf8" }} />
-                        : <UserOutlined style={{ color: "#38bdf8" }} />}
+                        ? <FontAwesomeIcon icon={faPenToSquare} style={{ color: "#38bdf8" }} />
+                        : <FontAwesomeIcon icon={faUser} style={{ color: "#38bdf8" }} />}
                     {editing ? "Edit Profile" : "My Profile"}
                 </span>
             }
@@ -273,7 +272,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                     <Button
                         className="up-btn-edit-profile"
                         block
-                        icon={<EditOutlined />}
+                        icon={<FontAwesomeIcon icon={faPenToSquare} />}
                         onClick={startEdit}
                         style={{
                             height: 44, borderRadius: 12, fontWeight: 700, fontSize: 14,
@@ -304,7 +303,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                                     className="up-edit-avatar"
                                     size={72}
                                     src={preview || null}
-                                    icon={!preview && <UserOutlined />}
+                                        icon={!preview && <FontAwesomeIcon icon={faUser} />}
                                     style={{
                                         background: preview ? "transparent" : "linear-gradient(135deg, rgba(59,130,246,0.85), rgba(37,99,235,0.85))",
                                         color: "#fff",
@@ -318,7 +317,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                     border: "2px solid #0d1424",
                                 }}>
-                                    <CameraOutlined style={{ color: "#fff", fontSize: 11 }} />
+                                        <FontAwesomeIcon icon={faCamera} style={{ color: "#fff", fontSize: 11 }} />
                                 </div>
                             </div>
                         </Upload>
@@ -336,9 +335,9 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
 
                     {/* Fields */}
                     {[
-                        { n: "fullName", l: "Full Name", icon: <UserOutlined />, ph: "Full name", rules: [{ required: true, message: "Please enter full name!" }] },
+                        { n: "fullName", l: "Full Name", icon: faUser, ph: "Full name", rules: [{ required: true, message: "Please enter full name!" }] },
                         {
-                            n: "phone", l: "Phone", icon: <PhoneOutlined />, ph: "10-digit phone",
+                            n: "phone", l: "Phone", icon: faPhone, ph: "10-digit phone",
                             rules: [{ pattern: /^[0-9]{10}$/, message: "10 digits" }]
                         },
                     ].map(({ n, l, icon, ph, rules }) => (
@@ -346,7 +345,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                         >
                             <Input
                                 className="auth-input"
-                                prefix={<span className="auth-input-icon">{icon}</span>}
+                                prefix={<FontAwesomeIcon icon={icon} className="auth-input-icon" />}
                                 placeholder={ph}
                                 size="large"
                             />
@@ -378,9 +377,12 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                             >
                                 <Input.Password
                                     className="auth-input"
-                                    prefix={<LockOutlined className="auth-input-icon" />}
+                                    prefix={<FontAwesomeIcon icon={faLock} className="auth-input-icon" />}
                                     placeholder={ph}
                                     size="large"
+                                    iconRender={(visible) => (
+                                      <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" />
+                                    )}
                                 />
                             </Form.Item>
                         ))}

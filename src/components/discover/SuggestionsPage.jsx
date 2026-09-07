@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { Spin, Button, Input, Select, Tooltip } from "antd";
-import { BulbOutlined, ArrowRightOutlined, EditOutlined, CheckOutlined, CloseOutlined, ReloadOutlined } from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faLightbulb, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
+import { faArrowRight, faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
@@ -93,7 +95,7 @@ function SuggestionsPage() {
             <h1 className="nw-page-title">Suggestions</h1>
             <p className="nw-page-subtitle">People you may know, discovered through mutual connections</p>
           </div>
-          <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchSuggestions} icon={<ReloadOutlined />}>
+          <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchSuggestions} icon={<FontAwesomeIcon icon={faRotateRight} />}>
             Refresh
           </Button>
         </div>
@@ -104,7 +106,7 @@ function SuggestionsPage() {
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading suggestions...</span></div>
         ) : suggestions.length === 0 ? (
           <div className="nw-state-box">
-            <BulbOutlined style={{ fontSize: 42, color: "#475569" }} />
+            <FontAwesomeIcon icon={faLightbulb} style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">No suggestions yet</span>
             <span className="nw-state-sub">Add more contacts to get smart suggestions from your network</span>
           </div>
@@ -157,10 +159,10 @@ function SuggestionsPage() {
                       )}
                       <div className="nw-req-actions">
                         <button className="nw-act-btn nw-act-accept" title="Save" onClick={() => saveEdit(s.suggestedUserEmail)}>
-                          <CheckOutlined />
+                          <FontAwesomeIcon icon={faCheck} />
                         </button>
                         <button className="nw-act-btn nw-act-decline" title="Cancel" onClick={() => setEditingEmail(null)}>
-                          <CloseOutlined />
+                          <FontAwesomeIcon icon={faXmark} />
                         </button>
                       </div>
                     </div>
@@ -169,12 +171,12 @@ function SuggestionsPage() {
                       <RelationChip relation={rel} style={{ fontSize: 11 }} />
                       <div className="nw-req-actions">
                         <Tooltip title="Edit Relation">
-                          <Button size="small" type="text" icon={<EditOutlined style={{ color: "#64748b", fontSize: 14 }} />} onClick={() => startEdit(s)} style={{ padding: 0, width: 30, height: 30 }} />
+                          <Button size="small" type="text" icon={<FontAwesomeIcon icon={faPenToSquare} style={{ color: "#64748b", fontSize: 14 }} />} onClick={() => startEdit(s)} style={{ padding: 0, width: 30, height: 30 }} />
                         </Tooltip>
                         <button className="nw-act-btn nw-act-send" title="Send Request" onClick={() => sendRequest(s)}>
-                          <ArrowRightOutlined />
+                          <FontAwesomeIcon icon={faArrowRight} />
                         </button>
-                        <button className="nw-act-btn nw-act-dismiss" title="Dismiss" onClick={() => dismiss(s)}>✕</button>
+                        <button className="nw-act-btn nw-act-dismiss" title="Dismiss" onClick={() => dismiss(s)}><FontAwesomeIcon icon={faXmark} /></button>
                       </div>
                     </div>
                   )}
