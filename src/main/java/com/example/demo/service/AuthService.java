@@ -85,7 +85,7 @@ public class AuthService {
         return buildResponse(u);
     }
 
-    private AuthResponse buildResponse(User u) {
+    public AuthResponse buildResponse(User u) {
         UserDetails d = uds.loadUserByUsername(u.getEmail());
         String token  = jwt.generateToken(d);
         return new AuthResponse(
