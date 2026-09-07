@@ -1,18 +1,19 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Dropdown, Avatar } from "antd";
-import { TeamOutlined, SearchOutlined, BellOutlined, BulbOutlined, PoweroffOutlined, SettingOutlined } from "@ant-design/icons";
-import { getUser } from "../../Services/authService";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBell, faLightbulb, faCircleUser } from "@fortawesome/free-regular-svg-icons";
+import { faUsers, faMagnifyingGlass, faArrowRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../Services/networld";
 import { RefreshProvider, useRefresh } from "./RefreshContext";
 import UserProfile from "../UserProfile";
 
 const NAV_ITEMS = [
-  { to: "/contacts", label: "Contacts", icon: <TeamOutlined /> },
-  { to: "/discover/find", label: "Find", icon: <SearchOutlined /> },
-  { to: "/discover/requests", label: "Requests", icon: <BellOutlined /> },
-  { to: "/discover/suggestions", label: "Suggestions", icon: <BulbOutlined /> },
+  { to: "/contacts", label: "Contacts", icon: <FontAwesomeIcon icon={faUsers} /> },
+  { to: "/discover/find", label: "Find", icon: <FontAwesomeIcon icon={faMagnifyingGlass} /> },
+  { to: "/discover/requests", label: "Requests", icon: <FontAwesomeIcon icon={faBell} /> },
+  { to: "/discover/suggestions", label: "Suggestions", icon: <FontAwesomeIcon icon={faLightbulb} /> },
 ];
 
 // 1. Default Notch Configuration (Screen width >= 390px)
@@ -63,28 +64,31 @@ function buildConvexBarPath(w, h, rawCx) {
 
 function ProfileMenu() {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState(getUser());
+  const { user, logout: authLogout, updateUser, broadcastUserUpdate, broadcastLogout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { bump } = useRefresh();
-  const { logout: authLogout } = useAuth();
 
-  const fullName = currentUser?.fullName || currentUser?.username || "User";
+  const fullName = user?.fullName || user?.username || "User";
   const nameParts = fullName.split(" ").filter(Boolean);
   const initials = nameParts.length > 1
       ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
       : fullName.slice(0, 2).toUpperCase();
-  const email = currentUser?.email || "user@mail.com";
-  const profileAvatar = currentUser?.profilePicture || currentUser?.avatar || currentUser?.image || null;
+  const email = user?.email || "user@mail.com";
+  const profileAvatar = user?.profilePicture || user?.avatar || user?.image || null;
 
   const handleLogout = () => {
     authLogout();
+    broadcastLogout();
     navigate("/login", { replace: true });
     setDropdownOpen(false);
   };
 
-  const handleProfileUpdate = (updated) => {
-    setCurrentUser(updated);
+  const handleProfileUpdate = async () => {
+    const freshUser = await updateUser();
+    if (freshUser) {
+      broadcastUserUpdate(freshUser);
+    }
     setProfileOpen(false);
   };
 
@@ -121,14 +125,14 @@ function ProfileMenu() {
                   </div>
                   <div className="nw-profile-actions">
                     <button className="nw-profile-action" onClick={() => { setProfileOpen(true); closeDropdown(); }}>
-                      <span className="nw-profile-action-icon"><SettingOutlined /></span>
+                      <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faCircleUser} /></span>
                       <span>Profile Settings</span>
                     </button>
                   </div>
                   <div className="nw-profile-divider" />
                   <div className="nw-profile-actions nw-profile-actions-bottom">
                     <button className="nw-profile-action nw-profile-logout" onClick={handleLogout}>
-                      <span className="nw-profile-action-icon"><PoweroffOutlined /></span>
+                      <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faArrowRightFromBracket} /></span>
                       <span>Logout</span>
                     </button>
                   </div>

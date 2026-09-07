@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input, Spin, Avatar, Empty, Table, Button, Tooltip, Pagination } from "antd";
-import { SearchOutlined, EditOutlined } from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
+import { faMagnifyingGlass, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
@@ -182,7 +184,7 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
           <Button
             size="small"
             type="text"
-            icon={<EditOutlined style={{ color: "#94a3b8", fontSize: 14 }} />}
+            icon={<FontAwesomeIcon icon={faPenToSquare} style={{ color: "#94a3b8", fontSize: 14 }} />}
             onClick={() => setEditingContact(record)}
           />
         </Tooltip>
@@ -223,9 +225,9 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
           </div>
           <Input
             className="nw-search"
-            prefix={<SearchOutlined style={{ color: "#64748b" }} />}
+            prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
             placeholder="Search contacts..."
-            allowClear
+            allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />

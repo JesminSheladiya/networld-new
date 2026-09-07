@@ -31,8 +31,17 @@ export const login = async (identifier, password) => {
 
 export const updateProfile = async (profileData) => {
   const { data } = await axios.put(`${API_BASE}/auth/me`, profileData);
-  if (data.token) {
-    localStorage.setItem("token", data.token);
+  if (data) {
+    if (data.token) localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data));
+  }
+  return data;
+};
+
+export const fetchUser = async () => {
+  const { data } = await axios.get(`${API_BASE}/auth/me`);
+  if (data) {
+    if (data.token) localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data));
   }
   return data;

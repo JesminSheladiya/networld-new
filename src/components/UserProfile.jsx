@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Modal, Form, Input, Button, message, Avatar, Upload, Select } from "antd";
-import {
-    UserOutlined, PhoneOutlined, LockOutlined, EditOutlined,
-    CameraOutlined,
-} from "@ant-design/icons";
-import ImgCrop from "antd-img-crop";
-import { updateProfile, getUser } from "../Services/authService";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUser, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
+import { faPhone, faCamera, faLock, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { updateProfile } from "../Services/authService";
+import { useAuth } from "../context/AuthContext";
+import ProfilePictureViewer from "./ProfilePictureViewer";
+import ProfilePictureEditor from "./ProfilePictureEditor";
+import "./css/Auth.css";
 
 // Helper to convert a relation to its inverse (e.g., father ↔ son)
 // Used by RequestsPage — do not remove.
@@ -84,11 +86,6 @@ const UserAvatar = ({ name, pic, size = 36 }) => (
     </Avatar>
 );
 
-const inputStyle = {
-    background: "#0d1424", borderColor: "rgba(148,163,184,0.18)",
-    color: "#f1f5f9", height: 46, borderRadius: 10, fontSize: 14,
-};
-
 const rowIconStyle = {
     width: 38, height: 38, flexShrink: 0,
     borderRadius: 11,
@@ -99,23 +96,24 @@ const rowIconStyle = {
 };
 
 function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
-    const user = getUser();
+    const { user, updateUser, broadcastUserUpdate } = useAuth();
 
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [form] = Form.useForm();
-    const [preview, setPreview] = useState(user.profilePicture || null);
+    const [preview, setPreview] = useState(user?.profilePicture || null);
     const [newImg, setNewImg] = useState(null);
-    const [dpOpen, setDpOpen] = useState(false);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [editorOpen, setEditorOpen] = useState(false);
+    const [editorSrc, setEditorSrc] = useState(null);
 
     // Refresh local state every time the modal opens (user may have changed)
     useEffect(() => {
         if (open) {
-            setPreview(user.profilePicture || null);
+            setPreview(user?.profilePicture || null);
             setNewImg(null);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open]);
+    }, [open, user]);
 
     const handleClose = () => {
         setEditing(false);
@@ -123,18 +121,53 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
         onClose();
     };
 
+    const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+
+    const handleImageSelect = (file) => {
+        if (!file.type.startsWith("image/")) { message.error("Images only!"); return; }
+        if (file.size > 5 * 1024 * 1024) { message.error("Image size must be 5 MB or less."); return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            setEditorSrc(e.target.result);
+            setEditorOpen(true);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleEditorSave = useCallback(async (blob) => {
+        const base64 = await blobToBase64(blob);
+        setPreview(base64);
+        setNewImg(base64);
+        setEditorOpen(false);
+        setEditorSrc(null);
+    }, []);
+
+    const handleEditorClose = useCallback(() => {
+        setEditorOpen(false);
+        setEditorSrc(null);
+    }, []);
+
     const save = async (values) => {
         setSaving(true);
         try {
-            const updated = await updateProfile({
+            await updateProfile({
                 fullName: values.fullName, phone: values.phone, gender: values.gender,
                 currentPassword: values.currentPassword, newPassword: values.newPassword,
                 ...(newImg !== null && { profilePicture: newImg }),
             });
+            const freshUser = await updateUser();
+            if (freshUser) {
+                broadcastUserUpdate(freshUser);
+            }
             message.success("Profile updated");
             setEditing(false);
             form.resetFields();
-            onProfileUpdate(updated);
+            onProfileUpdate();
         } catch (e) { message.error(e.response?.data?.message || "Update failed, try again"); }
         finally { setSaving(false); }
     };
@@ -147,8 +180,8 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
     };
 
     const infoRows = [
-        { label: "Phone", value: user.phone || "—", icon: <PhoneOutlined /> },
-        { label: "Username", value: user.username || "—", icon: <UserOutlined /> },
+        { label: "Phone", value: user.phone || "—", icon: <FontAwesomeIcon icon={faPhone} /> },
+        { label: "Username", value: user.username || "—", icon: <FontAwesomeIcon icon={faUser} /> },
     ];
 
     return (
@@ -164,8 +197,8 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
             title={
                 <span style={{ display: "flex", alignItems: "center", gap: 8, color: "#f1f5f9", fontSize: 14, fontWeight: 700, letterSpacing: 0.3 }}>
                     {editing
-                        ? <EditOutlined style={{ color: "#38bdf8" }} />
-                        : <UserOutlined style={{ color: "#38bdf8" }} />}
+                        ? <FontAwesomeIcon icon={faPenToSquare} style={{ color: "#38bdf8" }} />
+                        : <FontAwesomeIcon icon={faUser} style={{ color: "#38bdf8" }} />}
                     {editing ? "Edit Profile" : "My Profile"}
                 </span>
             }
@@ -198,7 +231,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                     }}>
                         <div
                             className="up-avatar-wrapper"
-                            onClick={() => user.profilePicture && setDpOpen(true)}
+                            onClick={() => user.profilePicture && setViewerOpen(true)}
                             style={{ position: "relative", cursor: user.profilePicture ? "pointer" : "default", flexShrink: 0 }}
                             title={user.profilePicture ? "View profile photo" : undefined}
                         >
@@ -239,7 +272,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                     <Button
                         className="up-btn-edit-profile"
                         block
-                        icon={<EditOutlined />}
+                        icon={<FontAwesomeIcon icon={faPenToSquare} />}
                         onClick={startEdit}
                         style={{
                             height: 44, borderRadius: 12, fontWeight: 700, fontSize: 14,
@@ -254,50 +287,45 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
             )}
 
             {editing && (
-                <Form className="up-edit-form" form={form} layout="vertical" onFinish={save}>
+                <Form className="auth-form up-edit-form" form={form} layout="vertical" onFinish={save}>
                     {/* Avatar Upload */}
-                    <div className="up-edit-avatar-section" style={{ textAlign: "center", marginBottom: 18 }}>
-                        <ImgCrop rotationSlider aspect={1}>
-                            <Upload
-                                showUploadList={false}
-                                customRequest={() => { }}
-                                beforeUpload={file => {
-                                    if (!file.type.startsWith("image/")) { message.error("Images only!"); return Upload.LIST_IGNORE; }
-                                    if (file.size > 5 * 1024 * 1024) { message.error("Max 5MB!"); return Upload.LIST_IGNORE; }
-                                    const r = new FileReader();
-                                    r.onload = e => { setPreview(e.target.result); setNewImg(e.target.result); };
-                                    r.readAsDataURL(file); return false;
-                                }}
-                            >
-                                <div className="up-edit-avatar-wrapper" style={{ cursor: "pointer", position: "relative", display: "inline-block" }}>
-                                    <Avatar
-                                        className="up-edit-avatar"
-                                        size={72}
-                                        src={preview || null}
-                                        icon={!preview && <UserOutlined />}
-                                        style={{
-                                            background: preview ? "transparent" : "linear-gradient(135deg, rgba(59,130,246,0.85), rgba(37,99,235,0.85))",
-                                            color: "#fff",
-                                            border: "3px solid rgba(59,130,246,0.3)",
-                                        }}
-                                    />
-                                    <div className="up-camera-icon" style={{
-                                        position: "absolute", bottom: 0, right: 0,
-                                        background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-                                        borderRadius: "50%", width: 24, height: 24,
-                                        display: "flex", alignItems: "center", justifyContent: "center",
-                                        border: "2px solid #0d1424",
-                                    }}>
-                                        <CameraOutlined style={{ color: "#fff", fontSize: 11 }} />
-                                    </div>
+                    <div className="up-edit-avatar-section" style={{ textAlign: "center", marginBottom: 24 }}>
+                        <Upload
+                            showUploadList={false}
+                            customRequest={() => { }}
+                            beforeUpload={file => {
+                                handleImageSelect(file);
+                                return Upload.LIST_IGNORE;
+                            }}
+                        >
+                            <div className="up-edit-avatar-wrapper" style={{ cursor: "pointer", position: "relative", display: "inline-block" }}>
+                                <Avatar
+                                    className="up-edit-avatar"
+                                    size={72}
+                                    src={preview || null}
+                                        icon={!preview && <FontAwesomeIcon icon={faUser} />}
+                                    style={{
+                                        background: preview ? "transparent" : "linear-gradient(135deg, rgba(59,130,246,0.85), rgba(37,99,235,0.85))",
+                                        color: "#fff",
+                                        border: "3px solid rgba(59,130,246,0.3)",
+                                    }}
+                                />
+                                <div className="up-camera-icon" style={{
+                                    position: "absolute", bottom: 0, right: 0,
+                                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                                    borderRadius: "50%", width: 24, height: 24,
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    border: "2px solid #0d1424",
+                                }}>
+                                        <FontAwesomeIcon icon={faCamera} style={{ color: "#fff", fontSize: 11 }} />
                                 </div>
-                            </Upload>
-                        </ImgCrop>
+                            </div>
+                        </Upload>
                         {preview && (
                             <Button
                                 className="up-btn-remove-photo"
                                 type="link" danger size="small"
-                                style={{ display: "block", margin: "6px auto 0", fontSize: 11 }}
+                                style={{ display: "block", margin: "8px auto 0", fontSize: 12 }}
                                 onClick={() => { setPreview(null); setNewImg(""); }}
                             >
                                 Remove Photo
@@ -307,33 +335,30 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
 
                     {/* Fields */}
                     {[
-                        { n: "fullName", l: "Full Name", icon: <UserOutlined />, ph: "Full name", rules: [] },
+                        { n: "fullName", l: "Full Name", icon: faUser, ph: "Full name", rules: [{ required: true, message: "Please enter full name!" }] },
                         {
-                            n: "phone", l: "Phone", icon: <PhoneOutlined />, ph: "10-digit phone",
+                            n: "phone", l: "Phone", icon: faPhone, ph: "10-digit phone",
                             rules: [{ pattern: /^[0-9]{10}$/, message: "10 digits" }]
                         },
                     ].map(({ n, l, icon, ph, rules }) => (
-                        <Form.Item className="up-edit-field" key={n} name={n} rules={rules}
-                            label={<span style={{ color: "#94a3b8", fontWeight: 500, fontSize: 13 }}>{l}</span>}
-                            style={{ marginBottom: 16 }}
+                        <Form.Item className="auth-field" key={n} name={n} rules={rules}
                         >
                             <Input
-                                className="auth-input up-edit-input"
-                                prefix={<span style={{ color: "#3b82f6", fontSize: 15 }}>{icon}</span>}
+                                className="auth-input"
+                                prefix={<FontAwesomeIcon icon={icon} className="auth-input-icon" />}
                                 placeholder={ph}
-                                style={inputStyle}
+                                size="large"
                             />
                         </Form.Item>
                     ))}
 
-                    <Form.Item className="up-edit-field" name="gender"
-                        label={<span style={{ color: "#94a3b8", fontWeight: 500, fontSize: 13 }}>Gender</span>}
-                        style={{ marginBottom: 16 }}
+                    <Form.Item className="auth-field" name="gender"
+                        rules={[{ required: true, message: "Please select gender!" }]}
                     >
                         <Select
-                            className="auth-input up-edit-input"
+                            className="auth-input"
                             placeholder="Select gender"
-                            style={inputStyle}
+                            size="large"
                             options={[
                                 { value: "M", label: "Male" },
                                 { value: "F", label: "Female" },
@@ -342,33 +367,32 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                     </Form.Item>
 
                     {/* Password Section */}
-                    <div className="up-password-section" style={{ borderTop: "1px solid rgba(148,163,184,0.12)", margin: "16px 0", paddingTop: 16 }}>
-                        <div className="up-password-title" style={{ color: "#94a3b8", fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, marginBottom: 12 }}>CHANGE PASSWORD</div>
+                    <div className="up-password-section" style={{ borderTop: "1px solid rgba(148,163,184,0.12)", margin: "20px 0 16px", paddingTop: 20 }}>
+                        <div className="up-password-title" style={{ color: "#94a3b8", fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, marginBottom: 16 }}>CHANGE PASSWORD</div>
                         {[
-                            { n: "currentPassword", l: "Current", ph: "Current password", rules: [] },
-                            { n: "newPassword", l: "New", ph: "New password", rules: [{ min: 8, message: "Min 8 chars" }] },
+                            { n: "currentPassword", l: "Current Password", ph: "Current password", rules: [] },
+                            { n: "newPassword", l: "New Password", ph: "New password", rules: [{ min: 8, message: "Min 8 chars" }] },
                         ].map(({ n, l, ph, rules }) => (
-                            <Form.Item className="up-edit-field" key={n} name={n} rules={rules}
-                                label={<span style={{ color: "#94a3b8", fontWeight: 500, fontSize: 13 }}>{l}</span>}
-                                style={{ marginBottom: 16 }}
+                            <Form.Item className="auth-field" key={n} name={n} rules={rules}
                             >
                                 <Input.Password
-                                    className="auth-input up-edit-input"
-                                    prefix={<LockOutlined style={{ color: "#3b82f6", fontSize: 15 }} />}
+                                    className="auth-input"
+                                    prefix={<FontAwesomeIcon icon={faLock} className="auth-input-icon" />}
                                     placeholder={ph}
-                                    style={inputStyle}
+                                    size="large"
+                                    iconRender={(visible) => (
+                                      <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" />
+                                    )}
                                 />
                             </Form.Item>
                         ))}
                     </div>
 
-                    <div className="up-edit-actions" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-                        <Button className="up-btn-cancel auth-btn" onClick={() => { form.resetFields(); setEditing(false); }}
-                            style={{ height: 40, borderRadius: 10, fontWeight: 700, fontSize: 14, letterSpacing: 0.3, borderColor: "rgba(148,163,184,0.2)", color: "#94a3b8", background: "transparent" }}>
+                    <div className="auth-field auth-submit" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+                        <Button className="auth-btn" type="default" onClick={() => { form.resetFields(); setEditing(false); }} size="large" block>
                             Cancel
                         </Button>
-                        <Button className="up-btn-save auth-btn" type="primary" htmlType="submit" loading={saving}
-                            style={{ height: 40, borderRadius: 10, fontWeight: 700, fontSize: 14, letterSpacing: 0.3, background: "linear-gradient(135deg, #3b82f6, #2563eb)", border: "none", boxShadow: "0 4px 14px rgba(37,99,235,0.35)" }}>
+                        <Button className="auth-btn" type="primary" htmlType="submit" loading={saving} size="large" block>
                             Save Changes
                         </Button>
                     </div>
@@ -376,45 +400,21 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
             )}
         </Modal>
 
-            <Modal
-                open={dpOpen}
-                onCancel={() => setDpOpen(false)}
-                footer={null}
-                closable={false}
-                centered
-                width={640}
-                destroyOnClose
-                maskClosable
-                className="instagram-dp-modal"
-                styles={{
-                    mask: { backgroundColor: "rgba(0,0,0,0.92)", backdropFilter: "blur(4px)" },
-                    content: { background: "transparent", boxShadow: "none", padding: 0, border: "none" },
-                    body: { padding: 0, background: "transparent" },
-                }}
-            >
-                <div
-                    style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: 16 }}
-                    onClick={() => setDpOpen(false)}
-                >
-                    <img
-                        src={user.profilePicture}
-                        alt="Profile full view"
-                        style={{
-                            objectFit: "cover",
-                            borderRadius: "50%",
-                            boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
-                            border: "3px solid rgba(255,255,255,0.12)",
-                            width: "86vw",
-                            height: "86vw",
-                            maxWidth: 600,
-                            maxHeight: 600,
-                            aspectRatio: "1 / 1",
-                            cursor: "pointer",
-                            display: "block",
-                        }}
-                    />
-                </div>
-            </Modal>
+        {/* WhatsApp-style Profile Picture Viewer */}
+        <ProfilePictureViewer
+            open={viewerOpen}
+            onClose={() => setViewerOpen(false)}
+            src={user.profilePicture}
+            name={user.fullName || user.username}
+        />
+
+        {/* WhatsApp-style Profile Picture Editor */}
+        <ProfilePictureEditor
+            open={editorOpen}
+            onClose={handleEditorClose}
+            onSave={handleEditorSave}
+            src={editorSrc}
+        />
         </>
     );
 }

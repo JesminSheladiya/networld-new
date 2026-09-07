@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Input, Spin, Select, Empty } from "antd";
-import { SearchOutlined, ArrowRightOutlined, TeamOutlined } from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMagnifyingGlass, faArrowRight, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 
@@ -65,9 +66,9 @@ function FindPeoplePage() {
 
       <Input
         className="nw-search nw-search-full"
-        prefix={<SearchOutlined style={{ color: "#64748b" }} />}
+        prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
         placeholder="Search by name or email..."
-        allowClear
+        allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
         size="large"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -78,7 +79,7 @@ function FindPeoplePage() {
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Searching...</span></div>
         ) : !query.trim() ? (
           <div className="nw-state-box">
-            <TeamOutlined style={{ fontSize: 42, color: "#475569" }} />
+            <FontAwesomeIcon icon={faUsers} style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">Search for someone to connect with</span>
             <span className="nw-state-sub">Search works with both names and email addresses</span>
           </div>
@@ -124,7 +125,7 @@ function FindPeoplePage() {
                         onClick={() => sendRequest(u.email)}
                         title="Send request"
                       >
-                        <ArrowRightOutlined />
+                        <FontAwesomeIcon icon={faArrowRight} />
                       </button>
                     </>
                   )}

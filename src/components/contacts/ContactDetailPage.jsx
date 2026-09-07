@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Spin } from "antd";
-import { UserOutlined } from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUser } from "@fortawesome/free-regular-svg-icons";
 import { api } from "../../Services/networld";
 import ContactProfile from "../shared/ContactProfile";
 
@@ -46,7 +47,7 @@ function ContactDetailPage() {
     return (
       <div className="nw-page">
         <div className="nw-state-box">
-          <UserOutlined style={{ fontSize: 40, color: "#475569" }} />
+          <FontAwesomeIcon icon={faUser} style={{ fontSize: 40, color: "#475569" }} />
           <span className="nw-state-text">Contact not found</span>
         </div>
       </div>

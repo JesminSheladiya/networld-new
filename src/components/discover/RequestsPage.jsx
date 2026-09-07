@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { Spin, Button } from "antd";
-import { BellOutlined, CheckOutlined, CloseOutlined, ReloadOutlined } from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBell } from "@fortawesome/free-regular-svg-icons";
+import { faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { getInverseRelation } from "../UserProfile";
@@ -60,7 +62,7 @@ function RequestsPage() {
             <h1 className="nw-page-title">Pending Requests</h1>
             <p className="nw-page-subtitle">People who want to connect with you</p>
           </div>
-          <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchPending} icon={<ReloadOutlined />}>
+          <Button className="nw-refresh-btn" size="small" type="text" loading={loading} onClick={fetchPending} icon={<FontAwesomeIcon icon={faRotateRight} />}>
             Refresh
           </Button>
         </div>
@@ -71,7 +73,7 @@ function RequestsPage() {
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading requests...</span></div>
         ) : pending.length === 0 ? (
           <div className="nw-state-box">
-            <BellOutlined style={{ fontSize: 42, color: "#475569" }} />
+            <FontAwesomeIcon icon={faBell} style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">No pending requests</span>
             <span className="nw-state-sub">When someone sends you a connection request, it will show up here</span>
           </div>
@@ -97,10 +99,10 @@ function RequestsPage() {
                     <RelationChip relation={rel} style={{ fontSize: 11 }} />
                     <div className="nw-req-actions">
                       <button className="nw-act-btn nw-act-accept" title="Accept" onClick={() => accept(p.pendingRelationId)}>
-                        <CheckOutlined />
+                        <FontAwesomeIcon icon={faCheck} />
                       </button>
                       <button className="nw-act-btn nw-act-decline" title="Decline" onClick={() => decline(p.pendingRelationId)}>
-                        <CloseOutlined />
+                        <FontAwesomeIcon icon={faXmark} />
                       </button>
                     </div>
                   </div>

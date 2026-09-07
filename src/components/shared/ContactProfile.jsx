@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Avatar, Modal } from "antd";
-import { ArrowLeftOutlined, PhoneOutlined, MailOutlined, EditOutlined } from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEnvelope, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
+import { faArrowLeft, faPhone } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import RelationChip from "./RelationChip";
 import EditRelationModal from "./EditRelationModal";
@@ -18,7 +20,7 @@ function ContactProfile({ contact, showBack = false, onBack }) {
     <div className="nw-profile">
       {showBack && (
         <button className="nw-back-btn" onClick={onBack}>
-          <ArrowLeftOutlined /> Back to Contacts
+          <FontAwesomeIcon icon={faArrowLeft} /> Back to Contacts
         </button>
       )}
 
@@ -43,7 +45,7 @@ function ContactProfile({ contact, showBack = false, onBack }) {
       <div className="nw-profile-section">
         {contact.phone && (
           <div className="nw-profile-row">
-            <span className="nw-profile-row-icon"><PhoneOutlined /></span>
+            <span className="nw-profile-row-icon"><FontAwesomeIcon icon={faPhone} /></span>
             <span className="nw-profile-row-text">
               <span className="nw-profile-row-label">Phone</span>
               <span className="nw-profile-row-value">{contact.phone}</span>
@@ -52,7 +54,7 @@ function ContactProfile({ contact, showBack = false, onBack }) {
         )}
         {contact.email && (
           <div className="nw-profile-row">
-            <span className="nw-profile-row-icon"><MailOutlined /></span>
+            <span className="nw-profile-row-icon"><FontAwesomeIcon icon={faEnvelope} /></span>
             <span className="nw-profile-row-text">
               <span className="nw-profile-row-label">Email</span>
               <span className="nw-profile-row-value">{contact.email}</span>
@@ -63,7 +65,7 @@ function ContactProfile({ contact, showBack = false, onBack }) {
 
       <div className="nw-profile-actions">
         <button className="nw-edit-btn nw-edit-btn-plain" onClick={() => setEditing(true)}>
-          <EditOutlined /> Edit Relation
+          <FontAwesomeIcon icon={faPenToSquare} /> Edit Relation
         </button>
       </div>
 

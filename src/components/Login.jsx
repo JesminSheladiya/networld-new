@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Form, Input, Button, Card, message, Typography } from "antd";
-import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUser } from "@fortawesome/free-regular-svg-icons";
+import { faLock, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { login } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
@@ -13,6 +15,11 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login: authLogin } = useAuth();
+  const firstInputRef = useRef(null);
+
+  useEffect(() => {
+    firstInputRef.current?.focus();
+  }, []);
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -55,9 +62,12 @@ function Login() {
           >
             <Input
               className="auth-input"
-              prefix={<UserOutlined className="auth-input-icon" />}
+              prefix={<FontAwesomeIcon icon={faUser} className="auth-input-icon" />}
               placeholder="Email / Phone"
               size="large"
+              ref={firstInputRef}
+              autoComplete="email"
+              inputMode="text"
             />
           </Form.Item>
 
@@ -68,9 +78,12 @@ function Login() {
           >
             <Input.Password
               className="auth-input"
-              prefix={<LockOutlined className="auth-input-icon" />}
+              prefix={<FontAwesomeIcon icon={faLock} className="auth-input-icon" />}
               placeholder="Password"
               size="large"
+              iconRender={(visible) => (
+                <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" />
+              )}
             />
           </Form.Item>
 
