@@ -1,0 +1,188 @@
+.ppe-modal .ant-modal-content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.ppe-card {
+  background: #0d1526;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  border-radius: 18px;
+  overflow: hidden;
+  color: #f1f5f9;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+/* instagram-style top bar */
+.ppe-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.ppe-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* proper stage wrap: padded card area, square stage */
+.ppe-stage-wrap {
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.06), transparent 40%);
+}
+
+/* full-bleed instagram stage */
+.ppe-ig .ppe-stage-wrap.ppe-bleed {
+  padding: 0;
+  background: #000;
+}
+
+.ppe-ig .ppe-stage {
+  border: none;
+  border-radius: 0;
+}
+
+.ppe-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #05080f;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.ppe-stage:active {
+  cursor: grabbing;
+}
+
+/* image wrapper positioned by editor math (pan + zoom) */
+.ppe-imgwrap {
+  position: absolute;
+}
+
+.ppe-lib-stage .ReactCrop,
+.ppe-lib-stage .ReactCrop__child-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+.ppe-lib-stage .ppe-img {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* fixed square crop box — image zooms under it, box never resizes */
+.ppe-lib-stage .ReactCrop__crop-selection {
+  border: 2px solid #3b82f6 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 0 9999px rgba(2, 6, 16, 0.62), 0 0 18px rgba(59, 130, 246, 0.45) !important;
+  cursor: grab !important;
+}
+
+.ppe-lib-stage .ReactCrop__crop-selection:active {
+  cursor: grabbing !important;
+}
+
+.ppe-lib-stage .ReactCrop__rule-of-thirds-v::before,
+.ppe-lib-stage .ReactCrop__rule-of-thirds-v::after,
+.ppe-lib-stage .ReactCrop__rule-of-thirds-h::before,
+.ppe-lib-stage .ReactCrop__rule-of-thirds-h::after {
+  background-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* no resize handles/bars — box is fixed, zoom is on the image */
+.ppe-lib-stage .ReactCrop__drag-handle,
+.ppe-lib-stage .ReactCrop__drag-bar {
+  display: none !important;
+}
+
+.ppe-hint {
+  text-align: center;
+  font-size: 11.5px;
+  color: #8ea0b8;
+  padding: 0px 10px 10px;
+}
+
+.ppe-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px calc(14px + env(safe-area-inset-bottom));
+}
+
+.ppe-midbtns {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.ppe-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #dbeafe;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 8px;
+  transition: transform 0.1s, color 0.15s;
+}
+
+.ppe-action:hover {
+  color: #fff;
+}
+
+.ppe-action:active {
+  transform: scale(0.9);
+}
+
+.ppe-textbtn {
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #cbd5e1;
+  cursor: pointer;
+  padding: 10px 12px;
+}
+
+.ppe-textbtn:active {
+  opacity: 0.6;
+}
+
+.ppe-savebtn {
+  color: #3b82f6;
+  font-weight: 700;
+}
+
+@media (max-width: 480px) {
+  .ppe-modal .ant-modal {
+    max-width: 100vw !important;
+    margin: 0 !important;
+  }
+
+  .ppe-card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    min-height: 100vh;
+  }
+
+  .ppe-controls {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+}

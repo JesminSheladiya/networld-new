@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Form, Input, Button, Card, message, Typography } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +13,11 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login: authLogin } = useAuth();
+  const firstInputRef = useRef(null);
+
+  useEffect(() => {
+    firstInputRef.current?.focus();
+  }, []);
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -58,6 +63,9 @@ function Login() {
               prefix={<UserOutlined className="auth-input-icon" />}
               placeholder="Email / Phone"
               size="large"
+              ref={firstInputRef}
+              autoComplete="email"
+              inputMode="text"
             />
           </Form.Item>
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Form, Input, Button, Card, message, Typography, Select } from "antd";
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +13,11 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login: authLogin } = useAuth();
+  const firstInputRef = useRef(null);
+
+  useEffect(() => {
+    firstInputRef.current?.focus();
+  }, []);
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -78,6 +83,8 @@ function Register() {
               prefix={<UserOutlined className="auth-input-icon" />}
               placeholder="Enter Name"
               size="large"
+              ref={firstInputRef}
+              autoComplete="name"
             />
           </Form.Item>
 
@@ -94,6 +101,8 @@ function Register() {
               prefix={<MailOutlined className="auth-input-icon" />}
               placeholder="Email"
               size="large"
+              autoComplete="email"
+              inputMode="email"
             />
           </Form.Item>
 

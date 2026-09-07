@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Dropdown, Avatar } from "antd";
 import { TeamOutlined, SearchOutlined, BellOutlined, BulbOutlined, PoweroffOutlined, SettingOutlined } from "@ant-design/icons";
-import { getUser } from "../../Services/authService";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../Services/networld";
 import { RefreshProvider, useRefresh } from "./RefreshContext";
@@ -63,28 +62,31 @@ function buildConvexBarPath(w, h, rawCx) {
 
 function ProfileMenu() {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState(getUser());
+  const { user, logout: authLogout, updateUser, broadcastUserUpdate, broadcastLogout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { bump } = useRefresh();
-  const { logout: authLogout } = useAuth();
 
-  const fullName = currentUser?.fullName || currentUser?.username || "User";
+  const fullName = user?.fullName || user?.username || "User";
   const nameParts = fullName.split(" ").filter(Boolean);
   const initials = nameParts.length > 1
       ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
       : fullName.slice(0, 2).toUpperCase();
-  const email = currentUser?.email || "user@mail.com";
-  const profileAvatar = currentUser?.profilePicture || currentUser?.avatar || currentUser?.image || null;
+  const email = user?.email || "user@mail.com";
+  const profileAvatar = user?.profilePicture || user?.avatar || user?.image || null;
 
   const handleLogout = () => {
     authLogout();
+    broadcastLogout();
     navigate("/login", { replace: true });
     setDropdownOpen(false);
   };
 
-  const handleProfileUpdate = (updated) => {
-    setCurrentUser(updated);
+  const handleProfileUpdate = async () => {
+    const freshUser = await updateUser();
+    if (freshUser) {
+      broadcastUserUpdate(freshUser);
+    }
     setProfileOpen(false);
   };
 
