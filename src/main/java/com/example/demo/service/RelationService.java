@@ -27,8 +27,13 @@ public class RelationService {
         this.inferenceRuleRepository = inferenceRuleRepository;
     }
 
+    // Selection lists only: plain "Cousin" is excluded because gender-specific
+    // "Cousin Brother" / "Cousin Sister" cover it. Kept as a guard even though
+    // the master row was removed.
     public List<Relation> getAll() {
-        return relationRepository.findAll();
+        return relationRepository.findAll().stream()
+                .filter(r -> !"cousin".equalsIgnoreCase(r.getRelationName()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
 

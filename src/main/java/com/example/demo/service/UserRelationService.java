@@ -148,17 +148,20 @@ public class UserRelationService {
     // Category grouping shared with the app tabs (keep keyword lists in sync
     // with UserRelationRepository pageFilteredConnections queries).
     // family  = main relations (parents, siblings, spouse, grandparents,
-    //           grandchildren, uncle, aunt, nephew, niece + uncle's/aunt's children)
+    //           grandchildren, uncles/aunts, nephews/nieces, elder/younger siblings,
+    //           cousins (paternal/maternal), great grandparents/children)
     // inlaws  = *-in-law relations
-    // others  = friend, generic cousins + anything else
+    // others  = friend + anything else
     private static final List<String> FAMILY_KEYWORDS = List.of(
             "father", "mother", "brother", "sister", "son", "daughter",
-            "husband", "wife", "grand", "uncle", "aunt", "nephew", "niece");
+            "husband", "wife", "grand", "uncle", "aunt", "nephew", "niece",
+            "elder", "younger", "cousin", "paternal", "maternal", "great");
 
     static String categoryOf(String relationName) {
         String r = relationName == null ? "" : relationName.toLowerCase();
         if (r.contains("in-law")) return "inlaws";
-        if (r.contains("cousin")) return "others";
+        if (r.contains("friend")) return "others";
+        // 's means possessive like "uncle's son" -> family
         if (r.contains("'s")) return "family";
         for (String k : FAMILY_KEYWORDS) {
             if (r.contains(k)) return "family";

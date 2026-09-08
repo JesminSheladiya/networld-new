@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
@@ -91,24 +92,29 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
             OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
           AND (:category IS NULL OR :category = '' OR :category = 'all'
             OR (:category = 'inlaws' AND LOWER(r.relationName) LIKE '%in-law%')
-            OR (:category = 'family' AND LOWER(r.relationName) NOT LIKE '%in-law%'
-              AND LOWER(r.relationName) NOT LIKE '%cousin%' AND (
+            OR (:category = 'family' AND LOWER(r.relationName) NOT LIKE '%in-law%' AND (
                  LOWER(r.relationName) LIKE '%father%'   OR LOWER(r.relationName) LIKE '%mother%'
               OR LOWER(r.relationName) LIKE '%brother%'  OR LOWER(r.relationName) LIKE '%sister%'
               OR LOWER(r.relationName) LIKE '%son%'      OR LOWER(r.relationName) LIKE '%daughter%'
               OR LOWER(r.relationName) LIKE '%husband%'  OR LOWER(r.relationName) LIKE '%wife%'
               OR LOWER(r.relationName) LIKE '%grand%'    OR LOWER(r.relationName) LIKE '%uncle%'
               OR LOWER(r.relationName) LIKE '%aunt%'     OR LOWER(r.relationName) LIKE '%nephew%'
-              OR LOWER(r.relationName) LIKE '%niece%'    OR LOWER(r.relationName) LIKE '%''s%'))
+              OR LOWER(r.relationName) LIKE '%niece%'    OR LOWER(r.relationName) LIKE '%elder%'
+              OR LOWER(r.relationName) LIKE '%younger%'  OR LOWER(r.relationName) LIKE '%cousin%'
+              OR LOWER(r.relationName) LIKE '%paternal%' OR LOWER(r.relationName) LIKE '%maternal%'
+              OR LOWER(r.relationName) LIKE '%great%'    OR LOWER(r.relationName) LIKE '%''s%'))
             OR (:category = 'others' AND LOWER(r.relationName) NOT LIKE '%in-law%' AND (
-                 LOWER(r.relationName) LIKE '%cousin%'
+                 LOWER(r.relationName) LIKE '%friend%'
               OR (LOWER(r.relationName) NOT LIKE '%father%'   AND LOWER(r.relationName) NOT LIKE '%mother%'
               AND LOWER(r.relationName) NOT LIKE '%brother%'  AND LOWER(r.relationName) NOT LIKE '%sister%'
               AND LOWER(r.relationName) NOT LIKE '%son%'      AND LOWER(r.relationName) NOT LIKE '%daughter%'
               AND LOWER(r.relationName) NOT LIKE '%husband%'  AND LOWER(r.relationName) NOT LIKE '%wife%'
               AND LOWER(r.relationName) NOT LIKE '%grand%'    AND LOWER(r.relationName) NOT LIKE '%uncle%'
               AND LOWER(r.relationName) NOT LIKE '%aunt%'     AND LOWER(r.relationName) NOT LIKE '%nephew%'
-              AND LOWER(r.relationName) NOT LIKE '%niece%'    AND LOWER(r.relationName) NOT LIKE '%''s%'))))
+              AND LOWER(r.relationName) NOT LIKE '%niece%'    AND LOWER(r.relationName) NOT LIKE '%elder%'
+              AND LOWER(r.relationName) NOT LIKE '%younger%'  AND LOWER(r.relationName) NOT LIKE '%cousin%'
+              AND LOWER(r.relationName) NOT LIKE '%paternal%' AND LOWER(r.relationName) NOT LIKE '%maternal%'
+              AND LOWER(r.relationName) NOT LIKE '%great%'    AND LOWER(r.relationName) NOT LIKE '%''s%'))))
     """)
     Page<UserRelation> pageFilteredConnections(
             @Param("fromUser") User fromUser,
@@ -130,24 +136,29 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
             OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
           AND (:category IS NULL OR :category = '' OR :category = 'all'
             OR (:category = 'inlaws' AND LOWER(r.relationName) LIKE '%in-law%')
-            OR (:category = 'family' AND LOWER(r.relationName) NOT LIKE '%in-law%'
-              AND LOWER(r.relationName) NOT LIKE '%cousin%' AND (
+            OR (:category = 'family' AND LOWER(r.relationName) NOT LIKE '%in-law%' AND (
                  LOWER(r.relationName) LIKE '%father%'   OR LOWER(r.relationName) LIKE '%mother%'
               OR LOWER(r.relationName) LIKE '%brother%'  OR LOWER(r.relationName) LIKE '%sister%'
               OR LOWER(r.relationName) LIKE '%son%'      OR LOWER(r.relationName) LIKE '%daughter%'
               OR LOWER(r.relationName) LIKE '%husband%'  OR LOWER(r.relationName) LIKE '%wife%'
               OR LOWER(r.relationName) LIKE '%grand%'    OR LOWER(r.relationName) LIKE '%uncle%'
               OR LOWER(r.relationName) LIKE '%aunt%'     OR LOWER(r.relationName) LIKE '%nephew%'
-              OR LOWER(r.relationName) LIKE '%niece%'    OR LOWER(r.relationName) LIKE '%''s%'))
+              OR LOWER(r.relationName) LIKE '%niece%'    OR LOWER(r.relationName) LIKE '%elder%'
+              OR LOWER(r.relationName) LIKE '%younger%'  OR LOWER(r.relationName) LIKE '%cousin%'
+              OR LOWER(r.relationName) LIKE '%paternal%' OR LOWER(r.relationName) LIKE '%maternal%'
+              OR LOWER(r.relationName) LIKE '%great%'    OR LOWER(r.relationName) LIKE '%''s%'))
             OR (:category = 'others' AND LOWER(r.relationName) NOT LIKE '%in-law%' AND (
-                 LOWER(r.relationName) LIKE '%cousin%'
+                 LOWER(r.relationName) LIKE '%friend%'
               OR (LOWER(r.relationName) NOT LIKE '%father%'   AND LOWER(r.relationName) NOT LIKE '%mother%'
               AND LOWER(r.relationName) NOT LIKE '%brother%'  AND LOWER(r.relationName) NOT LIKE '%sister%'
               AND LOWER(r.relationName) NOT LIKE '%son%'      AND LOWER(r.relationName) NOT LIKE '%daughter%'
               AND LOWER(r.relationName) NOT LIKE '%husband%'  AND LOWER(r.relationName) NOT LIKE '%wife%'
               AND LOWER(r.relationName) NOT LIKE '%grand%'    AND LOWER(r.relationName) NOT LIKE '%uncle%'
               AND LOWER(r.relationName) NOT LIKE '%aunt%'     AND LOWER(r.relationName) NOT LIKE '%nephew%'
-              AND LOWER(r.relationName) NOT LIKE '%niece%'    AND LOWER(r.relationName) NOT LIKE '%''s%'))))
+              AND LOWER(r.relationName) NOT LIKE '%niece%'    AND LOWER(r.relationName) NOT LIKE '%elder%'
+              AND LOWER(r.relationName) NOT LIKE '%younger%'  AND LOWER(r.relationName) NOT LIKE '%cousin%'
+              AND LOWER(r.relationName) NOT LIKE '%paternal%' AND LOWER(r.relationName) NOT LIKE '%maternal%'
+              AND LOWER(r.relationName) NOT LIKE '%great%'    AND LOWER(r.relationName) NOT LIKE '%''s%'))))
           AND r.relationName IN :relations
     """)
     Page<UserRelation> pageFilteredConnectionsByRelations(
