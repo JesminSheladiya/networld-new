@@ -42,7 +42,10 @@ function ProfilePictureViewer({ open, onClose, src, name }) {
 
         const handleMouseMove = (e) => handleMove(e.clientX, e.clientY);
         const handleTouchMove = (e) => {
-            if (e.touches.length !== 1) return;
+            // Only hijack the gesture while actively dragging the viewer image.
+            // Otherwise the page must scroll normally (mobile).
+            if (e.touches.length !== 1 || !isDragging) return;
+            if (containerRef.current && !containerRef.current.contains(e.target)) return;
             handleMove(e.touches[0].clientX, e.touches[0].clientY);
             e.preventDefault();
         };

@@ -6,9 +6,23 @@ export const api = {
     http.get(`${BASE}/user-relations/connections`, {
       params: search && search.trim() ? { query: search.trim() } : {},
     }),
-  connectionsPaged: (page, size, search) =>
+  connectionsPaged: (page, size, search, category, relations, sort) =>
     http.get(`${BASE}/user-relations/connections/paged`, {
-      params: { page, size, ...(search && search.trim() ? { query: search.trim() } : {}) },
+      params: {
+        page, size,
+        ...(search && search.trim() ? { query: search.trim() } : {}),
+        ...(category && category !== "all" ? { category } : {}),
+        ...(relations && relations.length ? { relations: relations.join(",") } : {}),
+        ...(sort ? { sort } : {}),
+      },
+    }),
+  connectionCounts: (search) =>
+    http.get(`${BASE}/user-relations/connections/counts`, {
+      params: search && search.trim() ? { query: search.trim() } : {},
+    }),
+  connectionRelations: (search) =>
+    http.get(`${BASE}/user-relations/connections/relations`, {
+      params: search && search.trim() ? { query: search.trim() } : {},
     }),
   relations: () => http.get(`${API_URL}/relations`),
   searchUsers: (q) => http.get(`${BASE}/user-relations/search-users?query=${encodeURIComponent(q)}`),
