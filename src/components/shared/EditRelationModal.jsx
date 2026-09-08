@@ -1,39 +1,21 @@
 import { useEffect, useState } from "react";
-import { Modal, Select, Input, message } from "antd";
+import { Modal, Select, message } from "antd";
 import { api } from "../../Services/networld";
 
 function EditRelationModal({ contact, open, onClose, onSaved }) {
   const [relations, setRelations] = useState([]);
   const [editValue, setEditValue] = useState("");
-  const [isCustom, setIsCustom] = useState(false);
-  const [customText, setCustomText] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     api.relations().then((res) => setRelations(res.data)).catch(() => {});
-    const rel = contact?.relation || "";
-    const isPredefined = res => res.some(r => r.relationName.toLowerCase() === rel.toLowerCase());
-    api.relations().then((res) => {
-      if (isPredefined(res.data)) {
-        setEditValue(rel);
-        setIsCustom(false);
-        setCustomText("");
-      } else {
-        setEditValue("Custom");
-        setIsCustom(true);
-        setCustomText(rel);
-      }
-    }).catch(() => {
-      setEditValue("Custom");
-      setIsCustom(true);
-      setCustomText(rel);
-    });
+    setEditValue(contact?.relation || "");
   }, [open, contact]);
 
   const saveEdit = async () => {
     if (!contact) return;
-    const finalRel = isCustom ? customText : editValue;
+    const finalRel = editValue;
     if (!finalRel || !finalRel.trim()) {
       message.warning("Relation name cannot be empty!");
       return;
@@ -69,23 +51,10 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
         </div>
         <Select
           style={{ width: "100%" }}
-          value={isCustom ? "Custom" : editValue}
-          onChange={(val) => {
-            if (val === "Custom") setIsCustom(true);
-            else { setIsCustom(false); setEditValue(val); }
-          }}
-          options={[
-            ...relations.map((r) => ({ value: r.relationName, label: r.relationName })),
-            { value: "Custom", label: "Custom..." },
-          ]}
+          value={editValue}
+          onChange={(val) => setEditValue(val)}
+          options={relations.map((r) => ({ value: r.relationName, label: r.relationName }))}
         />
-        {isCustom && (
-          <Input
-            placeholder="Enter relation..."
-            value={customText}
-            onChange={(e) => setCustomText(e.target.value)}
-          />
-        )}
       </div>
     </Modal>
   );

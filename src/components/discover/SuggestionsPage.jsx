@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Spin, Button, Input, Select, Tooltip } from "antd";
+import { Spin, Button, Select, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLightbulb, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 import { faArrowRight, faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
@@ -15,8 +15,6 @@ function SuggestionsPage() {
   const [relations, setRelations] = useState([]);
   const [editingEmail, setEditingEmail] = useState(null);
   const [editValue, setEditValue] = useState("");
-  const [isCustom, setIsCustom] = useState(false);
-  const [customText, setCustomText] = useState("");
   const { bump, key: refreshKey, setSuggestionsCount } = useRefresh();
 
   const fetchSuggestions = useCallback(async () => {
@@ -64,22 +62,12 @@ function SuggestionsPage() {
   };
 
   const startEdit = (s) => {
-    const rel = s.inferredRelation || "";
-    const isPredefined = relations.some((r) => r.relationName.toLowerCase() === rel.toLowerCase());
     setEditingEmail(s.suggestedUserEmail);
-    if (isPredefined) {
-      setEditValue(rel);
-      setIsCustom(false);
-      setCustomText("");
-    } else {
-      setEditValue("Custom");
-      setIsCustom(true);
-      setCustomText(rel);
-    }
+    setEditValue(s.inferredRelation || "");
   };
 
   const saveEdit = (email) => {
-    const finalRel = isCustom ? customText : editValue;
+    const finalRel = editValue;
     if (!finalRel || !finalRel.trim()) return;
     setSuggestions((prev) =>
       prev.map((x) => (x.suggestedUserEmail === email ? { ...x, inferredRelation: finalRel } : x))
@@ -137,26 +125,10 @@ function SuggestionsPage() {
                         className="nw-relation-select"
                         size="small"
                         placeholder="Relation"
-                        value={isCustom ? "Custom" : editValue}
-                        onChange={(val) => {
-                          if (val === "Custom") setIsCustom(true);
-                          else { setIsCustom(false); setEditValue(val); }
-                        }}
-                        options={[
-                          ...relations.map((r) => ({ value: r.relationName, label: r.relationName })),
-                          { value: "Custom", label: "Custom..." },
-                        ]}
+                        value={editValue}
+                        onChange={(val) => setEditValue(val)}
+                        options={relations.map((r) => ({ value: r.relationName, label: r.relationName }))}
                       />
-                      {isCustom && (
-                        <Input
-                          className="nw-edit-input"
-                          size="small"
-                          placeholder="Custom relation..."
-                          autoFocus
-                          value={customText}
-                          onChange={(e) => setCustomText(e.target.value)}
-                        />
-                      )}
                       <div className="nw-req-actions">
                         <button className="nw-act-btn nw-act-accept" title="Save" onClick={() => saveEdit(s.suggestedUserEmail)}>
                           <FontAwesomeIcon icon={faCheck} />

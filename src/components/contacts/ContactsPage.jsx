@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Input, Spin, Avatar, Empty, Table, Button, Tooltip, Pagination } from "antd";
+import { Input, Spin, Avatar, Empty, Table, Button, Tooltip, Pagination, Modal, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
-import { faMagnifyingGlass, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faXmark, faFilter, faCheck, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
@@ -21,44 +21,48 @@ function mapContact(item, idx) {
   };
 }
 
-function categoryOf(relation) {
-  const r = (relation || "").toLowerCase();
-  if (r.includes("friend")) return "friends";
-  if (
-    r.includes("brother") || r.includes("sister") || r.includes("father") || r.includes("mother") ||
-    r.includes("son") || r.includes("daughter") || r.includes("grand") || r.includes("uncle") ||
-    r.includes("aunt") || r.includes("husband") || r.includes("wife") || r.includes("in-law") ||
-    r.includes("nephew") || r.includes("niece") || r.includes("cousin")
-  ) return "family";
-  return "others";
-}
-
 const CATEGORIES = [
   { key: "all", label: "All" },
   { key: "family", label: "Family" },
-  { key: "friends", label: "Friends" },
+  { key: "inlaws", label: "In-Laws" },
   { key: "others", label: "Others" },
 ];
 
 function ContactsPage() {
   const navigate = useNavigate();
-  const { key: refreshKey } = useRefresh();
+  const { key: refreshKey, bump } = useRefresh();
 
-const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
-  const [dataSource, setDataSource] = useState([]);
+  const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
+  const [isNarrow, setIsNarrow] = useState(() => window.matchMedia("(max-width: 399px)").matches);
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState("all");
   const [loading, setLoading] = useState(false);
+  const [dataSource, setDataSource] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
+  const [counts, setCounts] = useState({ all: 0, family: 0, inlaws: 0, others: 0 });
+  const [relationOptions, setRelationOptions] = useState([]);
   const [editingContact, setEditingContact] = useState(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+  const [sortParam, setSortParam] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loaderRef = useRef(null);
   const chipsRef = useRef(null);
   const chipRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
+  const [selectedRelations, setSelectedRelations] = useState([]);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [mobileQ, setMobileQ] = useState("");
+
+  // Show only tabs that actually have contacts (All always stays)
+  const visibleCategories = useMemo(
+    () => CATEGORIES.filter((c) => c.key === "all" || (counts[c.key] ?? 0) > 0),
+    [counts]
+  );
 
   useEffect(() => {
-    const activeIdx = CATEGORIES.findIndex((c) => c.key === category);
+    if (isNarrow) return;
+    const activeIdx = visibleCategories.findIndex((c) => c.key === category);
     const el = chipRefs.current[activeIdx];
     if (!el || !chipsRef.current) return;
     const update = () => {
@@ -69,7 +73,7 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, [category, dataSource.length]);
+  }, [category, dataSource.length, isNarrow, visibleCategories.length]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1024px)");
@@ -78,46 +82,236 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  const fetchConnections = async (search = "", pageNum = 0, size = 10) => {
-    setLoading(true);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 399px)");
+    const onChange = (e) => setIsNarrow(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  // Server list: paging + category + relations + sort all in backend.
+  // reqIdRef drops stale responses (fast filter changes must not overwrite newer results).
+  const reqIdRef = useRef(0);
+  const fetchList = async (pageNum, append = false) => {
+    const id = ++reqIdRef.current;
+    if (!append) setLoading(true);
     try {
-      const res = await api.connectionsPaged(pageNum, size, search);
+      const res = await api.connectionsPaged(
+        pageNum, pageSize, searchText, category, selectedRelations, sortParam
+      );
+      if (id !== reqIdRef.current) return; // stale — a newer request is in flight
       const mapped = res.data.content.map(mapContact);
-      setDataSource(mapped);
+      setDataSource((prev) => (append ? [...prev, ...mapped] : mapped));
       setTotalItems(res.data.totalElements);
     } catch {
-      setDataSource([]);
-      setTotalItems(0);
+      if (!append && id === reqIdRef.current) {
+        setDataSource([]);
+        setTotalItems(0);
+      }
     } finally {
-      setLoading(false);
+      if (!append && id === reqIdRef.current) setLoading(false);
     }
   };
 
+  // Latest page value for timeouts (avoids stale closures)
+  const pageRef = useRef(page);
+  useEffect(() => { pageRef.current = page; }, [page]);
+  // Skip only the very first mount fetch (reset effect below does it)
+  const firstMountRef = useRef(true);
+  // True while the reset effect's own page-0 fetch is authoritative,
+  // so the page effect doesn't fire a duplicate for the same page
+  const resetFetchRef = useRef(false);
+
+  // Reset + load first page when anything filter-ish changes.
+  // Always fetches page 0 directly: on mobile the page effect skips page 0,
+  // so delegating via setPage(0) alone would leave the stale list in place.
   useEffect(() => {
-    const handler = setTimeout(() => fetchConnections(searchText, 0, pageSize), 350);
+    const handler = setTimeout(() => {
+      setLoadingMore(false);
+      firstMountRef.current = false;
+      resetFetchRef.current = true;
+      setPage(0);
+      fetchList(0, false);
+    }, 350);
     return () => clearTimeout(handler);
-  }, [searchText, pageSize, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText, category, selectedRelations, pageSize, sortParam, refreshKey, isCompact]);
 
+  // Desktop page turns — including back to first page
   useEffect(() => {
-    fetchConnections(searchText, page, pageSize);
-  }, [page, category]);
+    if (isCompact) return;
+    if (page === 0 && (firstMountRef.current || resetFetchRef.current)) {
+      firstMountRef.current = false;
+      resetFetchRef.current = false;
+      return;
+    }
+    resetFetchRef.current = false;
+    fetchList(page, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
-  const counts = useMemo(() => {
-    const c = { all: dataSource.length, family: 0, friends: 0, others: 0 };
-    for (const rec of dataSource) c[categoryOf(rec.relation)] += 1;
-    return c;
-  }, [dataSource]);
+  // Mobile: append next page
+  useEffect(() => {
+    if (!isCompact || page === 0) return;
+    setLoadingMore(true);
+    fetchList(page, true).finally(() => setLoadingMore(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
-  const filtered = useMemo(() => {
-    if (category === "all") return dataSource;
-    return dataSource.filter((rec) => categoryOf(rec.relation) === category);
-  }, [dataSource, category]);
+  // Server counts for tabs/dropdown + relation options for filters
+  const [countsLoaded, setCountsLoaded] = useState(false);
+  useEffect(() => {
+    const handler = setTimeout(async () => {
+      try {
+        const [cRes, rRes] = await Promise.all([
+          api.connectionCounts(searchText),
+          api.connectionRelations(searchText),
+        ]);
+        setCounts({
+          all: cRes.data?.all ?? 0,
+          family: cRes.data?.family ?? 0,
+          inlaws: cRes.data?.inlaws ?? 0,
+          others: cRes.data?.others ?? 0,
+        });
+        setRelationOptions(rRes.data || []);
+      } catch {
+        setCounts({ all: 0, family: 0, inlaws: 0, others: 0 });
+        setRelationOptions([]);
+      } finally {
+        setCountsLoaded(true);
+      }
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [searchText, refreshKey]);
+
+  // If the selected tab becomes empty (e.g. after an edit), fall back to All
+  useEffect(() => {
+    if (countsLoaded && counts.all > 0 && category !== "all" && (counts[category] ?? 0) === 0) {
+      setSelectedRelations([]);
+      setCategory("all");
+    }
+  }, [counts, countsLoaded, category]);
+
+  // Switching tabs starts a fresh filter context (stale relation sub-filter
+  // would otherwise combine with the new tab and show confusing results)
+  const changeCategory = (v) => {
+    setSelectedRelations([]);
+    setCategory(v);
+  };
+
+  // Server already filtered + paged; nothing left to do client-side
+  const filtered = dataSource;
+  const hasMore = dataSource.length < totalItems;
+
+  // Mobile: infinite scroll sentinel
+  useEffect(() => {
+    if (!isCompact || !hasMore) return;
+    const el = loaderRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading && !loadingMore) setPage((p) => p + 1);
+      },
+      { rootMargin: "240px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [isCompact, hasMore, dataSource.length, loading, loadingMore]);
 
   const openContact = (rec) => {
     navigate(`/contacts/${encodeURIComponent(rec.email)}`, { state: { contact: rec } });
   };
 
-  useEffect(() => { setPage(0); }, [category, searchText]);
+  const sortOrderFor = (key) => {
+    if (!sortParam) return null;
+    const [f, d] = sortParam.split(",");
+    return f === key ? (d === "asc" ? "ascend" : "descend") : null;
+  };
+
+  function RelationFilterDropdown({ setSelectedKeys, selectedKeys, confirm, clearFilters, options }) {
+    const [q, setQ] = useState("");
+    const opts = options || [];
+    const list = opts.filter((o) =>
+      o.value.toLowerCase().includes(q.trim().toLowerCase())
+    );
+    const toggle = (v) => {
+      const next = selectedKeys.includes(v)
+        ? selectedKeys.filter((k) => k !== v)
+        : [...selectedKeys, v];
+      setSelectedKeys(next);
+    };
+    return (
+      <div className="nw-relation-filter" onClick={(e) => e.stopPropagation()}>
+        <div className="nw-relation-filter-head">
+          <span className="nw-relation-filter-title">
+            <FontAwesomeIcon icon={faFilter} className="nw-relation-filter-title-icon" />
+            Filter by Relation
+          </span>
+          {selectedKeys.length > 0 && (
+            <span className="nw-relation-filter-badge">{selectedKeys.length} selected</span>
+          )}
+        </div>
+        <div className="nw-relation-filter-search">
+          <FontAwesomeIcon icon={faMagnifyingGlass} className="nw-relation-filter-search-icon" />
+          <input
+            autoFocus
+            placeholder="Search relations..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          {q && (
+            <button className="nw-relation-filter-clear-q" onClick={() => setQ("")}>
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          )}
+        </div>
+        <div className="nw-relation-filter-list">
+          {list.length === 0 ? (
+            <div className="nw-relation-filter-empty">
+              {opts.length === 0 ? "No relations found" : "No match for search"}
+            </div>
+          ) : (
+            list.map((o) => {
+              const checked = selectedKeys.includes(o.value);
+              return (
+                <button
+                  key={o.value}
+                  className={`nw-relation-filter-item${checked ? " checked" : ""}`}
+                  onClick={() => toggle(o.value)}
+                >
+                  <span className={`nw-relation-check${checked ? " checked" : ""}`}>
+                    {checked && <FontAwesomeIcon icon={faCheck} />}
+                  </span>
+                  <span className="nw-relation-filter-item-label">
+                    <RelationChip relation={o.value} style={{ fontSize: 11 }} />
+                  </span>
+                  <span className="nw-relation-filter-count">{o.count}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+        <div className="nw-relation-filter-footer">
+          <button
+            className="nw-relation-filter-btn reset"
+            onClick={() => {
+              setQ("");
+              if (clearFilters) clearFilters();
+              confirm();
+            }}
+          >
+            <FontAwesomeIcon icon={faRotateLeft} /> Reset
+          </button>
+          <button
+            className="nw-relation-filter-btn apply"
+            onClick={() => confirm()}
+          >
+            Apply{selectedKeys.length > 0 ? ` (${selectedKeys.length})` : ""}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const tableColumns = [
     {
@@ -143,7 +337,8 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
       className: "col-name",
       dataIndex: "name",
       key: "name",
-      sorter: (a, b) => a.name.localeCompare(b.name),
+      sorter: true,
+      sortOrder: sortOrderFor("name"),
       render: (name) => <span style={{ color: "#f1f5f9", fontWeight: 600 }}>{name}</span>,
     },
     {
@@ -151,7 +346,8 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
       className: "col-phone",
       dataIndex: "phone",
       key: "phone",
-      sorter: (a, b) => (a.phone || "").localeCompare(b.phone || ""),
+      sorter: true,
+      sortOrder: sortOrderFor("phone"),
       render: (phone) => <span style={{ color: "#94a3b8" }}>{phone || "—"}</span>,
     },
     {
@@ -159,7 +355,8 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
       className: "col-email",
       dataIndex: "email",
       key: "email",
-      sorter: (a, b) => (a.email || "").localeCompare(b.email || ""),
+      sorter: true,
+      sortOrder: sortOrderFor("email"),
       render: (email) => <span style={{ color: "#94a3b8" }}>{email || "—"}</span>,
     },
     {
@@ -167,11 +364,18 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
       className: "col-relation",
       dataIndex: "relation",
       key: "relation",
-      filters: [...new Set(dataSource.map(item => item.relation).filter(Boolean))].map(r => ({
-        text: r, value: r
-      })),
-      onFilter: (value, record) => record.relation === value,
+      sorter: true,
+      sortOrder: sortOrderFor("relation"),
+      filteredValue: selectedRelations,
+      filterDropdown: (props) => <RelationFilterDropdown {...props} options={relationOptions} />,
+      filterIcon: (filtered) => (
+        <span className={`nw-filter-icon${filtered ? " active" : ""}`}>
+          <FontAwesomeIcon icon={faFilter} />
+          {filtered && <span className="nw-filter-dot" />}
+        </span>
+      ),
       filterMultiple: true,
+      filterDropdownProps: { overlayClassName: "nw-relation-filter-overlay" },
       render: (relation) => <RelationChip relation={relation} style={{ fontSize: 12 }} />,
     },
     {
@@ -192,7 +396,16 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
     },
   ];
 
-  const tableData = useMemo(() => filtered.map((rec, i) => ({ ...rec, _rowKey: i })), [filtered]);
+  const tableData = useMemo(
+    () => filtered.map((rec, i) => ({ ...rec, _rowKey: `${page}-${i}` })),
+    [filtered, page]
+  );
+
+  const handleTableChange = (pag, filters, sorter) => {
+    setSelectedRelations(filters.relation || []);
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    setSortParam(s && s.order ? `${s.columnKey},${s.order === "ascend" ? "asc" : "desc"}` : null);
+  };
 
   return (
     <div className="nw-page">
@@ -206,32 +419,75 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
           </p>
         </div>
         <div className="nw-tools">
-          <div className="nw-chips" ref={chipsRef}>
-            <span
-              className="nw-chip-indicator"
-              style={{ left: indicator.left, width: indicator.width }}
+          {isNarrow ? (
+            <Select
+              className="nw-category-select auth-input"
+              value={category}
+              onChange={(v) => changeCategory(v)}
+              options={visibleCategories.map((c) => ({
+                value: c.key,
+                label: `${c.label} (${counts[c.key] ?? 0})`,
+              }))}
             />
-            {CATEGORIES.map((c, i) => (
+          ) : (
+            <div className="nw-chips" ref={chipsRef}>
+              <span
+                className="nw-chip-indicator"
+                style={{ left: indicator.left, width: indicator.width }}
+              />
+              {visibleCategories.map((c, i) => (
+                <button
+                  key={c.key}
+                  ref={(el) => (chipRefs.current[i] = el)}
+                  className={category === c.key ? "nw-chip active" : "nw-chip"}
+                  onClick={() => changeCategory(c.key)}
+                >
+                  {c.label}
+                  <span className="nw-chip-count">{counts[c.key]}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="nw-search-row">
+            <Input
+              className="nw-search"
+              prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
+              placeholder="Search contacts..."
+              allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+            {isCompact && (
               <button
-                key={c.key}
-                ref={(el) => (chipRefs.current[i] = el)}
-                className={category === c.key ? "nw-chip active" : "nw-chip"}
-                onClick={() => setCategory(c.key)}
+                className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
+                onClick={() => { setMobileQ(""); setFilterOpen(true); }}
+                aria-label="Filter by relation"
               >
-                {c.label}
-                <span className="nw-chip-count">{counts[c.key]}</span>
+                <FontAwesomeIcon icon={faFilter} />
+                {selectedRelations.length > 0 && (
+                  <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+        {isCompact && selectedRelations.length > 0 && (
+          <div className="nw-mfilter-active">
+            {selectedRelations.map((r) => (
+              <button
+                key={r}
+                className="nw-mfilter-active-chip"
+                onClick={() => setSelectedRelations((prev) => prev.filter((k) => k !== r))}
+              >
+                <RelationChip relation={r} style={{ fontSize: 11 }} />
+                <FontAwesomeIcon icon={faXmark} className="nw-mfilter-active-x" />
               </button>
             ))}
+            <button className="nw-mfilter-active-clear" onClick={() => setSelectedRelations([])}>
+              Clear all
+            </button>
           </div>
-          <Input
-            className="nw-search"
-            prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
-            placeholder="Search contacts..."
-            allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-        </div>
+        )}
       </div>
 
       {loading ? (
@@ -245,7 +501,7 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
                 searchText.trim()
                   ? "No contacts match your search"
                   : category !== "all"
-                    ? `No ${category} contacts yet`
+                    ? `No ${(CATEGORIES.find((c) => c.key === category) || {}).label || category} contacts yet`
                     : "No contacts yet"
               }
               className="nw-empty"
@@ -258,7 +514,7 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
             {filtered.map((rec) => (
               <button
                 className="nw-list-row"
-                key={rec.key}
+                key={rec.email || rec.key}
                 onClick={() => openContact(rec)}
               >
                 <Avatar
@@ -276,6 +532,18 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
               </button>
             ))}
           </div>
+          {loadingMore ? (
+            <div className="nw-list-loader">
+              <Spin size="small" />
+              <span>Loading more contacts...</span>
+            </div>
+          ) : hasMore ? (
+            <div ref={loaderRef} className="nw-list-loader">
+              <span>Scroll for more</span>
+            </div>
+          ) : (
+            <div className="nw-list-end">No more contacts</div>
+          )}
         </div>
       ) : (
         <div className="nw-table-panel">
@@ -286,6 +554,7 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
             pagination={false}
             className="nw-table"
             size="middle"
+            onChange={handleTableChange}
           />
         </div>
       )}
@@ -316,10 +585,75 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
         onSaved={(newRel) => {
           if (editingContact) {
             editingContact.relation = newRel;
-            setDataSource((ds) => ds.map((r) => (r.key === editingContact.key ? { ...r, relation: newRel } : r)));
+            bump();
           }
         }}
       />
+
+      <Modal
+        open={filterOpen}
+        onCancel={() => setFilterOpen(false)}
+        footer={null}
+        centered
+        width={320}
+        closeIcon={<FontAwesomeIcon icon={faXmark} style={{ color: "#64748b" }} />}
+        title={<span className="nw-mfilter-title"><FontAwesomeIcon icon={faFilter} className="nw-mfilter-title-icon" /> Filter by Relation</span>}
+        className="nw-mfilter-modal"
+      >
+        <div className="nw-mfilter-search">
+          <FontAwesomeIcon icon={faMagnifyingGlass} className="nw-mfilter-search-icon" />
+          <input
+            placeholder="Search relations..."
+            value={mobileQ}
+            onChange={(e) => setMobileQ(e.target.value)}
+          />
+          {mobileQ && (
+            <button className="nw-mfilter-clear-q" onClick={() => setMobileQ("")}>
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          )}
+        </div>
+        <div className="nw-mfilter-list">
+          {relationOptions.filter((o) => o.value.toLowerCase().includes(mobileQ.trim().toLowerCase())).length === 0 ? (
+            <div className="nw-mfilter-empty">
+              {relationOptions.length === 0 ? "No relations found" : "No match for search"}
+            </div>
+          ) : (
+            relationOptions
+              .filter((o) => o.value.toLowerCase().includes(mobileQ.trim().toLowerCase()))
+              .map((o) => {
+                const checked = selectedRelations.includes(o.value);
+                return (
+                  <button
+                    key={o.value}
+                    className={`nw-mfilter-item${checked ? " checked" : ""}`}
+                    onClick={() =>
+                      setSelectedRelations((prev) =>
+                        prev.includes(o.value) ? prev.filter((k) => k !== o.value) : [...prev, o.value]
+                      )
+                    }
+                  >
+                    <span className={`nw-relation-check${checked ? " checked" : ""}`}>
+                      {checked && <FontAwesomeIcon icon={faCheck} />}
+                    </span>
+                    <span className="nw-mfilter-item-label">
+                      <RelationChip relation={o.value} style={{ fontSize: 11 }} />
+                    </span>
+                    <span className="nw-relation-filter-count">{o.count}</span>
+                  </button>
+                );
+              })
+          )}
+        </div>
+        <div className="nw-mfilter-footer">
+          <button className="nw-relation-filter-btn reset" onClick={() => setSelectedRelations([])}>
+            <FontAwesomeIcon icon={faRotateLeft} /> Reset
+          </button>
+          <button className="nw-relation-filter-btn apply" onClick={() => setFilterOpen(false)}>
+            Show{selectedRelations.length > 0 ? ` (${selectedRelations.length})` : ""}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

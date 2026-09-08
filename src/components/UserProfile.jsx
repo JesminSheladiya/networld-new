@@ -44,26 +44,6 @@ export function getInverseRelation(rel, gender = "M") {
     const key = rel.toLowerCase();
     if (map[key]) return map[key];
 
-    // Dynamic fallback for custom relation names
-    const isFemale = gender === "F";
-    if (key.includes("uncle") && key.includes("daughter")) {
-        return isFemale ? "Uncle's Daughter" : "Uncle's Son";
-    }
-    if (key.includes("uncle") && key.includes("son")) {
-        return isFemale ? "Uncle's Daughter" : "Uncle's Son";
-    }
-    if (key.includes("aunt") && key.includes("daughter")) {
-        return isFemale ? "Aunt's Daughter" : "Aunt's Son";
-    }
-    if (key.includes("aunt") && key.includes("son")) {
-        return isFemale ? "Aunt's Daughter" : "Aunt's Son";
-    }
-
-    // Cousin generic dynamic
-    if (key.includes("cousin")) {
-        return isFemale ? "Cousin Sister" : "Cousin Brother";
-    }
-
     return rel;
 }
 

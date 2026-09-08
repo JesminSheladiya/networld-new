@@ -31,7 +31,7 @@
 @media (max-width: 640px) {
   .nw-refresh-btn.ant-btn {
     border-radius: 50%;
-    min-width:32px;
+    min-width: 32px;
     width: 34px;
     height: 34px;
     padding: 0;
@@ -39,14 +39,17 @@
     background: rgba(148, 163, 184, 0.08);
     border-color: rgba(148, 163, 184, 0.2);
   }
+
   .nw-refresh-btn.ant-btn:hover {
     background: rgba(56, 189, 248, 0.15);
     border-color: rgba(56, 189, 248, 0.4);
   }
-  .nw-refresh-btn.ant-btn > .ant-btn-icon {
+
+  .nw-refresh-btn.ant-btn>.ant-btn-icon {
     display: inline-flex !important;
   }
-  .nw-refresh-btn.ant-btn > span:not(.ant-btn-icon) {
+
+  .nw-refresh-btn.ant-btn>span:not(.ant-btn-icon) {
     display: none;
   }
 }
@@ -93,7 +96,7 @@
 .nw-find-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px 12px;
   padding: 12px 6px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.07);
   transition: background 0.15s ease;
@@ -203,7 +206,7 @@
 }
 
 .nw-relation-select.ant-select {
-  min-width: 110px;
+  min-width: 150px;
 }
 
 .nw-send-btn {
@@ -343,6 +346,7 @@
   .nw-discover-panel {
     padding: 6px 8px;
   }
+
   /*.nw-find-head-row {*/
   /*  flex-direction: column;*/
   /*  align-items: stretch;*/
@@ -352,20 +356,23 @@
     align-items: stretch;
     gap: 10px;
   }
+
   .nw-req-right {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
   }
+
   .nw-find-row {
     flex-wrap: wrap;
   }
+
   .nw-find-actions {
-    margin-left: 54px;
+    width: 100%;
     flex-wrap: wrap;
   }
+
   .nw-relation-select.ant-select {
     flex: 1;
-    min-width: 0;
   }
 }
