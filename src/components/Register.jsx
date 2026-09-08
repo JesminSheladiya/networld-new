@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Form, Input, Button, Card, message, Typography, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faEnvelope } from "@fortawesome/free-regular-svg-icons";
-import { faPhone, faLock, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { LockOutlined, PhoneOutlined } from "@ant-design/icons";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { register } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
@@ -118,7 +119,7 @@ function Register() {
           >
             <Input
               className="auth-input"
-              prefix={<FontAwesomeIcon icon={faPhone} className="auth-input-icon" />}
+              prefix={<PhoneOutlined className="auth-input-icon" />}
               placeholder="Phone (10 digits)"
               size="large"
             />
@@ -134,11 +135,11 @@ function Register() {
           >
             <Input.Password
               className="auth-input"
-              prefix={<FontAwesomeIcon icon={faLock} className="auth-input-icon" />}
+              prefix={<LockOutlined className="auth-input-icon" />}
               placeholder="Password"
               size="large"
               iconRender={(visible) => (
-                <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" />
+                <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
               )}
             />
           </Form.Item>

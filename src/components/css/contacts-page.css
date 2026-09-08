@@ -84,7 +84,6 @@
   gap: 10px;
   width: 100%;
   height: auto;
-  min-height: 46px;
   padding: 8px 14px;
 }
 
@@ -315,7 +314,7 @@
   background: transparent !important;
 }
 
-.nw-table .ant-table-thead > tr > th {
+.nw-table .ant-table-thead>tr>th {
   background: rgba(37, 99, 235, 0.15) !important;
   border-bottom: 1px solid rgba(37, 99, 235, 0.25) !important;
   border-right: 1px solid rgba(148, 163, 184, 0.1) !important;
@@ -326,22 +325,22 @@
   text-transform: uppercase;
 }
 
-.nw-table .ant-table-tbody > tr > td {
+.nw-table .ant-table-tbody>tr>td {
   border-bottom: 1px solid rgba(148, 163, 184, 0.07) !important;
   border-right: 1px solid rgba(148, 163, 184, 0.07) !important;
   background: transparent !important;
 }
 
-.nw-table .ant-table-thead > tr > th:last-child,
-.nw-table .ant-table-tbody > tr > td:last-child {
+.nw-table .ant-table-thead>tr>th:last-child,
+.nw-table .ant-table-tbody>tr>td:last-child {
   border-right: none !important;
 }
 
-.nw-table .ant-table-tbody > tr:hover > td {
+.nw-table .ant-table-tbody>tr:hover>td {
   background: rgba(37, 99, 235, 0.06) !important;
 }
 
-.nw-table .ant-table-tbody > tr:last-child > td {
+.nw-table .ant-table-tbody>tr:last-child>td {
   border-bottom: none !important;
 }
 
@@ -482,7 +481,7 @@
   border-radius: 10px;
 }
 
-.nw-profile-row + .nw-profile-row {
+.nw-profile-row+.nw-profile-row {
   border-top: 1px solid rgba(148, 163, 184, 0.08);
 }
 
@@ -556,16 +555,19 @@
   .nw-page-title {
     font-size: 22px;
   }
+
   .nw-page-head {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
   }
+
   .nw-tools {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
   }
+
   .nw-chips {
     overflow-x: auto;
     flex-wrap: nowrap;
@@ -573,26 +575,49 @@
     margin-bottom: 8px;
     max-width: 100%;
   }
+
   .nw-chip {
     flex-shrink: 0;
   }
+
   .nw-search-row {
     width: 100%;
   }
+
   .nw-search.ant-input-affix-wrapper {
     width: 100%;
     min-height: 38px;
     padding: 6px 12px;
   }
+
   .nw-search.ant-input-affix-wrapper .ant-input {
     font-size: 14px;
   }
+
+  /* Category dropdown (replaces chips below 400px) */
+  .nw-category-select {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  .nw-category-select.auth-input.ant-select .ant-select-selector,
+  .nw-category-select.auth-input.ant-select-single {
+    height: 35px;
+    font-size: 14px;
+  }
+
+  .nw-category-select .ant-select-selection-item {
+    font-weight: 600;
+  }
+
   .nw-profile-actions {
     margin-bottom: 12px;
   }
+
   .nw-list-row {
     padding: 9px 8px;
   }
+
   .nw-list-sub {
     max-width: 160px;
   }
@@ -1016,7 +1041,13 @@
 }
 
 .nw-mfilter-modal .ant-modal-close {
+  top: 12px;
+  right: 12px;
+  padding: 0;
+  height: auto;
+  width: auto;
   color: #64748b !important;
+  background: transparent !important;
 }
 
 .nw-mfilter-title {

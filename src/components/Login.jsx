@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Form, Input, Button, Card, message, Typography } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
-import { faLock, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { LockOutlined } from "@ant-design/icons";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { login } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
@@ -78,11 +79,11 @@ function Login() {
           >
             <Input.Password
               className="auth-input"
-              prefix={<FontAwesomeIcon icon={faLock} className="auth-input-icon" />}
+              prefix={<LockOutlined className="auth-input-icon" />}
               placeholder="Password"
               size="large"
               iconRender={(visible) => (
-                <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" />
+                <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
               )}
             />
           </Form.Item>

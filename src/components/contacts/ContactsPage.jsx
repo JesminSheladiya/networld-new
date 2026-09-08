@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Input, Spin, Avatar, Empty, Table, Button, Tooltip, Pagination, Modal } from "antd";
+import { Input, Spin, Avatar, Empty, Table, Button, Tooltip, Pagination, Modal, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 import { faMagnifyingGlass, faXmark, faFilter, faCheck, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
@@ -44,7 +44,8 @@ function ContactsPage() {
   const navigate = useNavigate();
   const { key: refreshKey } = useRefresh();
 
-const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
+  const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
+  const [isNarrow, setIsNarrow] = useState(() => window.matchMedia("(max-width: 399px)").matches);
   const [dataSource, setDataSource] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState("all");
@@ -61,6 +62,7 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
   const [mobileQ, setMobileQ] = useState("");
 
   useEffect(() => {
+    if (isNarrow) return;
     const activeIdx = CATEGORIES.findIndex((c) => c.key === category);
     const el = chipRefs.current[activeIdx];
     if (!el || !chipsRef.current) return;
@@ -72,11 +74,18 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, [category, dataSource.length]);
+  }, [category, dataSource.length, isNarrow]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1024px)");
     const onChange = (e) => setIsCompact(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 399px)");
+    const onChange = (e) => setIsNarrow(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
@@ -314,23 +323,35 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
           </p>
         </div>
         <div className="nw-tools">
-          <div className="nw-chips" ref={chipsRef}>
-            <span
-              className="nw-chip-indicator"
-              style={{ left: indicator.left, width: indicator.width }}
+          {isNarrow ? (
+            <Select
+              className="nw-category-select auth-input"
+              value={category}
+              onChange={(v) => setCategory(v)}
+              options={CATEGORIES.map((c) => ({
+                value: c.key,
+                label: `${c.label} (${counts[c.key] ?? 0})`,
+              }))}
             />
-            {CATEGORIES.map((c, i) => (
-              <button
-                key={c.key}
-                ref={(el) => (chipRefs.current[i] = el)}
-                className={category === c.key ? "nw-chip active" : "nw-chip"}
-                onClick={() => setCategory(c.key)}
-              >
-                {c.label}
-                <span className="nw-chip-count">{counts[c.key]}</span>
-              </button>
-            ))}
-          </div>
+          ) : (
+            <div className="nw-chips" ref={chipsRef}>
+              <span
+                className="nw-chip-indicator"
+                style={{ left: indicator.left, width: indicator.width }}
+              />
+              {CATEGORIES.map((c, i) => (
+                <button
+                  key={c.key}
+                  ref={(el) => (chipRefs.current[i] = el)}
+                  className={category === c.key ? "nw-chip active" : "nw-chip"}
+                  onClick={() => setCategory(c.key)}
+                >
+                  {c.label}
+                  <span className="nw-chip-count">{counts[c.key]}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="nw-search-row">
             <Input
               className="nw-search"
@@ -520,7 +541,7 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
             <FontAwesomeIcon icon={faRotateLeft} /> Reset
           </button>
           <button className="nw-relation-filter-btn apply" onClick={() => setFilterOpen(false)}>
-            Apply{selectedRelations.length > 0 ? ` (${selectedRelations.length})` : ""}
+            Show{selectedRelations.length > 0 ? ` (${selectedRelations.length})` : ""}
           </button>
         </div>
       </Modal>
