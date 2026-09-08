@@ -74,4 +74,106 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
             @Param("query") String query,
             Pageable pageable
     );
+
+    // Server-side category filter. Categories mirror the app grouping:
+    // family = main relations (incl. uncle's/aunt's children); inlaws = *-in-law;
+    // others = friend, generic cousins + anything else.
+    @Query("""
+        SELECT ur FROM UserRelation ur
+        JOIN ur.relation r
+        WHERE ur.fromUser = :fromUser
+          AND ur.status = 'ACCEPTED'
+          AND (:query IS NULL OR :query = '' OR (
+               LOWER(ur.toUser.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.email)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
+          AND (:category IS NULL OR :category = '' OR :category = 'all'
+            OR (:category = 'inlaws' AND LOWER(r.relationName) LIKE '%in-law%')
+            OR (:category = 'family' AND LOWER(r.relationName) NOT LIKE '%in-law%'
+              AND LOWER(r.relationName) NOT LIKE '%cousin%' AND (
+                 LOWER(r.relationName) LIKE '%father%'   OR LOWER(r.relationName) LIKE '%mother%'
+              OR LOWER(r.relationName) LIKE '%brother%'  OR LOWER(r.relationName) LIKE '%sister%'
+              OR LOWER(r.relationName) LIKE '%son%'      OR LOWER(r.relationName) LIKE '%daughter%'
+              OR LOWER(r.relationName) LIKE '%husband%'  OR LOWER(r.relationName) LIKE '%wife%'
+              OR LOWER(r.relationName) LIKE '%grand%'    OR LOWER(r.relationName) LIKE '%uncle%'
+              OR LOWER(r.relationName) LIKE '%aunt%'     OR LOWER(r.relationName) LIKE '%nephew%'
+              OR LOWER(r.relationName) LIKE '%niece%'    OR LOWER(r.relationName) LIKE '%''s%'))
+            OR (:category = 'others' AND LOWER(r.relationName) NOT LIKE '%in-law%' AND (
+                 LOWER(r.relationName) LIKE '%cousin%'
+              OR (LOWER(r.relationName) NOT LIKE '%father%'   AND LOWER(r.relationName) NOT LIKE '%mother%'
+              AND LOWER(r.relationName) NOT LIKE '%brother%'  AND LOWER(r.relationName) NOT LIKE '%sister%'
+              AND LOWER(r.relationName) NOT LIKE '%son%'      AND LOWER(r.relationName) NOT LIKE '%daughter%'
+              AND LOWER(r.relationName) NOT LIKE '%husband%'  AND LOWER(r.relationName) NOT LIKE '%wife%'
+              AND LOWER(r.relationName) NOT LIKE '%grand%'    AND LOWER(r.relationName) NOT LIKE '%uncle%'
+              AND LOWER(r.relationName) NOT LIKE '%aunt%'     AND LOWER(r.relationName) NOT LIKE '%nephew%'
+              AND LOWER(r.relationName) NOT LIKE '%niece%'    AND LOWER(r.relationName) NOT LIKE '%''s%'))))
+    """)
+    Page<UserRelation> pageFilteredConnections(
+            @Param("fromUser") User fromUser,
+            @Param("query") String query,
+            @Param("category") String category,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT ur FROM UserRelation ur
+        JOIN ur.relation r
+        WHERE ur.fromUser = :fromUser
+          AND ur.status = 'ACCEPTED'
+          AND (:query IS NULL OR :query = '' OR (
+               LOWER(ur.toUser.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.email)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
+          AND (:category IS NULL OR :category = '' OR :category = 'all'
+            OR (:category = 'inlaws' AND LOWER(r.relationName) LIKE '%in-law%')
+            OR (:category = 'family' AND LOWER(r.relationName) NOT LIKE '%in-law%'
+              AND LOWER(r.relationName) NOT LIKE '%cousin%' AND (
+                 LOWER(r.relationName) LIKE '%father%'   OR LOWER(r.relationName) LIKE '%mother%'
+              OR LOWER(r.relationName) LIKE '%brother%'  OR LOWER(r.relationName) LIKE '%sister%'
+              OR LOWER(r.relationName) LIKE '%son%'      OR LOWER(r.relationName) LIKE '%daughter%'
+              OR LOWER(r.relationName) LIKE '%husband%'  OR LOWER(r.relationName) LIKE '%wife%'
+              OR LOWER(r.relationName) LIKE '%grand%'    OR LOWER(r.relationName) LIKE '%uncle%'
+              OR LOWER(r.relationName) LIKE '%aunt%'     OR LOWER(r.relationName) LIKE '%nephew%'
+              OR LOWER(r.relationName) LIKE '%niece%'    OR LOWER(r.relationName) LIKE '%''s%'))
+            OR (:category = 'others' AND LOWER(r.relationName) NOT LIKE '%in-law%' AND (
+                 LOWER(r.relationName) LIKE '%cousin%'
+              OR (LOWER(r.relationName) NOT LIKE '%father%'   AND LOWER(r.relationName) NOT LIKE '%mother%'
+              AND LOWER(r.relationName) NOT LIKE '%brother%'  AND LOWER(r.relationName) NOT LIKE '%sister%'
+              AND LOWER(r.relationName) NOT LIKE '%son%'      AND LOWER(r.relationName) NOT LIKE '%daughter%'
+              AND LOWER(r.relationName) NOT LIKE '%husband%'  AND LOWER(r.relationName) NOT LIKE '%wife%'
+              AND LOWER(r.relationName) NOT LIKE '%grand%'    AND LOWER(r.relationName) NOT LIKE '%uncle%'
+              AND LOWER(r.relationName) NOT LIKE '%aunt%'     AND LOWER(r.relationName) NOT LIKE '%nephew%'
+              AND LOWER(r.relationName) NOT LIKE '%niece%'    AND LOWER(r.relationName) NOT LIKE '%''s%'))))
+          AND r.relationName IN :relations
+    """)
+    Page<UserRelation> pageFilteredConnectionsByRelations(
+            @Param("fromUser") User fromUser,
+            @Param("query") String query,
+            @Param("category") String category,
+            @Param("relations") List<String> relations,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT r.relationName, COUNT(ur) FROM UserRelation ur
+        JOIN ur.relation r
+        WHERE ur.fromUser = :fromUser
+          AND ur.status = 'ACCEPTED'
+          AND (:query IS NULL OR :query = '' OR (
+               LOWER(ur.toUser.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.email)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
+        GROUP BY r.relationName
+        ORDER BY COUNT(ur) DESC, r.relationName ASC
+    """)
+    List<Object[]> countConnectionsByRelation(
+            @Param("fromUser") User fromUser,
+            @Param("query") String query
+    );
 }

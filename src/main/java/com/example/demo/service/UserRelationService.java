@@ -86,7 +86,7 @@ public class UserRelationService {
         if (relationName == null || relationName.isBlank())
             throw new RuntimeException("Relation name is required!");
 
-        Relation newRel = getOrCreateRelation(relationName.trim());
+        Relation newRel = getRequiredRelation(relationName.trim());
         ur.setRelation(newRel);
         userRelationRepo.save(ur);
 
@@ -145,12 +145,46 @@ public class UserRelationService {
         }).collect(Collectors.toList());
     }
 
-    public Page<UserRelationSuggestionDTO> getMyConnectionsPaged(User currentUser, String query, Pageable pageable) {
-        Page<UserRelation> relations = (query == null || query.isBlank())
-                ? userRelationRepo.findByFromUserAndStatus(currentUser, "ACCEPTED", pageable)
-                : userRelationRepo.searchAcceptedConnections(currentUser, query.trim(), pageable);
+    // Category grouping shared with the app tabs (keep keyword lists in sync
+    // with UserRelationRepository pageFilteredConnections queries).
+    // family  = main relations (parents, siblings, spouse, grandparents,
+    //           grandchildren, uncle, aunt, nephew, niece + uncle's/aunt's children)
+    // inlaws  = *-in-law relations
+    // others  = friend, generic cousins + anything else
+    private static final List<String> FAMILY_KEYWORDS = List.of(
+            "father", "mother", "brother", "sister", "son", "daughter",
+            "husband", "wife", "grand", "uncle", "aunt", "nephew", "niece");
 
-        return relations.map(ur -> {
+    static String categoryOf(String relationName) {
+        String r = relationName == null ? "" : relationName.toLowerCase();
+        if (r.contains("in-law")) return "inlaws";
+        if (r.contains("cousin")) return "others";
+        if (r.contains("'s")) return "family";
+        for (String k : FAMILY_KEYWORDS) {
+            if (r.contains(k)) return "family";
+        }
+        return "others";
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
+    }
+
+    private static String normalizeCategory(String category) {
+        if (category == null) return null;
+        String c = category.trim().toLowerCase();
+        return (c.equals("family") || c.equals("inlaws") || c.equals("others")) ? c : null;
+    }
+
+    public Page<UserRelationSuggestionDTO> getMyConnectionsPaged(
+            User currentUser, String query, String category, List<String> relations, Pageable pageable) {
+        String q = blankToNull(query);
+        String c = normalizeCategory(category);
+        Page<UserRelation> relationsPage = (relations != null && !relations.isEmpty())
+                ? userRelationRepo.pageFilteredConnectionsByRelations(currentUser, q, c, relations, pageable)
+                : userRelationRepo.pageFilteredConnections(currentUser, q, c, pageable);
+
+        return relationsPage.map(ur -> {
             User o = ur.getToUser();
             String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
             return new UserRelationSuggestionDTO(
@@ -158,6 +192,36 @@ public class UserRelationService {
                     o.getGender(),
                     ur.getRelation().getRelationName(), null, "ACCEPTED");
         });
+    }
+
+    public Map<String, Long> getConnectionCounts(User currentUser, String query) {
+        String q = blankToNull(query);
+        List<UserRelation> list = (q == null)
+                ? userRelationRepo.findByFromUserAndStatus(currentUser, "ACCEPTED")
+                : userRelationRepo.searchAcceptedConnections(currentUser, q);
+
+        Map<String, Long> counts = new HashMap<>();
+        counts.put("all", (long) list.size());
+        counts.put("family", 0L);
+        counts.put("inlaws", 0L);
+        counts.put("others", 0L);
+        for (UserRelation ur : list) {
+            String cat = categoryOf(ur.getRelation().getRelationName());
+            counts.put(cat, counts.get(cat) + 1);
+        }
+        return counts;
+    }
+
+    public List<Map<String, Object>> getConnectionRelationCounts(User currentUser, String query) {
+        String q = blankToNull(query);
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Object[] row : userRelationRepo.countConnectionsByRelation(currentUser, q)) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("value", String.valueOf(row[0]));
+            item.put("count", ((Number) row[1]).longValue());
+            out.add(item);
+        }
+        return out;
     }
 
     @Transactional
@@ -183,7 +247,7 @@ public class UserRelationService {
         User otherUser = userRepository.findByEmail(otherEmail)
                 .orElseThrow(() -> new RuntimeException("User not found!"));
 
-        Relation relation = getOrCreateRelation(relationName);
+        Relation relation = getRequiredRelation(relationName);
 
         Optional<UserRelation> existing = userRelationRepo.findByFromUserAndToUser(currentUser, otherUser);
         if (existing.isPresent()) {
@@ -199,57 +263,12 @@ public class UserRelationService {
         regenerateAllSuggestions(otherUser);
     }
 
-    private Relation getOrCreateRelation(String relationName) {
+    // Custom relations are disabled: only predefined relations from the
+    // relations table are accepted. Unknown names are rejected.
+    private Relation getRequiredRelation(String relationName) {
         return relationRepository.findByRelationNameIgnoreCase(relationName)
-                .orElseGet(() -> {
-                    Relation newRel = new Relation();
-                    newRel.setRelationName(relationName);
-                    newRel.setRelationCategory("COUSIN");
-                    newRel.setGenerationLevel(0);
-
-                    String lower = relationName.toLowerCase();
-                    if (lower.contains("daughter") || lower.contains("sister") || lower.contains("mother") || lower.contains("wife") || lower.contains("aunt") || lower.contains("niece") || lower.contains("girl") || lower.contains("female")) {
-                        newRel.setGender("F");
-                    } else if (lower.contains("son") || lower.contains("brother") || lower.contains("father") || lower.contains("husband") || lower.contains("uncle") || lower.contains("nephew") || lower.contains("boy") || lower.contains("male")) {
-                        newRel.setGender("M");
-                    } else {
-                        newRel.setGender("N");
-                    }
-
-                    if (lower.contains("uncle") || lower.contains("aunt")) {
-                        if (lower.contains("daughter") || lower.contains("son") || lower.contains("child")) {
-                            newRel.setRelationCategory("COUSIN");
-                            newRel.setGenerationLevel(0);
-                        } else {
-                            newRel.setRelationCategory("PIBLING");
-                            newRel.setGenerationLevel(1);
-                        }
-                    } else if (lower.contains("cousin")) {
-                        newRel.setRelationCategory("COUSIN");
-                        newRel.setGenerationLevel(0);
-                    } else if (lower.contains("father") || lower.contains("mother")) {
-                        newRel.setGenerationLevel(1);
-                        newRel.setRelationCategory("PARENT");
-                    } else if (lower.contains("son") || lower.contains("daughter")) {
-                        newRel.setGenerationLevel(-1);
-                        newRel.setRelationCategory("CHILD");
-                    } else if (lower.contains("nephew") || lower.contains("niece")) {
-                        newRel.setGenerationLevel(-1);
-                        newRel.setRelationCategory("NIBLING");
-                    } else if (lower.contains("husband") || lower.contains("wife")) {
-                        newRel.setGenerationLevel(0);
-                        newRel.setRelationCategory("SPOUSE");
-                    } else if (lower.contains("brother") || lower.contains("sister")) {
-                        if (lower.contains("in-law") || lower.contains("law")) {
-                            newRel.setRelationCategory("INLAW");
-                        } else {
-                            newRel.setRelationCategory("SIBLING");
-                        }
-                        newRel.setGenerationLevel(0);
-                    }
-
-                    return relationRepository.save(newRel);
-                });
+                .orElseThrow(() -> new RuntimeException(
+                        "Unknown relation: " + relationName + ". Please choose from the list."));
     }
 
     @Transactional
@@ -324,7 +343,7 @@ public class UserRelationService {
         Integer reverseLevel = -rel.getGenerationLevel();
 
         return relationRepository
-                .findByRelationCategoryAndGenerationLevelAndGender(reverseCategory, reverseLevel, genderSource.getGender())
-                .orElse(null);
+                .findByRelationCategoryAndGenerationLevelAndGenderOrderByRelationName(reverseCategory, reverseLevel, genderSource.getGender())
+                .stream().findFirst().orElse(null);
     }
 }

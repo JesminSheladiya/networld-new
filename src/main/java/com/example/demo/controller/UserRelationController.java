@@ -144,11 +144,46 @@ public class UserRelationController {
     @GetMapping("/connections/paged")
     public ResponseEntity<Page<UserRelationSuggestionDTO>> getConnectionsPaged(
             @RequestParam(required = false) String query,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) List<String> relations,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserDetails ud) {
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(userRelationService.getMyConnectionsPaged(getCurrentUser(ud), query, pageable));
+        Pageable pageable = PageRequest.of(page, size, toSort(sort));
+        return ResponseEntity.ok(userRelationService.getMyConnectionsPaged(
+                getCurrentUser(ud), query, category, relations, pageable));
+    }
+
+    @GetMapping("/connections/counts")
+    public ResponseEntity<Map<String, Long>> getConnectionCounts(
+            @RequestParam(required = false) String query,
+            @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(userRelationService.getConnectionCounts(getCurrentUser(ud), query));
+    }
+
+    @GetMapping("/connections/relations")
+    public ResponseEntity<List<Map<String, Object>>> getConnectionRelations(
+            @RequestParam(required = false) String query,
+            @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(userRelationService.getConnectionRelationCounts(getCurrentUser(ud), query));
+    }
+
+    private static org.springframework.data.domain.Sort toSort(String sort) {
+        if (sort == null || sort.isBlank()) return org.springframework.data.domain.Sort.unsorted();
+        String[] parts = sort.split(",");
+        String field = parts[0].trim().toLowerCase();
+        boolean asc = parts.length < 2 || !parts[1].trim().equalsIgnoreCase("desc");
+        String property;
+        switch (field) {
+            case "phone":    property = "toUser.phone"; break;
+            case "email":    property = "toUser.email"; break;
+            case "relation": property = "r.relationName"; break;
+            case "name":
+            default:         property = "toUser.fullName"; break;
+        }
+        return asc ? org.springframework.data.domain.Sort.by(property).ascending()
+                   : org.springframework.data.domain.Sort.by(property).descending();
     }
 
     @PostMapping("/suggestions/send")
