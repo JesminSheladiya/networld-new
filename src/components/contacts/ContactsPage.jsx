@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Input, Spin, Avatar, Empty, Table, Button, Tooltip, Pagination } from "antd";
+import { Input, Spin, Avatar, Empty, Table, Button, Tooltip, Pagination, Modal } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
-import { faMagnifyingGlass, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faXmark, faFilter, faCheck, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
@@ -56,6 +56,9 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
   const chipsRef = useRef(null);
   const chipRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
+  const [selectedRelations, setSelectedRelations] = useState([]);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [mobileQ, setMobileQ] = useState("");
 
   useEffect(() => {
     const activeIdx = CATEGORIES.findIndex((c) => c.key === category);
@@ -109,15 +112,115 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
   }, [dataSource]);
 
   const filtered = useMemo(() => {
-    if (category === "all") return dataSource;
-    return dataSource.filter((rec) => categoryOf(rec.relation) === category);
-  }, [dataSource, category]);
+    let out = category === "all" ? dataSource : dataSource.filter((rec) => categoryOf(rec.relation) === category);
+    if (isCompact && selectedRelations.length > 0) {
+      out = out.filter((rec) => selectedRelations.includes(rec.relation));
+    }
+    return out;
+  }, [dataSource, category, isCompact, selectedRelations]);
 
   const openContact = (rec) => {
     navigate(`/contacts/${encodeURIComponent(rec.email)}`, { state: { contact: rec } });
   };
 
-  useEffect(() => { setPage(0); }, [category, searchText]);
+  useEffect(() => { setPage(0); }, [category, searchText, selectedRelations]);
+
+  const relationOptions = useMemo(() => {
+    const map = {};
+    for (const item of dataSource) {
+      const r = item.relation;
+      if (!r) continue;
+      map[r] = (map[r] || 0) + 1;
+    }
+    return Object.entries(map)
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+  }, [dataSource]);
+
+  function RelationFilterDropdown({ setSelectedKeys, selectedKeys, confirm, clearFilters, options }) {
+    const [q, setQ] = useState("");
+    const opts = options || [];
+    const list = opts.filter((o) =>
+      o.value.toLowerCase().includes(q.trim().toLowerCase())
+    );
+    const toggle = (v) => {
+      const next = selectedKeys.includes(v)
+        ? selectedKeys.filter((k) => k !== v)
+        : [...selectedKeys, v];
+      setSelectedKeys(next);
+    };
+    return (
+      <div className="nw-relation-filter" onClick={(e) => e.stopPropagation()}>
+        <div className="nw-relation-filter-head">
+          <span className="nw-relation-filter-title">
+            <FontAwesomeIcon icon={faFilter} className="nw-relation-filter-title-icon" />
+            Filter by Relation
+          </span>
+          {selectedKeys.length > 0 && (
+            <span className="nw-relation-filter-badge">{selectedKeys.length} selected</span>
+          )}
+        </div>
+        <div className="nw-relation-filter-search">
+          <FontAwesomeIcon icon={faMagnifyingGlass} className="nw-relation-filter-search-icon" />
+          <input
+            autoFocus
+            placeholder="Search relations..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          {q && (
+            <button className="nw-relation-filter-clear-q" onClick={() => setQ("")}>
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          )}
+        </div>
+        <div className="nw-relation-filter-list">
+          {list.length === 0 ? (
+            <div className="nw-relation-filter-empty">
+              {opts.length === 0 ? "No relations found" : "No match for search"}
+            </div>
+          ) : (
+            list.map((o) => {
+              const checked = selectedKeys.includes(o.value);
+              return (
+                <button
+                  key={o.value}
+                  className={`nw-relation-filter-item${checked ? " checked" : ""}`}
+                  onClick={() => toggle(o.value)}
+                >
+                  <span className={`nw-relation-check${checked ? " checked" : ""}`}>
+                    {checked && <FontAwesomeIcon icon={faCheck} />}
+                  </span>
+                  <span className="nw-relation-filter-item-label">
+                    <RelationChip relation={o.value} style={{ fontSize: 11 }} />
+                  </span>
+                  <span className="nw-relation-filter-count">{o.count}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+        <div className="nw-relation-filter-footer">
+          <button
+            className="nw-relation-filter-btn reset"
+            onClick={() => {
+              setQ("");
+              if (clearFilters) clearFilters();
+              confirm();
+            }}
+          >
+            <FontAwesomeIcon icon={faRotateLeft} /> Reset
+          </button>
+          <button
+            className="nw-relation-filter-btn apply"
+            onClick={() => confirm()}
+          >
+            Apply{selectedKeys.length > 0 ? ` (${selectedKeys.length})` : ""}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const tableColumns = [
     {
@@ -167,11 +270,16 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
       className: "col-relation",
       dataIndex: "relation",
       key: "relation",
-      filters: [...new Set(dataSource.map(item => item.relation).filter(Boolean))].map(r => ({
-        text: r, value: r
-      })),
+      filterDropdown: (props) => <RelationFilterDropdown {...props} options={relationOptions} />,
+      filterIcon: (filtered) => (
+        <span className={`nw-filter-icon${filtered ? " active" : ""}`}>
+          <FontAwesomeIcon icon={faFilter} />
+          {filtered && <span className="nw-filter-dot" />}
+        </span>
+      ),
       onFilter: (value, record) => record.relation === value,
       filterMultiple: true,
+      filterDropdownProps: { overlayClassName: "nw-relation-filter-overlay" },
       render: (relation) => <RelationChip relation={relation} style={{ fontSize: 12 }} />,
     },
     {
@@ -223,15 +331,46 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
               </button>
             ))}
           </div>
-          <Input
-            className="nw-search"
-            prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
-            placeholder="Search contacts..."
-            allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
+          <div className="nw-search-row">
+            <Input
+              className="nw-search"
+              prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
+              placeholder="Search contacts..."
+              allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+            {isCompact && (
+              <button
+                className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
+                onClick={() => { setMobileQ(""); setFilterOpen(true); }}
+                aria-label="Filter by relation"
+              >
+                <FontAwesomeIcon icon={faFilter} />
+                {selectedRelations.length > 0 && (
+                  <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
+                )}
+              </button>
+            )}
+          </div>
         </div>
+        {isCompact && selectedRelations.length > 0 && (
+          <div className="nw-mfilter-active">
+            {selectedRelations.map((r) => (
+              <button
+                key={r}
+                className="nw-mfilter-active-chip"
+                onClick={() => setSelectedRelations((prev) => prev.filter((k) => k !== r))}
+              >
+                <RelationChip relation={r} style={{ fontSize: 11 }} />
+                <FontAwesomeIcon icon={faXmark} className="nw-mfilter-active-x" />
+              </button>
+            ))}
+            <button className="nw-mfilter-active-clear" onClick={() => setSelectedRelations([])}>
+              Clear all
+            </button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -320,6 +459,71 @@ const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 
           }
         }}
       />
+
+      <Modal
+        open={filterOpen}
+        onCancel={() => setFilterOpen(false)}
+        footer={null}
+        centered
+        width={320}
+        closeIcon={<FontAwesomeIcon icon={faXmark} style={{ color: "#64748b" }} />}
+        title={<span className="nw-mfilter-title"><FontAwesomeIcon icon={faFilter} className="nw-mfilter-title-icon" /> Filter by Relation</span>}
+        className="nw-mfilter-modal"
+      >
+        <div className="nw-mfilter-search">
+          <FontAwesomeIcon icon={faMagnifyingGlass} className="nw-mfilter-search-icon" />
+          <input
+            placeholder="Search relations..."
+            value={mobileQ}
+            onChange={(e) => setMobileQ(e.target.value)}
+          />
+          {mobileQ && (
+            <button className="nw-mfilter-clear-q" onClick={() => setMobileQ("")}>
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          )}
+        </div>
+        <div className="nw-mfilter-list">
+          {relationOptions.filter((o) => o.value.toLowerCase().includes(mobileQ.trim().toLowerCase())).length === 0 ? (
+            <div className="nw-mfilter-empty">
+              {relationOptions.length === 0 ? "No relations found" : "No match for search"}
+            </div>
+          ) : (
+            relationOptions
+              .filter((o) => o.value.toLowerCase().includes(mobileQ.trim().toLowerCase()))
+              .map((o) => {
+                const checked = selectedRelations.includes(o.value);
+                return (
+                  <button
+                    key={o.value}
+                    className={`nw-mfilter-item${checked ? " checked" : ""}`}
+                    onClick={() =>
+                      setSelectedRelations((prev) =>
+                        prev.includes(o.value) ? prev.filter((k) => k !== o.value) : [...prev, o.value]
+                      )
+                    }
+                  >
+                    <span className={`nw-relation-check${checked ? " checked" : ""}`}>
+                      {checked && <FontAwesomeIcon icon={faCheck} />}
+                    </span>
+                    <span className="nw-mfilter-item-label">
+                      <RelationChip relation={o.value} style={{ fontSize: 11 }} />
+                    </span>
+                    <span className="nw-relation-filter-count">{o.count}</span>
+                  </button>
+                );
+              })
+          )}
+        </div>
+        <div className="nw-mfilter-footer">
+          <button className="nw-relation-filter-btn reset" onClick={() => setSelectedRelations([])}>
+            <FontAwesomeIcon icon={faRotateLeft} /> Reset
+          </button>
+          <button className="nw-relation-filter-btn apply" onClick={() => setFilterOpen(false)}>
+            Apply{selectedRelations.length > 0 ? ` (${selectedRelations.length})` : ""}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
