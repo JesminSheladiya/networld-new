@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Modal, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRotateLeft, faArrowsRotate } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsRotate, faRotateRight } from "@fortawesome/free-solid-svg-icons";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import "./css/ProfilePictureEditor.css";
@@ -92,7 +92,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
         const ro = new ResizeObserver(update);
         ro.observe(el);
         return () => ro.disconnect();
-    }, [open ]);
+    }, [open]);
 
     useEffect(() => {
         if (!open || !workSrc) return;
@@ -233,6 +233,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
             onCancel={onClose}
             footer={null}
             closable={false}
+            maskClosable={false}
             centered
             width={440}
             className="ppe-modal"
@@ -261,7 +262,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
                             <div className="ppe-imgwrap" style={{ left: imgLeft, top: imgTop, width: dispW, height: dispH }}>
                                 <ReactCrop
                                     crop={crop}
-                                    onChange={() => {}}
+                                    onChange={() => { }}
                                     aspect={1}
                                     ruleOfThirds
                                     keepSelection
@@ -280,7 +281,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
                     <div className="ppe-midbtns">
                         <Tooltip title="Rotate (R)" placement="top">
                             <button className="ppe-action" onClick={handleRotate} aria-label="Rotate">
-                                <FontAwesomeIcon icon={faRotateLeft} />
+                                <FontAwesomeIcon icon={faRotateRight} />
                             </button>
                         </Tooltip>
                         <Tooltip title="Reset" placement="top">
@@ -293,7 +294,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
                         Save
                     </button>
                 </div>
-                    <div className="ppe-hint">Drag to move &bull; Scroll / pinch to zoom</div>
+                <div className="ppe-hint">Drag to move &bull; Scroll / pinch to zoom</div>
             </div>
         </Modal>
     );
