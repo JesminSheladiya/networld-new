@@ -9,7 +9,7 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
 
   useEffect(() => {
     if (!open) return;
-    api.relations().then((res) => setRelations(res.data)).catch(() => {});
+    api.relations().then((res) => setRelations(res.data)).catch(() => { });
     setEditValue(contact?.relation || "");
   }, [open, contact]);
 
@@ -35,6 +35,7 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
 
   return (
     <Modal
+      styles={{ header: { backgroundColor: "transparent" } }}
       className="contacts-modal"
       title="Edit Relation"
       open={open}
