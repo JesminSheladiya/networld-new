@@ -196,6 +196,33 @@
   border-radius: 3px;
 }
 
+/* Compact-list infinite-scroll footer (all compact widths incl. tablets) */
+.nw-list-sentinel {
+  height: 4px;
+}
+
+.nw-list-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 14px 12px calc(18px + env(safe-area-inset-bottom));
+  color: #64748b;
+  font-size: 13px;
+}
+
+.nw-list-end {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 14px 12px calc(18px + env(safe-area-inset-bottom));
+  color: #475569;
+  font-size: 12px;
+}
+
 .nw-list-row {
   display: flex;
   align-items: center;
@@ -226,17 +253,15 @@
   color: #f1f5f9;
   font-size: 14.5px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .nw-list-sub {
   color: #64748b;
   font-size: 12.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ── Desktop contacts table ── */
@@ -329,6 +354,8 @@
   border-bottom: 1px solid rgba(148, 163, 184, 0.07) !important;
   border-right: 1px solid rgba(148, 163, 184, 0.07) !important;
   background: transparent !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .nw-table .ant-table-thead>tr>th:last-child,
@@ -594,22 +621,6 @@
     font-size: 14px;
   }
 
-  /* Mobile infinite-scroll loader */
-  .nw-list-loader {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 16px 12px calc(20px + env(safe-area-inset-bottom));
-    color: #64748b;
-    font-size: 13px;
-  }
-  .nw-list-end {
-    text-align: center;
-    padding: 14px 12px calc(18px + env(safe-area-inset-bottom));
-    color: #475569;
-    font-size: 12px;
-  }
   /* Category dropdown (replaces chips below 400px) */
   .nw-category-select {
     width: 100%;

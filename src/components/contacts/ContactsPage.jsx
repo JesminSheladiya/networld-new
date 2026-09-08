@@ -532,17 +532,14 @@ function ContactsPage() {
               </button>
             ))}
           </div>
+          {hasMore && <div ref={loaderRef} className="nw-list-sentinel" aria-hidden="true" />}
           {loadingMore ? (
             <div className="nw-list-loader">
               <Spin size="small" />
               <span>Loading more contacts...</span>
             </div>
-          ) : hasMore ? (
-            <div ref={loaderRef} className="nw-list-loader">
-              <span>Scroll for more</span>
-            </div>
           ) : (
-            <div className="nw-list-end">No more contacts</div>
+            !hasMore && <div className="nw-list-end">No more contacts</div>
           )}
         </div>
       ) : (
@@ -558,7 +555,7 @@ function ContactsPage() {
           />
         </div>
       )}
-      {!loading && filtered.length > 0 && !isCompact && (
+      {!loading && !isCompact && totalItems > pageSize && (
         <div className="nw-table-pagination">
           <Pagination
             current={page + 1}
