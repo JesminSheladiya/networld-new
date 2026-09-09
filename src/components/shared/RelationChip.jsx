@@ -1,3 +1,5 @@
+import { useRelationDisplay } from "../../context/RelationDisplayContext";
+
 export const relationTone = (relation) => {
   const r = (relation || "").toLowerCase();
   if (r.includes("brother") || r.includes("sister")) return { color: "#60a5fa", bg: "rgba(96,165,250,0.1)", border: "rgba(96,165,250,0.25)" };
@@ -11,9 +13,10 @@ export const relationTone = (relation) => {
 };
 
 export default function RelationChip({ relation, style }) {
+  const { relName } = useRelationDisplay();
   if (!relation) return <span className="nw-rel-empty">—</span>;
   const raw = typeof relation === "string" ? relation : relation.relationName || relation || `Relation ${relation.id}`;
-  const label = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+  const label = relName(raw);
   const tone = relationTone(raw);
   return (
     <span

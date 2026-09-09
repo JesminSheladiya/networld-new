@@ -5,6 +5,7 @@ import { faLightbulb, faPenToSquare } from "@fortawesome/free-regular-svg-icons"
 import { faArrowRight, faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
+import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
 
 const AV_COLORS = ["#3b82f6", "#38bdf8", "#0ea5e9", "#10b981", "#f59e0b"];
@@ -16,6 +17,7 @@ function SuggestionsPage() {
   const [editingEmail, setEditingEmail] = useState(null);
   const [editValue, setEditValue] = useState("");
   const { bump, key: refreshKey, setSuggestionsCount } = useRefresh();
+  const { relName } = useRelationDisplay();
 
   const fetchSuggestions = useCallback(async () => {
     setLoading(true);
@@ -127,7 +129,7 @@ function SuggestionsPage() {
                         placeholder="Relation"
                         value={editValue}
                         onChange={(val) => setEditValue(val)}
-                        options={relations.map((r) => ({ value: r.relationName, label: r.relationName }))}
+                        options={relations.map((r) => ({ value: r.relationName, label: relName(r.relationName) }))}
                       />
                       <div className="nw-req-actions">
                         <button className="nw-act-btn nw-act-accept" title="Save" onClick={() => saveEdit(s.suggestedUserEmail)}>
