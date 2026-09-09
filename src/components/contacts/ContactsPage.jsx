@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Input, Spin, Avatar, Empty, Table, Button, Tooltip, Pagination, Modal, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
@@ -30,7 +30,18 @@ const CATEGORIES = [
 
 function ContactsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { key: refreshKey, bump } = useRefresh();
+
+  // Coming from Requests accept → open the tab where the contact landed
+  useEffect(() => {
+    const c = location.state?.category;
+    if (c) {
+      setSelectedRelations([]);
+      setCategory(c);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
   const [isNarrow, setIsNarrow] = useState(() => window.matchMedia("(max-width: 399px)").matches);

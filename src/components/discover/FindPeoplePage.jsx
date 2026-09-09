@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Input, Spin, Empty } from "antd";
+import { Input, Spin, Empty, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faArrowRight, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faArrowRight, faUsers, faXmark, faPaperPlane, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
@@ -119,22 +119,23 @@ function FindPeoplePage() {
                         onClick={() => setPickerEmail(u.email)}
                         title={(() => {
                           const found = relations.find((r) => r.id === relMap[u.email]);
-                          return found ? relName(found.relationName) : "Select relation";
+                          return found ? relName(found.relationName) : "Select Relation";
                         })()}
                       >
                         {(() => {
                           const found = relations.find((r) => r.id === relMap[u.email]);
-                          return found ? relName(found.relationName) : "Relation";
+                          return found ? relName(found.relationName) : <><FontAwesomeIcon icon={faPlus} style={{ fontSize: '10px' }} /> Select Relation</>;
                         })()}
                       </button>
-                      <button
-                        className="nw-send-btn"
-                        disabled={sendingMap[u.email] || !relMap[u.email]}
-                        onClick={() => sendRequest(u.email)}
-                        title="Send request"
-                      >
-                        <FontAwesomeIcon icon={faArrowRight} />
-                      </button>
+                      <Tooltip title="Send Request">
+                        <button
+                          className="nw-send-btn"
+                          disabled={sendingMap[u.email] || !relMap[u.email]}
+                          onClick={() => sendRequest(u.email)}
+                        >
+                          <FontAwesomeIcon icon={faPaperPlane} />
+                        </button>
+                      </Tooltip>
                     </>
                   )}
                 </div>
