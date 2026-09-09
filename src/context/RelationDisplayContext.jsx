@@ -16,6 +16,7 @@ export function RelationDisplayProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const [format, setFormatState] = useState(() => localStorage.getItem(STORAGE_KEY));
   const [master, setMaster] = useState({});
+  const [masterLower, setMasterLower] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
 
   // Logout clears the choice so the popup shows again on next login
@@ -31,10 +32,13 @@ export function RelationDisplayProvider({ children }) {
     api.relations()
       .then((res) => {
         const map = {};
+        const lower = {};
         for (const r of res.data || []) {
           map[r.relationName] = r;
+          lower[(r.relationName || "").toLowerCase()] = r;
         }
         setMaster(map);
+        setMasterLower(lower);
       })
       .catch(() => {});
   }, [isAuthenticated]);
@@ -46,10 +50,10 @@ export function RelationDisplayProvider({ children }) {
 
   const relName = useCallback((name) => {
     if (!name) return name;
-    const row = master[name];
+    const row = master[name] || masterLower[(name || "").toLowerCase()];
     const field = FIELD_BY_FORMAT[format || 'english'];
     return row?.[field] || name;
-  }, [master, format]);
+  }, [master, masterLower, format]);
 
   const openPicker = useCallback(() => setPickerOpen(true), []);
   const closePicker = useCallback(() => setPickerOpen(false), []);

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { Spin, Button } from "antd";
+import { useNavigate } from "react-router-dom";
+import { Spin, Button, Tooltip, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBell } from "@fortawesome/free-regular-svg-icons";
 import { faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
@@ -11,9 +12,24 @@ import RelationChip from "../shared/RelationChip";
 const AV_COLORS = ["#3b82f6", "#38bdf8", "#0ea5e9", "#10b981", "#f59e0b"];
 
 function RequestsPage() {
+  const navigate = useNavigate();
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(false);
   const { bump, key: refreshKey, setPendingCount } = useRefresh();
+
+  // Mirror of backend grouping: decides which contacts tab the new contact lands in
+  const categoryOfRelation = (name) => {
+    const r = (name || "").toLowerCase();
+    if (r.includes("in-law")) return "inlaws";
+    if (r.includes("cousin")) return "others";
+    if (r.includes("'s")) return "family";
+    const keys = ["father", "mother", "brother", "sister", "son", "daughter",
+      "husband", "wife", "grand", "uncle", "aunt", "nephew", "niece"];
+    if (keys.some((k) => r.includes(k))) return "family";
+    return "others";
+  };
+  const categoryLabel = (key) =>
+    key === "inlaws" ? "In-Laws" : key === "family" ? "Family" : key === "others" ? "Others" : "All";
 
   const fetchPending = useCallback(async () => {
     setLoading(true);
@@ -35,10 +51,15 @@ function RequestsPage() {
   }, [refreshKey, fetchPending]);
 
   const accept = async (id) => {
+    const item = pending.find((x) => x.pendingRelationId === id);
     try {
       await api.accept(id);
+      const inv = getInverseRelation(item?.inferredRelation, item?.suggestedUserGender) || "";
+      const cat = categoryOfRelation(inv);
       fetchPending();
       bump();
+      message.success(`Accepted — added to ${categoryLabel(cat)}`);
+      navigate("/contacts", { state: { category: cat } });
     } catch {
       // silent
     }
@@ -98,12 +119,16 @@ function RequestsPage() {
                   <div className="nw-req-right">
                     <RelationChip relation={rel} style={{ fontSize: 11 }} />
                     <div className="nw-req-actions">
-                      <button className="nw-act-btn nw-act-accept" title="Accept" onClick={() => accept(p.pendingRelationId)}>
-                        <FontAwesomeIcon icon={faCheck} />
-                      </button>
-                      <button className="nw-act-btn nw-act-decline" title="Decline" onClick={() => decline(p.pendingRelationId)}>
-                        <FontAwesomeIcon icon={faXmark} />
-                      </button>
+                      <Tooltip title="Accept">
+                        <button className="nw-act-btn nw-act-accept" onClick={() => accept(p.pendingRelationId)}>
+                          <FontAwesomeIcon icon={faCheck} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip title="Decline">
+                        <button className="nw-act-btn nw-act-decline" onClick={() => decline(p.pendingRelationId)}>
+                          <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
                 </div>

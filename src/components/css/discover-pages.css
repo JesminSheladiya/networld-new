@@ -209,17 +209,35 @@
   min-width: 150px;
 }
 
+/* Relation picker button (opens full modal instead of cut-off inline select) */
+.nw-relation-pick-btn {
+  padding: 8px 15px;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  border-radius: 8px;
+  background: rgba(15, 26, 49, 0.6);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgb(255 255 255 / 10%);
+  transition: border-color 0.2s;
+}
+
+.nw-relation-pick-btn:hover {
+  border-color: rgba(59, 130, 246, 0.7);
+}
+
 .nw-send-btn {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 10px;
   border: none;
   cursor: pointer;
   color: #fff;
   background: linear-gradient(135deg, #3b82f6, #2563eb);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   transition: transform 0.2s, box-shadow 0.2s;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
 }
@@ -270,6 +288,23 @@
   flex-shrink: 0;
 }
 
+.nw-rel-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.nw-edited-tag {
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  color: #9c9c9c;
+  white-space: nowrap;
+  font-style: italic;
+  pointer-events: none;
+  user-select: none;
+}
+
 .nw-req-actions {
   display: flex;
   align-items: center;
@@ -277,8 +312,8 @@
 }
 
 .nw-act-btn {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 10px;
   border: 1px solid;
   cursor: pointer;
@@ -342,7 +377,7 @@
   border-radius: 10px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 450px) {
   .nw-discover-panel {
     padding: 6px 8px;
   }

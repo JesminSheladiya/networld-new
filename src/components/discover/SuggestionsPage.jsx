@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
-import { Spin, Button, Select, Tooltip } from "antd";
+import { Spin, Button, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLightbulb, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
-import { faArrowRight, faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faCheck, faXmark, faRotateRight, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
+import RelationPickerModal from "../shared/RelationPickerModal";
 import RelationChip from "../shared/RelationChip";
 
 const AV_COLORS = ["#3b82f6", "#38bdf8", "#0ea5e9", "#10b981", "#f59e0b"];
@@ -16,6 +17,8 @@ function SuggestionsPage() {
   const [relations, setRelations] = useState([]);
   const [editingEmail, setEditingEmail] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [editedEmails, setEditedEmails] = useState([]);
   const { bump, key: refreshKey, setSuggestionsCount } = useRefresh();
   const { relName } = useRelationDisplay();
 
@@ -26,6 +29,7 @@ function SuggestionsPage() {
       const data = res.data || [];
       setSuggestions(data);
       setSuggestionsCount(data.length);
+      setEditedEmails([]);
     } catch {
       setSuggestions([]);
       setSuggestionsCount(0);
@@ -66,6 +70,7 @@ function SuggestionsPage() {
   const startEdit = (s) => {
     setEditingEmail(s.suggestedUserEmail);
     setEditValue(s.inferredRelation || "");
+    setPickerOpen(true);
   };
 
   const saveEdit = (email) => {
@@ -74,6 +79,7 @@ function SuggestionsPage() {
     setSuggestions((prev) =>
       prev.map((x) => (x.suggestedUserEmail === email ? { ...x, inferredRelation: finalRel } : x))
     );
+    setEditedEmails((prev) => (prev.includes(email) ? prev : [...prev, email]));
     setEditingEmail(null);
   };
 
@@ -123,34 +129,42 @@ function SuggestionsPage() {
 
                   {editingEmail === s.suggestedUserEmail ? (
                     <div className="nw-edit-inline">
-                      <Select
-                        className="nw-relation-select"
-                        size="small"
-                        placeholder="Relation"
-                        value={editValue}
-                        onChange={(val) => setEditValue(val)}
-                        options={relations.map((r) => ({ value: r.relationName, label: relName(r.relationName) }))}
-                      />
+                      <button
+                        className="nw-relation-pick-btn"
+                        onClick={() => setPickerOpen(true)}
+                        title={editValue ? relName(editValue) : "Select relation"}
+                      >
+                        {editValue ? relName(editValue) : "Relation"}
+                      </button>
                       <div className="nw-req-actions">
                         <button className="nw-act-btn nw-act-accept" title="Save" onClick={() => saveEdit(s.suggestedUserEmail)}>
                           <FontAwesomeIcon icon={faCheck} />
                         </button>
-                        <button className="nw-act-btn nw-act-decline" title="Cancel" onClick={() => setEditingEmail(null)}>
+                        <button className="nw-act-btn nw-act-decline" title="Cancel" onClick={() => { setEditingEmail(null); setPickerOpen(false); }}>
                           <FontAwesomeIcon icon={faXmark} />
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="nw-req-right">
-                      <RelationChip relation={rel} style={{ fontSize: 11 }} />
+                      <span className="nw-rel-row">
+                        <RelationChip relation={rel} style={{ fontSize: 11 }} />
+                        {editedEmails.includes(s.suggestedUserEmail) && (
+                          <span className="nw-edited-tag">Edited</span>
+                        )}
+                      </span>
                       <div className="nw-req-actions">
                         <Tooltip title="Edit Relation">
                           <Button size="small" type="text" icon={<FontAwesomeIcon icon={faPenToSquare} style={{ color: "#64748b", fontSize: 14 }} />} onClick={() => startEdit(s)} style={{ padding: 0, width: 30, height: 30 }} />
                         </Tooltip>
-                        <button className="nw-act-btn nw-act-send" title="Send Request" onClick={() => sendRequest(s)}>
-                          <FontAwesomeIcon icon={faArrowRight} />
-                        </button>
-                        <button className="nw-act-btn nw-act-dismiss" title="Dismiss" onClick={() => dismiss(s)}><FontAwesomeIcon icon={faXmark} /></button>
+                        <Tooltip title="Send Request">
+                          <button className="nw-act-btn nw-act-send" onClick={() => sendRequest(s)}>
+                            <FontAwesomeIcon icon={faPaperPlane} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip title="Dismiss">
+                          <button className="nw-act-btn nw-act-dismiss" onClick={() => dismiss(s)}><FontAwesomeIcon icon={faXmark} /></button>
+                        </Tooltip>
                       </div>
                     </div>
                   )}
@@ -160,6 +174,15 @@ function SuggestionsPage() {
           </div>
         )}
       </div>
+
+      <RelationPickerModal
+        open={pickerOpen}
+        title="Edit Relation"
+        personName={suggestions.find((x) => x.suggestedUserEmail === editingEmail)?.suggestedUserName}
+        value={editValue || undefined}
+        onClose={() => setPickerOpen(false)}
+        onPick={(v) => setEditValue(v)}
+      />
     </div>
   );
 }
