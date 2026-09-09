@@ -54,11 +54,8 @@ function ContactsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [mobileQ, setMobileQ] = useState("");
 
-  // Show only tabs that actually have contacts (All always stays)
-  const visibleCategories = useMemo(
-    () => CATEGORIES.filter((c) => c.key === "all" || (counts[c.key] ?? 0) > 0),
-    [counts]
-  );
+  // All tabs always visible (with counts)
+  const visibleCategories = CATEGORIES;
 
   useEffect(() => {
     if (isNarrow) return;
@@ -159,7 +156,6 @@ function ContactsPage() {
   }, [page]);
 
   // Server counts for tabs/dropdown + relation options for filters
-  const [countsLoaded, setCountsLoaded] = useState(false);
   useEffect(() => {
     const handler = setTimeout(async () => {
       try {
@@ -177,20 +173,10 @@ function ContactsPage() {
       } catch {
         setCounts({ all: 0, family: 0, inlaws: 0, others: 0 });
         setRelationOptions([]);
-      } finally {
-        setCountsLoaded(true);
       }
     }, 350);
     return () => clearTimeout(handler);
   }, [searchText, refreshKey]);
-
-  // If the selected tab becomes empty (e.g. after an edit), fall back to All
-  useEffect(() => {
-    if (countsLoaded && counts.all > 0 && category !== "all" && (counts[category] ?? 0) === 0) {
-      setSelectedRelations([]);
-      setCategory("all");
-    }
-  }, [counts, countsLoaded, category]);
 
   // Switching tabs starts a fresh filter context (stale relation sub-filter
   // would otherwise combine with the new tab and show confusing results)

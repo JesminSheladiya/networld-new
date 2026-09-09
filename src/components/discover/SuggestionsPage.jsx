@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
-import { Spin, Button, Select, Tooltip } from "antd";
+import { Spin, Button, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLightbulb, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 import { faArrowRight, faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
+import RelationPickerModal from "../shared/RelationPickerModal";
 import RelationChip from "../shared/RelationChip";
 
 const AV_COLORS = ["#3b82f6", "#38bdf8", "#0ea5e9", "#10b981", "#f59e0b"];
@@ -16,6 +17,7 @@ function SuggestionsPage() {
   const [relations, setRelations] = useState([]);
   const [editingEmail, setEditingEmail] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const { bump, key: refreshKey, setSuggestionsCount } = useRefresh();
   const { relName } = useRelationDisplay();
 
@@ -123,14 +125,13 @@ function SuggestionsPage() {
 
                   {editingEmail === s.suggestedUserEmail ? (
                     <div className="nw-edit-inline">
-                      <Select
-                        className="nw-relation-select"
-                        size="small"
-                        placeholder="Relation"
-                        value={editValue}
-                        onChange={(val) => setEditValue(val)}
-                        options={relations.map((r) => ({ value: r.relationName, label: relName(r.relationName) }))}
-                      />
+                      <button
+                        className="nw-relation-pick-btn"
+                        onClick={() => setPickerOpen(true)}
+                        title={editValue ? relName(editValue) : "Select relation"}
+                      >
+                        {editValue ? relName(editValue) : "Relation"}
+                      </button>
                       <div className="nw-req-actions">
                         <button className="nw-act-btn nw-act-accept" title="Save" onClick={() => saveEdit(s.suggestedUserEmail)}>
                           <FontAwesomeIcon icon={faCheck} />
@@ -160,6 +161,15 @@ function SuggestionsPage() {
           </div>
         )}
       </div>
+
+      <RelationPickerModal
+        open={pickerOpen}
+        title="Edit Relation"
+        personName={suggestions.find((x) => x.suggestedUserEmail === editingEmail)?.suggestedUserName}
+        value={editValue || undefined}
+        onClose={() => setPickerOpen(false)}
+        onPick={(v) => setEditValue(v)}
+      />
     </div>
   );
 }

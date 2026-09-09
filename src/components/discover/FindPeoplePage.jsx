@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Input, Spin, Select, Empty } from "antd";
+import { Input, Spin, Empty } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass, faArrowRight, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
+import RelationPickerModal from "../shared/RelationPickerModal";
 
 function FindPeoplePage() {
   const [query, setQuery] = useState("");
@@ -14,8 +15,13 @@ function FindPeoplePage() {
   const [relMap, setRelMap] = useState({});
   const [sendingMap, setSendingMap] = useState({});
   const [sentMap, setSentMap] = useState({});
+  const [pickerEmail, setPickerEmail] = useState(null);
   const { bump } = useRefresh();
   const { relName } = useRelationDisplay();
+
+  const pickerUser = pickerEmail
+    ? results.find((x) => x.email === pickerEmail)
+    : null;
 
   useEffect(() => {
     api.relations().then((res) => setRelations(res.data || [])).catch(() => setRelations([]));
@@ -108,19 +114,19 @@ function FindPeoplePage() {
                     <span className="nw-find-chip-sent">✓ Sent</span>
                   ) : (
                     <>
-                      <Select
-                        className="nw-relation-select"
-                        size="small"
-                        placeholder="Relation"
-                        value={relMap[u.email] || undefined}
-                        onChange={(v) => setRelMap((p) => ({ ...p, [u.email]: v }))}
+                      <button
+                        className="nw-relation-pick-btn"
+                        onClick={() => setPickerEmail(u.email)}
+                        title={(() => {
+                          const found = relations.find((r) => r.id === relMap[u.email]);
+                          return found ? relName(found.relationName) : "Select relation";
+                        })()}
                       >
-                        {relations.map((r) => (
-                          <Select.Option key={r.id} value={r.id}>
-                            {relName(r.relationName)}
-                          </Select.Option>
-                        ))}
-                      </Select>
+                        {(() => {
+                          const found = relations.find((r) => r.id === relMap[u.email]);
+                          return found ? relName(found.relationName) : "Relation";
+                        })()}
+                      </button>
                       <button
                         className="nw-send-btn"
                         disabled={sendingMap[u.email] || !relMap[u.email]}
@@ -137,6 +143,20 @@ function FindPeoplePage() {
           </div>
         )}
       </div>
+
+      <RelationPickerModal
+        open={pickerEmail !== null}
+        title="Select Relation"
+        personName={pickerUser?.name}
+        value={pickerEmail ? relMap[pickerEmail] : undefined}
+        idMode
+        onClose={() => setPickerEmail(null)}
+        onPick={(v) => {
+          const email = pickerEmail;
+          setPickerEmail(null);
+          if (email) setRelMap((p) => ({ ...p, [email]: v }));
+        }}
+      />
     </div>
   );
 }
