@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Modal, Select, message } from "antd";
 import { api } from "../../Services/networld";
+import { useRelationDisplay } from "../../context/RelationDisplayContext";
 
 function EditRelationModal({ contact, open, onClose, onSaved }) {
+  const { relName } = useRelationDisplay();
   const [relations, setRelations] = useState([]);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -54,7 +56,7 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
           style={{ width: "100%" }}
           value={editValue}
           onChange={(val) => setEditValue(val)}
-          options={relations.map((r) => ({ value: r.relationName, label: r.relationName }))}
+          options={relations.map((r) => ({ value: r.relationName, label: relName(r.relationName) }))}
         />
       </div>
     </Modal>

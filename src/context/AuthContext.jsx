@@ -27,6 +27,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     authLogout();
+    localStorage.removeItem("nw-relation-format");
     setIsAuthenticated(false);
     setUser({});
     if (pollIntervalRef.current) {

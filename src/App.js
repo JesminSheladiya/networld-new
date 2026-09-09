@@ -9,6 +9,8 @@ import { networldTheme } from './theme';
 import Login from './components/Login';
 import Register from './components/Register';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { RelationDisplayProvider } from './context/RelationDisplayContext';
+import RelationFormatPopup from './components/shared/RelationFormatPopup';
 
 const AppShell = lazy(() => import('./components/shared/AppShell'));
 const ContactsPage = lazy(() => import('./components/contacts/ContactsPage'));
@@ -76,11 +78,14 @@ function App() {
   return (
     <ConfigProvider theme={networldTheme}>
       <AuthProvider>
-        <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <AppRoutes />
-          </Suspense>
-        </BrowserRouter>
+        <RelationDisplayProvider>
+          <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
+              <AppRoutes />
+            </Suspense>
+          </BrowserRouter>
+          <RelationFormatPopup />
+        </RelationDisplayProvider>
       </AuthProvider>
     </ConfigProvider>
   );

@@ -3,8 +3,9 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Dropdown, Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBell, faLightbulb, faCircleUser } from "@fortawesome/free-regular-svg-icons";
-import { faUsers, faMagnifyingGlass, faArrowRightFromBracket } from "@fortawesome/free-solid-svg-icons";
+import { faUsers, faMagnifyingGlass, faArrowRightFromBracket, faLanguage } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "../../context/AuthContext";
+import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import { api } from "../../Services/networld";
 import { RefreshProvider, useRefresh } from "./RefreshContext";
 import UserProfile from "../UserProfile";
@@ -65,6 +66,7 @@ function buildConvexBarPath(w, h, rawCx) {
 function ProfileMenu() {
   const navigate = useNavigate();
   const { user, logout: authLogout, updateUser, broadcastUserUpdate, broadcastLogout } = useAuth();
+  const { openPicker } = useRelationDisplay();
   const [profileOpen, setProfileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { bump } = useRefresh();
@@ -127,6 +129,10 @@ function ProfileMenu() {
                     <button className="nw-profile-action" onClick={() => { setProfileOpen(true); closeDropdown(); }}>
                       <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faCircleUser} /></span>
                       <span>Profile Settings</span>
+                    </button>
+                    <button className="nw-profile-action" onClick={() => { openPicker(); closeDropdown(); }}>
+                      <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faLanguage} /></span>
+                      <span>Relation Display</span>
                     </button>
                   </div>
                   <div className="nw-profile-divider" />

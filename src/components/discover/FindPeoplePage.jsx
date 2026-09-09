@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass, faArrowRight, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
+import { useRelationDisplay } from "../../context/RelationDisplayContext";
 
 function FindPeoplePage() {
   const [query, setQuery] = useState("");
@@ -14,6 +15,7 @@ function FindPeoplePage() {
   const [sendingMap, setSendingMap] = useState({});
   const [sentMap, setSentMap] = useState({});
   const { bump } = useRefresh();
+  const { relName } = useRelationDisplay();
 
   useEffect(() => {
     api.relations().then((res) => setRelations(res.data || [])).catch(() => setRelations([]));
@@ -99,7 +101,7 @@ function FindPeoplePage() {
                 </div>
                 <div className="nw-find-actions">
                   {u.relationName ? (
-                    <span className="nw-find-chip-connected">{u.relationName}</span>
+                    <span className="nw-find-chip-connected">{relName(u.relationName)}</span>
                   ) : u.pending === "received" ? (
                     <span className="nw-find-chip-received">Request Received</span>
                   ) : u.pending === "sent" || sentMap[u.email] ? (
@@ -115,7 +117,7 @@ function FindPeoplePage() {
                       >
                         {relations.map((r) => (
                           <Select.Option key={r.id} value={r.id}>
-                            {r.relationName.charAt(0).toUpperCase() + r.relationName.slice(1).toLowerCase()}
+                            {relName(r.relationName)}
                           </Select.Option>
                         ))}
                       </Select>
