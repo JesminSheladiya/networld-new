@@ -149,13 +149,13 @@ public class UserRelationService {
     // with UserRelationRepository pageFilteredConnections queries).
     // family  = main relations (parents, siblings, spouse, grandparents,
     //           grandchildren, uncles/aunts, nephews/nieces, elder/younger siblings,
-    //           cousins (paternal/maternal), great grandparents/children)
+    //           cousins (paternal/maternal))
     // inlaws  = *-in-law relations
     // others  = friend + anything else
     private static final List<String> FAMILY_KEYWORDS = List.of(
             "father", "mother", "brother", "sister", "son", "daughter",
             "husband", "wife", "grand", "uncle", "aunt", "nephew", "niece",
-            "elder", "younger", "cousin", "paternal", "maternal", "great");
+            "elder", "younger", "cousin", "paternal", "maternal");
 
     static String categoryOf(String relationName) {
         String r = relationName == null ? "" : relationName.toLowerCase();

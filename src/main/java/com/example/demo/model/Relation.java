@@ -13,6 +13,15 @@ public class Relation {
     @Column(name = "relation_name", nullable = false, unique = true)
     private String relationName;
 
+    @Column(name = "english_relation", length = 255)
+    private String englishRelation;
+
+    @Column(name = "indian_relation", length = 255)
+    private String indianRelation;
+
+    @Column(name = "generic_relation", length = 255)
+    private String genericRelation;
+
     @Column(name = "generation_level", nullable = false)
     private Integer generationLevel = 0;
 
@@ -44,6 +53,15 @@ public class Relation {
     public void setRelationName(String relationName) {
         this.relationName = relationName;
     }
+
+    public String getEnglishRelation() { return englishRelation; }
+    public void setEnglishRelation(String englishRelation) { this.englishRelation = englishRelation; }
+
+    public String getIndianRelation() { return indianRelation; }
+    public void setIndianRelation(String indianRelation) { this.indianRelation = indianRelation; }
+
+    public String getGenericRelation() { return genericRelation; }
+    public void setGenericRelation(String genericRelation) { this.genericRelation = genericRelation; }
 
     public Integer getGenerationLevel() { return generationLevel; }
     public void setGenerationLevel(Integer generationLevel) {

@@ -27,12 +27,18 @@ public class RelationService {
         this.inferenceRuleRepository = inferenceRuleRepository;
     }
 
-    // Selection lists only: plain "Cousin" is excluded because gender-specific
-    // "Cousin Brother" / "Cousin Sister" cover it. Kept as a guard even though
-    // the master row was removed.
+    // Selection lists only: generic duplicates are hidden because specific
+    // variants cover them (Grandfather -> Paternal Grandfather,
+    // Brother -> Elder/Younger Brother, Uncle -> Paternal/Maternal Uncle,
+    // Nephew -> Brother's/Sister's Son, etc.). Rows stay in the DB because
+    // the suggestion engine outputs these exact generic names.
+    private static final java.util.Set<String> HIDDEN_FROM_SELECTION = java.util.Set.of(
+            "cousin", "grandfather", "grandmother", "brother", "sister",
+            "uncle", "aunt", "nephew", "niece");
+
     public List<Relation> getAll() {
         return relationRepository.findAll().stream()
-                .filter(r -> !"cousin".equalsIgnoreCase(r.getRelationName()))
+                .filter(r -> !HIDDEN_FROM_SELECTION.contains(r.getRelationName().toLowerCase()))
                 .collect(java.util.stream.Collectors.toList());
     }
 

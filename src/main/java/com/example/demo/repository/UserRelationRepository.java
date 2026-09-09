@@ -102,7 +102,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
               OR LOWER(r.relationName) LIKE '%niece%'    OR LOWER(r.relationName) LIKE '%elder%'
               OR LOWER(r.relationName) LIKE '%younger%'  OR LOWER(r.relationName) LIKE '%cousin%'
               OR LOWER(r.relationName) LIKE '%paternal%' OR LOWER(r.relationName) LIKE '%maternal%'
-              OR LOWER(r.relationName) LIKE '%great%'    OR LOWER(r.relationName) LIKE '%''s%'))
+              OR LOWER(r.relationName) LIKE '%''s%'))
             OR (:category = 'others' AND LOWER(r.relationName) NOT LIKE '%in-law%' AND (
                  LOWER(r.relationName) LIKE '%friend%'
               OR (LOWER(r.relationName) NOT LIKE '%father%'   AND LOWER(r.relationName) NOT LIKE '%mother%'
@@ -114,7 +114,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
               AND LOWER(r.relationName) NOT LIKE '%niece%'    AND LOWER(r.relationName) NOT LIKE '%elder%'
               AND LOWER(r.relationName) NOT LIKE '%younger%'  AND LOWER(r.relationName) NOT LIKE '%cousin%'
               AND LOWER(r.relationName) NOT LIKE '%paternal%' AND LOWER(r.relationName) NOT LIKE '%maternal%'
-              AND LOWER(r.relationName) NOT LIKE '%great%'    AND LOWER(r.relationName) NOT LIKE '%''s%'))))
+              AND LOWER(r.relationName) NOT LIKE '%''s%'))))
     """)
     Page<UserRelation> pageFilteredConnections(
             @Param("fromUser") User fromUser,
@@ -146,7 +146,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
               OR LOWER(r.relationName) LIKE '%niece%'    OR LOWER(r.relationName) LIKE '%elder%'
               OR LOWER(r.relationName) LIKE '%younger%'  OR LOWER(r.relationName) LIKE '%cousin%'
               OR LOWER(r.relationName) LIKE '%paternal%' OR LOWER(r.relationName) LIKE '%maternal%'
-              OR LOWER(r.relationName) LIKE '%great%'    OR LOWER(r.relationName) LIKE '%''s%'))
+              OR LOWER(r.relationName) LIKE '%''s%'))
             OR (:category = 'others' AND LOWER(r.relationName) NOT LIKE '%in-law%' AND (
                  LOWER(r.relationName) LIKE '%friend%'
               OR (LOWER(r.relationName) NOT LIKE '%father%'   AND LOWER(r.relationName) NOT LIKE '%mother%'
@@ -158,7 +158,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
               AND LOWER(r.relationName) NOT LIKE '%niece%'    AND LOWER(r.relationName) NOT LIKE '%elder%'
               AND LOWER(r.relationName) NOT LIKE '%younger%'  AND LOWER(r.relationName) NOT LIKE '%cousin%'
               AND LOWER(r.relationName) NOT LIKE '%paternal%' AND LOWER(r.relationName) NOT LIKE '%maternal%'
-              AND LOWER(r.relationName) NOT LIKE '%great%'    AND LOWER(r.relationName) NOT LIKE '%''s%'))))
+              AND LOWER(r.relationName) NOT LIKE '%''s%'))))
           AND r.relationName IN :relations
     """)
     Page<UserRelation> pageFilteredConnectionsByRelations(

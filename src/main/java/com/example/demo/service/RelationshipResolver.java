@@ -165,8 +165,6 @@ public class RelationshipResolver {
         if (v == 1 && maxV >= 2) return m ? "Uncle" : "Aunt";
         if (v == -1 && maxV >= 1) return m ? "Nephew" : "Niece";
         if (v == 0 && maxV >= 2) return m ? "Cousin Brother" : "Cousin Sister";
-        if (v > 2 && maxV == v) return m ? "Grandfather" : "Grandmother";
-        if (v < -2 && maxV == 0) return m ? "Grandson" : "Granddaughter";
         
         return null;
     }
