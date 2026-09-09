@@ -7,6 +7,7 @@ import { faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-ico
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { getInverseRelation } from "../UserProfile";
+import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
 
 const AV_COLORS = ["#3b82f6", "#38bdf8", "#0ea5e9", "#10b981", "#f59e0b"];
@@ -16,6 +17,16 @@ function RequestsPage() {
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(false);
   const { bump, key: refreshKey, setPendingCount } = useRefresh();
+  const { relName } = useRelationDisplay();
+
+  // "X wants to add you as their <Relation>" → relation in chosen language
+  const formatReason = (reason) => {
+    if (!reason) return reason;
+    const marker = " as their ";
+    const idx = reason.lastIndexOf(marker);
+    if (idx === -1) return reason;
+    return reason.slice(0, idx + marker.length) + relName(reason.slice(idx + marker.length).trim());
+  };
 
   // Mirror of backend grouping: decides which contacts tab the new contact lands in
   const categoryOfRelation = (name) => {
@@ -113,7 +124,7 @@ function RequestsPage() {
                     <div className="nw-find-info">
                       <div className="nw-find-name">{p.suggestedUserName}</div>
                       <div className="nw-find-email">{p.suggestedUserEmail}</div>
-                      <div className="nw-find-reason">{p.reason}</div>
+                      <div className="nw-find-reason">{formatReason(p.reason)}</div>
                     </div>
                   </div>
                   <div className="nw-req-right">
