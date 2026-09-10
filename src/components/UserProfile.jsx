@@ -9,39 +9,126 @@ import ProfilePictureViewer from "./ProfilePictureViewer";
 import ProfilePictureEditor from "./ProfilePictureEditor";
 import "./css/Auth.css";
 
-// Helper to convert a relation to its inverse (e.g., father ↔ son)
+// Helper to convert a relation to its inverse (e.g., father ↔ son).
+// `rel` = how the recipient relates to the sender; `gender` = sender's gender.
+// Returns how the sender relates to the recipient (viewer perspective).
+// Covers every master relation; unknown names pass through unchanged.
 // Used by RequestsPage — do not remove.
 export function getInverseRelation(rel, gender = "M") {
     if (!rel) return rel;
+    const F = gender === "F";
+    const sonDaughter = F ? "daughter" : "son";
+    const fatherMother = F ? "mother" : "father";
+    const brotherSister = F ? "sister" : "brother";
+    const uncleAunt = F ? "aunt" : "uncle";
+    const nephewNiece = F ? "niece" : "nephew";
+    const grandsonGd = F ? "granddaughter" : "grandson";
+    const grandfatherGd = F ? "grandmother" : "grandfather";
+    const husbandWife = F ? "wife" : "husband";
+    const silDil = F ? "daughter-in-law" : "son-in-law";
+    const filMil = F ? "mother-in-law" : "father-in-law";
+    const bilSil = F ? "sister-in-law" : "brother-in-law";
+    const cousinB = F ? "cousin sister" : "cousin brother";
     const map = {
-        "husband": "wife",
-        "wife": "husband",
-        "father": gender === "F" ? "daughter" : "son",
-        "mother": gender === "F" ? "daughter" : "son",
-        "son": gender === "F" ? "mother" : "father",
-        "daughter": gender === "F" ? "mother" : "father",
-        "father-in-law": gender === "F" ? "daughter-in-law" : "son-in-law",
-        "mother-in-law": gender === "F" ? "daughter-in-law" : "son-in-law",
-        "son-in-law": "father-in-law",
-        "daughter-in-law": "father-in-law",
-        "brother-in-law": "sister-in-law",
-        "sister-in-law": "brother-in-law",
-        "brother": "brother",
-        "sister": "sister",
-        "uncle": gender === "F" ? "niece" : "nephew",
-        "aunt": gender === "F" ? "niece" : "nephew",
-        "nephew": gender === "F" ? "aunt" : "uncle",
-        "niece": gender === "F" ? "aunt" : "uncle",
-        "grandfather": gender === "F" ? "granddaughter" : "grandson",
-        "grandmother": gender === "F" ? "granddaughter" : "grandson",
-        "grandson": gender === "F" ? "grandmother" : "grandfather",
-        "granddaughter": gender === "F" ? "grandmother" : "grandfather",
-        "cousin brother": "cousin sister",
-        "cousin sister": "cousin brother",
-        "cousin": "cousin",
+        // spouse
+        "husband": husbandWife,
+        "wife": husbandWife,
+        // parents / children
+        "father": sonDaughter,
+        "mother": sonDaughter,
+        "son": fatherMother,
+        "daughter": fatherMother,
+        // grandparents / grandchildren (incl. paternal/maternal variants)
+        "grandfather": grandsonGd,
+        "grandmother": grandsonGd,
+        "paternal grandfather": grandsonGd,
+        "paternal grandmother": grandsonGd,
+        "maternal grandfather": F ? "Daughter's Daughter" : "Daughter's Son",
+        "maternal grandmother": F ? "Daughter's Daughter" : "Daughter's Son",
+        "grandson": grandfatherGd,
+        "granddaughter": grandfatherGd,
+        "daughters son": grandfatherGd,
+        "daughters daughter": grandfatherGd,
+        // siblings
+        "brother": brotherSister,
+        "sister": brotherSister,
+        "elder brother": brotherSister,
+        "elder sister": brotherSister,
+        "younger brother": brotherSister,
+        "younger sister": brotherSister,
+        // uncles / aunts (generic + paternal/maternal + elder/younger variants)
+        "uncle": nephewNiece,
+        "aunt": nephewNiece,
+        "paternal uncle": nephewNiece,
+        "paternal aunt": nephewNiece,
+        "maternal uncle": nephewNiece,
+        "maternal aunt": nephewNiece,
+        "father elder brother": nephewNiece,
+        "father elder brother wife": nephewNiece,
+        "father younger brother wife": nephewNiece,
+        "father sister husband": nephewNiece,
+        "mother brother wife": nephewNiece,
+        "mother sister husband": nephewNiece,
+        // nephews / nieces (generic + brother's/sister's variants)
+        "nephew": uncleAunt,
+        "niece": uncleAunt,
+        "brother son": uncleAunt,
+        "brother daughter": uncleAunt,
+        "sister son": uncleAunt,
+        "sister daughter": uncleAunt,
+        // cousins (generic + paternal/maternal + uncle's/aunt's variants)
+        "cousin brother": cousinB,
+        "cousin sister": cousinB,
+        "paternal cousin brother": cousinB,
+        "paternal cousin sister": cousinB,
+        "maternal cousin brother": cousinB,
+        "maternal cousin sister": cousinB,
+        // in-laws
+        "father-in-law": silDil,
+        "mother-in-law": silDil,
+        "son-in-law": filMil,
+        "daughter-in-law": filMil,
+        "brother-in-law": bilSil,
+        "sister-in-law": bilSil,
+        "brother-in-law (wifes brother)": F ? "Sister-in-law (Wife's Sister)" : "Brother-in-law (Sister's Husband)",
+        "sister-in-law (wifes brothers wife)": F ? "Sister-in-law (Wife's Sister)" : "Brother-in-law (Sister's Husband)",
+        "brother-in-law (wifes sisters husband)": "Brother-in-law (Wife's Sister's Husband)",
+        // neutral
         "friend": "friend",
+        // english-compositional aliases (same relations, descriptive names)
+        "fathers father": grandsonGd,
+        "mothers father": grandsonGd,
+        "fathers mother": grandsonGd,
+        "mothers mother": grandsonGd,
+        "fathers brother": nephewNiece,
+        "mothers brother": nephewNiece,
+        "fathers sister": nephewNiece,
+        "mothers sister": nephewNiece,
+        "sons son": grandfatherGd,
+        "sons daughter": grandfatherGd,
+        "daughters son": grandfatherGd,
+        "daughters daughter": grandfatherGd,
+        "childs son": grandfatherGd,
+        "childs daughter": grandfatherGd,
+        "parents siblings son": cousinB,
+        "parents siblings daughter": cousinB,
+        "spouses father": silDil,
+        "spouses mother": silDil,
+        "daughters husband": filMil,
+        "sons wife": filMil,
+        "husbands brother": bilSil,
+        "sisters husband": bilSil,
+        "husbands sister": bilSil,
+        "wifes sister": bilSil,
+        "childs spouses father": F ? "Child's Spouse's Mother" : "Child's Spouse's Father",
+        "childs spouses mother": F ? "Child's Spouse's Mother" : "Child's Spouse's Father",
+        "husbands sisters husband": F ? "Sister-in-law (Wife's Brother's Wife)" : "Brother-in-law (Wife's Sister's Husband)",
+        "husbands brothers wife": F ? "Sister-in-law (Wife's Brother's Wife)" : "Brother-in-law (Sister's Husband)",
+        "husbands elder brother": F ? "Sister-in-law (Husband's Brother's Wife)" : "Brother-in-law",
+        "husbands elder brothers wife": F ? "Sister-in-law (Husband's Brother's Wife)" : "Brother-in-law",
     };
-    const key = rel.toLowerCase();
+    // match ignoring case + apostrophes ("Father's Sister" -> "father sister")
+    const key = rel.toLowerCase().replace(/'/g, "");
     if (map[key]) return map[key];
 
     return rel;

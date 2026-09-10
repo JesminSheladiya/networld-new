@@ -179,6 +179,7 @@ function SuggestionsPage() {
         open={pickerOpen}
         title="Edit Relation"
         personName={suggestions.find((x) => x.suggestedUserEmail === editingEmail)?.suggestedUserName}
+        personGender={suggestions.find((x) => x.suggestedUserEmail === editingEmail)?.suggestedUserGender}
         value={editValue || undefined}
         onClose={() => setPickerOpen(false)}
         onPick={(v) => setEditValue(v)}

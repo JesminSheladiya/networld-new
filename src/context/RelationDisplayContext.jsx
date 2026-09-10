@@ -55,6 +55,22 @@ export function RelationDisplayProvider({ children }) {
     return row?.[field] || name;
   }, [master, masterLower, format]);
 
+  // Tab category from master metadata; tiny fallback for synthetic names
+  const relCategory = useCallback((name) => {
+    if (!name) return "others";
+    const row = master[name] || masterLower[(name || "").toLowerCase()];
+    if (row?.relationCategory) {
+      const c = row.relationCategory;
+      if (c === "INLAW") return "inlaws";
+      if (c === "OTHER") return "others";
+      return "family";
+    }
+    const r = name.toLowerCase();
+    if (r.includes("in-law")) return "inlaws";
+    if (r.includes("nati")) return "family";
+    return "others";
+  }, [master, masterLower]);
+
   const openPicker = useCallback(() => setPickerOpen(true), []);
   const closePicker = useCallback(() => setPickerOpen(false), []);
 
@@ -63,10 +79,11 @@ export function RelationDisplayProvider({ children }) {
     hasChosen: !!format,
     setFormat,
     relName,
+    relCategory,
     pickerOpen,
     openPicker,
     closePicker,
-  }), [format, setFormat, relName, pickerOpen, openPicker, closePicker]);
+  }), [format, setFormat, relName, relCategory, pickerOpen, openPicker, closePicker]);
 
   return (
     <RelationDisplayContext.Provider value={value}>

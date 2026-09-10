@@ -18,6 +18,7 @@ function mapContact(item, idx) {
     profilePicture: item.suggestedUserProfilePic || null,
     relation: item.inferredRelation || "",
     relationId: item.pendingRelationId ?? null,
+    gender: item.suggestedUserGender || null,
   };
 }
 

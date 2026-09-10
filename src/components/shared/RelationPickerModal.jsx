@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Modal, Select } from "antd";
+import { Modal, Select, message } from "antd";
 import { api } from "../../Services/networld";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 
-function RelationPickerModal({ open, title = "Edit Relation", personName, value, idMode = false, onClose, onPick }) {
+const GENDER_LABEL = { M: "Male", F: "Female" };
+
+function RelationPickerModal({ open, title = "Edit Relation", personName, personGender, value, idMode = false, onClose, onPick }) {
   const { relName } = useRelationDisplay();
   const [relations, setRelations] = useState([]);
   const [val, setVal] = useState(value);
@@ -15,8 +17,22 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, value,
     }
   }, [open, value]);
 
+  const isCompatible = (r) =>
+    !personGender || !r.gender || r.gender === "N" || r.gender === personGender;
+
+  // Show all relations; incompatible ones are disabled (greyed out)
+  const visible = relations;
+
   const handlePick = () => {
     if (val === undefined || val === null || val === "") return;
+    const picked = relations.find((r) => (idMode ? r.id : r.relationName) === val);
+    if (picked && !isCompatible(picked)) {
+      message.error(
+        `'${relName(picked.relationName)}' can only be sent to ` +
+        (picked.gender === "F" ? "female" : "male") + " users. Request not sent."
+      );
+      return;
+    }
     onPick?.(val);
     onClose?.();
   };
@@ -42,6 +58,14 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, value,
             <>Choose a relation from the list:</>
           )}
         </div>
+        {personGender && GENDER_LABEL[personGender] && (
+          <div className="rpm-gender-hint">
+            Relations for a {GENDER_LABEL[personGender]} profile
+            <span className="rpm-count">
+              {visible.filter(isCompatible).length} of {relations.length} valid
+            </span>
+          </div>
+        )}
         <Select
           style={{ width: "100%" }}
           placeholder="Choose a relation"
@@ -49,9 +73,10 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, value,
           onChange={(v) => setVal(v)}
           showSearch
           optionFilterProp="label"
-          options={relations.map((r) => ({
+          options={visible.map((r) => ({
             value: idMode ? r.id : r.relationName,
             label: relName(r.relationName),
+            disabled: !isCompatible(r),
           }))}
         />
       </div>

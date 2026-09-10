@@ -15,11 +15,22 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
     setEditValue(contact?.relation || "");
   }, [open, contact]);
 
+  const isCompatible = (r) =>
+    !contact?.gender || !r.gender || r.gender === "N" || r.gender === contact.gender;
+
   const saveEdit = async () => {
     if (!contact) return;
     const finalRel = editValue;
     if (!finalRel || !finalRel.trim()) {
       message.warning("Relation name cannot be empty!");
+      return;
+    }
+    const picked = relations.find((r) => r.relationName === finalRel.trim());
+    if (picked && !isCompatible(picked)) {
+      message.error(
+        `'${relName(picked.relationName)}' can only be sent to ` +
+        (picked.gender === "F" ? "female" : "male") + " users. Request not sent."
+      );
       return;
     }
     setSaving(true);
@@ -52,11 +63,20 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
         <div style={{ color: "#e2e8f0" }}>
           Update relation with <strong style={{ color: "#38bdf8" }}>{contact?.name}</strong>:
         </div>
+        {contact?.gender && (contact.gender === "M" || contact.gender === "F") && (
+          <div className="rpm-gender-hint" style={{ marginBottom: 12 }}>
+            Relations for a {contact.gender === "M" ? "Male" : "Female"} profile
+          </div>
+        )}
         <Select
           style={{ width: "100%" }}
           value={editValue}
           onChange={(val) => setEditValue(val)}
-          options={relations.map((r) => ({ value: r.relationName, label: relName(r.relationName) }))}
+          options={relations.map((r) => ({
+            value: r.relationName,
+            label: relName(r.relationName),
+            disabled: !isCompatible(r),
+          }))}
         />
       </div>
     </Modal>

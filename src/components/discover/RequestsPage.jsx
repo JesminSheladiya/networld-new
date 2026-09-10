@@ -17,7 +17,7 @@ function RequestsPage() {
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(false);
   const { bump, key: refreshKey, setPendingCount } = useRefresh();
-  const { relName } = useRelationDisplay();
+  const { relName, relCategory } = useRelationDisplay();
 
   // "X wants to add you as their <Relation>" → relation in chosen language
   const formatReason = (reason) => {
@@ -28,17 +28,8 @@ function RequestsPage() {
     return reason.slice(0, idx + marker.length) + relName(reason.slice(idx + marker.length).trim());
   };
 
-  // Mirror of backend grouping: decides which contacts tab the new contact lands in
-  const categoryOfRelation = (name) => {
-    const r = (name || "").toLowerCase();
-    if (r.includes("in-law")) return "inlaws";
-    if (r.includes("cousin")) return "others";
-    if (r.includes("'s")) return "family";
-    const keys = ["father", "mother", "brother", "sister", "son", "daughter",
-      "husband", "wife", "grand", "uncle", "aunt", "nephew", "niece"];
-    if (keys.some((k) => r.includes(k))) return "family";
-    return "others";
-  };
+  // Which contacts tab the new contact lands in (master-driven, like backend)
+  const categoryOfRelation = (name) => relCategory(name);
   const categoryLabel = (key) =>
     key === "inlaws" ? "In-Laws" : key === "family" ? "Family" : key === "others" ? "Others" : "All";
 

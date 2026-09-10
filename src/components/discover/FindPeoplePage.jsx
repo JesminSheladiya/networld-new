@@ -38,7 +38,17 @@ function FindPeoplePage() {
       setSearching(true);
       try {
         const res = await api.searchUsers(q);
-        setResults(res.data || []);
+        const data = res.data || [];
+        setResults(data);
+        // Reconcile with server: a declined request is no longer pending,
+        // so drop its local "Sent" mark and bring back the selection UI
+        setSentMap((prev) => {
+          const next = {};
+          for (const u of data) {
+            if (u.pending === "sent" && prev[u.email]) next[u.email] = true;
+          }
+          return next;
+        });
       } catch {
         setResults([]);
       } finally {
@@ -149,6 +159,7 @@ function FindPeoplePage() {
         open={pickerEmail !== null}
         title="Select Relation"
         personName={pickerUser?.name}
+        personGender={pickerUser?.gender}
         value={pickerEmail ? relMap[pickerEmail] : undefined}
         idMode
         onClose={() => setPickerEmail(null)}
