@@ -1,11 +1,11 @@
 -- =============================================
 -- USERS
 -- =============================================
-INSERT INTO users (username, password, email, role)
-VALUES ('admin',
-        '$2a$12$79.h960LXubRcFLEZeSdF.aeU0nJen.z6hrMXDq0DX/ET4ABsaJv6',
-        'admin@example.com', 'ADMIN')
-ON CONFLICT (email) DO NOTHING;
+--INSERT INTO users (username, password, email, role)
+--VALUES ('admin',
+--        '$2a$12$79.h960LXubRcFLEZeSdF.aeU0nJen.z6hrMXDq0DX/ET4ABsaJv6',
+--        'admin@example.com', 'ADMIN')
+--ON CONFLICT (email) DO NOTHING;
 
 -- =============================================
 -- RELATIONS MASTER DATA
