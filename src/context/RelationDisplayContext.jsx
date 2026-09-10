@@ -29,7 +29,11 @@ export function RelationDisplayProvider({ children }) {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    api.relations()
+    // Full map (hidden engine rows like Brother/Grandfather carry their own
+    // indian/generic names) so chips never fall back to English. Pickers
+    // keep using the filtered list — this is display-only.
+    api.relationsAll()
+      .catch(() => api.relations())
       .then((res) => {
         const map = {};
         const lower = {};
