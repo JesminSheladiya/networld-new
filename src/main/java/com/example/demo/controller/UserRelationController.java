@@ -54,19 +54,21 @@ public class UserRelationController {
             item.put("name",       u.getFullName() != null ? u.getFullName() : u.getDisplayName());
             item.put("email",      u.getEmail());
             item.put("profilePic", u.getProfilePicture() != null ? u.getProfilePicture() : "");
+            item.put("gender",     u.getGender());
 
             Optional<UserRelation> fwd = userRelationRepository.findByFromUserAndToUser(me, u);
             Optional<UserRelation> rev = userRelationRepository.findByFromUserAndToUser(u, me);
+            // Only PENDING counts as sent/received — DECLINED resets to fresh state
             if (fwd.isPresent()) {
                 if ("ACCEPTED".equals(fwd.get().getStatus())) {
                     item.put("relationName", fwd.get().getRelation().getRelationName());
-                } else {
+                } else if ("PENDING".equals(fwd.get().getStatus())) {
                     item.put("pending", "sent");
                 }
             } else if (rev.isPresent()) {
                 if ("ACCEPTED".equals(rev.get().getStatus())) {
                     item.put("relationName", rev.get().getRelation().getRelationName());
-                } else {
+                } else if ("PENDING".equals(rev.get().getStatus())) {
                     item.put("pending", "received");
                 }
             }

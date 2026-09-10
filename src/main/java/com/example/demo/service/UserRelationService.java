@@ -39,13 +39,25 @@ public class UserRelationService {
         if (fromUser.getId().equals(toUser.getId()))
             throw new RuntimeException("Cannot add yourself!");
 
-        if (userRelationRepo.findByFromUserAndToUser(fromUser, toUser).isPresent())
+        Optional<UserRelation> existing = userRelationRepo.findByFromUserAndToUser(fromUser, toUser);
+        // A declined request can be sent again — reuse the row as fresh PENDING
+        if (existing.isPresent() && !"DECLINED".equals(existing.get().getStatus()))
             throw new RuntimeException("Request already sent!");
 
         Relation relation = relationRepository.findById(relationId)
                 .orElseThrow(() -> new RuntimeException("Invalid relation!"));
 
-        userRelationRepo.save(new UserRelation(fromUser, toUser, relation, "PENDING"));
+        validateRelationGender(relation, toUser);
+
+        if (existing.isPresent()) {
+            // Reuse the declined row as a fresh request (keeps from/to unique)
+            UserRelation ur = existing.get();
+            ur.setRelation(relation);
+            ur.setStatus("PENDING");
+            userRelationRepo.save(ur);
+        } else {
+            userRelationRepo.save(new UserRelation(fromUser, toUser, relation, "PENDING"));
+        }
     }
 
     // Accept a manually-sent or suggestion-based PENDING request
@@ -61,6 +73,10 @@ public class UserRelationService {
         userRelationRepo.save(ur);
 
         Relation reverse = findReverseRelation(ur.getRelation(), ur.getFromUser());
+        if (reverse == null && "N".equals(ur.getRelation().getGender())) {
+            // Gender-neutral symmetric relations (e.g. Friend) mirror themselves
+            reverse = ur.getRelation();
+        }
         if (reverse != null && userRelationRepo.findByFromUserAndToUser(currentUser, ur.getFromUser()).isEmpty()) {
             userRelationRepo.save(new UserRelation(currentUser, ur.getFromUser(), reverse, "ACCEPTED"));
         }
@@ -87,6 +103,7 @@ public class UserRelationService {
             throw new RuntimeException("Relation name is required!");
 
         Relation newRel = getRequiredRelation(relationName.trim());
+        validateRelationGender(newRel, ur.getToUser());
         ur.setRelation(newRel);
         userRelationRepo.save(ur);
 
@@ -154,28 +171,16 @@ public class UserRelationService {
         }).collect(Collectors.toList());
     }
 
-    // Category grouping shared with the app tabs (keep keyword lists in sync
-    // with UserRelationRepository pageFilteredConnections queries).
-    // family  = main relations (parents, siblings, spouse, grandparents,
-    //           grandchildren, uncles/aunts, nephews/nieces, elder/younger siblings,
-    //           cousins (paternal/maternal))
-    // inlaws  = *-in-law relations
-    // others  = friend + anything else
-    private static final List<String> FAMILY_KEYWORDS = List.of(
-            "father", "mother", "brother", "sister", "son", "daughter",
-            "husband", "wife", "grand", "uncle", "aunt", "nephew", "niece",
-            "elder", "younger", "cousin", "paternal", "maternal");
-
-    static String categoryOf(String relationName) {
-        String r = relationName == null ? "" : relationName.toLowerCase();
-        if (r.contains("in-law")) return "inlaws";
-        if (r.contains("friend")) return "others";
-        // 's means possessive like "uncle's son" -> family
-        if (r.contains("'s")) return "family";
-        for (String k : FAMILY_KEYWORDS) {
-            if (r.contains(k)) return "family";
-        }
-        return "others";
+    // Category grouping shared with the app tabs, driven by the master
+    // relation_category column (NOT keywords): INLAW -> inlaws,
+    // OTHER -> others, everything else -> family. New relations only need
+    // the correct category — no code changes required.
+    static String categoryOf(Relation rel) {
+        if (rel == null || rel.getRelationCategory() == null) return "others";
+        String c = rel.getRelationCategory().toUpperCase();
+        if ("INLAW".equals(c)) return "inlaws";
+        if ("OTHER".equals(c)) return "others";
+        return "family";
     }
 
     private static String blankToNull(String s) {
@@ -223,7 +228,7 @@ public class UserRelationService {
         counts.put("inlaws", 0L);
         counts.put("others", 0L);
         for (UserRelation ur : list) {
-            String cat = categoryOf(ur.getRelation().getRelationName());
+            String cat = categoryOf(ur.getRelation());
             counts.put(cat, counts.get(cat) + 1);
         }
         return counts;
@@ -269,6 +274,7 @@ public class UserRelationService {
                 .orElseThrow(() -> new RuntimeException("User not found!"));
 
         Relation relation = getRequiredRelation(relationName);
+        validateRelationGender(relation, otherUser);
 
         Optional<UserRelation> existing = userRelationRepo.findByFromUserAndToUser(currentUser, otherUser);
         if (existing.isPresent()) {
@@ -282,6 +288,21 @@ public class UserRelationService {
 
         regenerateAllSuggestions(currentUser);
         regenerateAllSuggestions(otherUser);
+    }
+
+    // A gendered relation (M/F) can only go to a matching or neutral (N) user.
+    // Neutral relations (Friend, Cousin, ...) are valid for everyone.
+    static void validateRelationGender(Relation relation, User toUser) {
+        String rg = relation.getGender();
+        String ug = toUser.getGender();
+        if (rg == null || ug == null || "N".equals(rg) || "N".equals(ug)) return;
+        if (!rg.equals(ug)) {
+            String who = "F".equals(ug) ? "female" : "male";
+            throw new RuntimeException(
+                    "'" + relation.getRelationName() + "' can only be sent to "
+                    + ("F".equals(rg) ? "female" : "male") + " users, but "
+                    + toUser.getEmail() + " is " + who + ".");
+        }
     }
 
     // Custom relations are disabled: only predefined relations from the

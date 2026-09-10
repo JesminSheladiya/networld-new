@@ -61,7 +61,18 @@ INSERT INTO relations (relation_name, generation_level, gender, relation_categor
 ('Paternal Cousin Brother', 0, 'M', 'COUSIN', true, 'Father''s Brother''s Son', 'Chachera Bhai', 'Paternal Cousin Brother'),
 ('Paternal Cousin Sister', 0, 'F', 'COUSIN', true, 'Father''s Brother''s Daughter', 'Chacheri Behen', 'Paternal Cousin Sister'),
 ('Maternal Cousin Brother', 0, 'M', 'COUSIN', true, 'Mother''s Brother''s Son', 'Mamera Bhai', 'Maternal Cousin Brother'),
-('Maternal Cousin Sister', 0, 'F', 'COUSIN', true, 'Mother''s Brother''s Daughter', 'Mameri Behen', 'Maternal Cousin Sister')
+('Maternal Cousin Sister', 0, 'F', 'COUSIN', true, 'Mother''s Brother''s Daughter', 'Mameri Behen', 'Maternal Cousin Sister'),
+('Daughter''s Son', -2, 'M', 'GRANDCHILD', true, 'Daughter''s Son', 'Nati', 'Grandson'),
+('Daughter''s Daughter', -2, 'F', 'GRANDCHILD', true, 'Daughter''s Daughter', 'Natini', 'Granddaughter'),
+('Brother-in-law (Wife''s Brother)', 0, 'M', 'INLAW', false, 'Wife''s Brother', 'Sala', 'Brother-in-law'),
+('Sister-in-law (Wife''s Brother''s Wife)', 0, 'F', 'INLAW', false, 'Wife''s Brother''s Wife', 'Sarhaj', 'Sister-in-law'),
+('Brother-in-law (Wife''s Sister''s Husband)', 0, 'M', 'INLAW', false, 'Wife''s Sister''s Husband', 'Sadu', 'Brother-in-law'),
+('Child''s Spouse''s Father', 0, 'M', 'INLAW', false, 'Child''s Spouse''s Father', 'Samdhi', 'Co-father-in-law'),
+('Child''s Spouse''s Mother', 0, 'F', 'INLAW', false, 'Child''s Spouse''s Mother', 'Samdhan', 'Co-mother-in-law'),
+('Husband''s Sister''s Husband', 0, 'M', 'INLAW', false, 'Husband''s Sister''s Husband', 'Nandoi', 'Brother-in-law'),
+('Husband''s Brother''s Wife', 0, 'F', 'INLAW', false, 'Husband''s Brother''s Wife', 'Devrani', 'Sister-in-law'),
+('Husband''s Elder Brother', 0, 'M', 'INLAW', false, 'Husband''s Elder Brother', 'Jeth', 'Brother-in-law'),
+('Husband''s Elder Brother''s Wife', 0, 'F', 'INLAW', false, 'Husband''s Elder Brother''s Wife', 'Jethani', 'Sister-in-law')
 ON CONFLICT (relation_name) DO UPDATE SET generation_level = EXCLUDED.generation_level, gender = EXCLUDED.gender, relation_category = EXCLUDED.relation_category, is_blood = EXCLUDED.is_blood, english_relation = EXCLUDED.english_relation, indian_relation = EXCLUDED.indian_relation, generic_relation = EXCLUDED.generic_relation;
 
 
