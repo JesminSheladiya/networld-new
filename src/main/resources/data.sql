@@ -72,7 +72,11 @@ INSERT INTO relations (relation_name, generation_level, gender, relation_categor
 ('Husband''s Sister''s Husband', 0, 'M', 'INLAW', false, 'Husband''s Sister''s Husband', 'Nandoi', 'Brother-in-law'),
 ('Husband''s Brother''s Wife', 0, 'F', 'INLAW', false, 'Husband''s Brother''s Wife', 'Devrani', 'Sister-in-law'),
 ('Husband''s Elder Brother', 0, 'M', 'INLAW', false, 'Husband''s Elder Brother', 'Jeth', 'Brother-in-law'),
-('Husband''s Elder Brother''s Wife', 0, 'F', 'INLAW', false, 'Husband''s Elder Brother''s Wife', 'Jethani', 'Sister-in-law')
+('Husband''s Elder Brother''s Wife', 0, 'F', 'INLAW', false, 'Husband''s Elder Brother''s Wife', 'Jethani', 'Sister-in-law'),
+('Brother-in-law (Husband''s Brother)', 0, 'M', 'INLAW', false, 'Husband''s Brother', 'Devar', 'Brother-in-law'),
+('Sister-in-law (Husband''s Sister)', 0, 'F', 'INLAW', false, 'Husband''s Sister', 'Nanad', 'Sister-in-law'),
+('Brother-in-law (Sister''s Husband)', 0, 'M', 'INLAW', false, 'Sister''s Husband', 'Jija', 'Brother-in-law'),
+('Sister-in-law (Wife''s Sister)', 0, 'F', 'INLAW', false, 'Wife''s Sister', 'Sali', 'Sister-in-law')
 ON CONFLICT (relation_name) DO UPDATE SET generation_level = EXCLUDED.generation_level, gender = EXCLUDED.gender, relation_category = EXCLUDED.relation_category, is_blood = EXCLUDED.is_blood, english_relation = EXCLUDED.english_relation, indian_relation = EXCLUDED.indian_relation, generic_relation = EXCLUDED.generic_relation;
 
 

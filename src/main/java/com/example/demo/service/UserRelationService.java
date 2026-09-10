@@ -39,10 +39,24 @@ public class UserRelationService {
         if (fromUser.getId().equals(toUser.getId()))
             throw new RuntimeException("Cannot add yourself!");
 
+        // Cross-request guard: the other side already has a live row toward me.
+        // A second opposite PENDING row would leave a stale request behind
+        // after either side accepts — so block it and point at Requests.
+        Optional<UserRelation> reverse = userRelationRepo.findByFromUserAndToUser(toUser, fromUser);
+        if (reverse.isPresent() && "PENDING".equals(reverse.get().getStatus()))
+            throw new RuntimeException("You already have a pending request from " + toEmail
+                    + ". Please accept it from Requests instead.");
+        if (reverse.isPresent() && "ACCEPTED".equals(reverse.get().getStatus()))
+            throw new RuntimeException("Already connected!");
+
         Optional<UserRelation> existing = userRelationRepo.findByFromUserAndToUser(fromUser, toUser);
-        // A declined request can be sent again — reuse the row as fresh PENDING
-        if (existing.isPresent() && !"DECLINED".equals(existing.get().getStatus()))
-            throw new RuntimeException("Request already sent!");
+        // Only a live row blocks a fresh request — DECLINED / SUGGESTED /
+        // DISMISSED rows are reused below. (SUGGESTED rows exist for pairs
+        // the engine discovered; sending to them must stay possible.)
+        if (existing.isPresent() && ("PENDING".equals(existing.get().getStatus())
+                || "ACCEPTED".equals(existing.get().getStatus())))
+            throw new RuntimeException("ACCEPTED".equals(existing.get().getStatus())
+                    ? "Already connected!" : "Request already sent!");
 
         Relation relation = relationRepository.findById(relationId)
                 .orElseThrow(() -> new RuntimeException("Invalid relation!"));
@@ -77,8 +91,20 @@ public class UserRelationService {
             // Gender-neutral symmetric relations (e.g. Friend) mirror themselves
             reverse = ur.getRelation();
         }
-        if (reverse != null && userRelationRepo.findByFromUserAndToUser(currentUser, ur.getFromUser()).isEmpty()) {
-            userRelationRepo.save(new UserRelation(currentUser, ur.getFromUser(), reverse, "ACCEPTED"));
+        Optional<UserRelation> reverseOpt = userRelationRepo.findByFromUserAndToUser(currentUser, ur.getFromUser());
+        if (reverseOpt.isEmpty()) {
+            if (reverse != null) {
+                userRelationRepo.save(new UserRelation(currentUser, ur.getFromUser(), reverse, "ACCEPTED"));
+            }
+        } else {
+            // Merge a cross-request: my own opposite PENDING row (I had also
+            // sent them a request) becomes ACCEPTED too, keeping the relation
+            // *I* chose — each side keeps its own label, no stale request left.
+            UserRelation rev = reverseOpt.get();
+            if (!"ACCEPTED".equals(rev.getStatus())) {
+                rev.setStatus("ACCEPTED");
+                userRelationRepo.save(rev);
+            }
         }
 
         regenerateAllSuggestions(currentUser);
@@ -277,6 +303,10 @@ public class UserRelationService {
         validateRelationGender(relation, otherUser);
 
         Optional<UserRelation> existing = userRelationRepo.findByFromUserAndToUser(currentUser, otherUser);
+        if (existing.isPresent() && "ACCEPTED".equals(existing.get().getStatus()))
+            throw new RuntimeException("Already connected!");
+        if (existing.isPresent() && "PENDING".equals(existing.get().getStatus()))
+            throw new RuntimeException("Request already sent!");
         if (existing.isPresent()) {
             UserRelation ur = existing.get();
             ur.setRelation(relation);
@@ -383,9 +413,127 @@ public class UserRelationService {
         if (reverseCategory == null) return null;
 
         Integer reverseLevel = -rel.getGenerationLevel();
+        String g = genderSource.getGender();
+
+        // Precise reverses first (generic alphabetical pick would be wrong here):
+        // piblings <-> generic niblings, niblings <-> generic piblings,
+        // elder <-> younger siblings (deterministic by age order).
+        String preferred = preferredReverseName(rel.getRelationName(), g);
+        if (preferred != null) {
+            Optional<Relation> exact = relationRepository.findByRelationNameIgnoreCase(preferred);
+            if (exact.isPresent()) return exact.get();
+        }
 
         return relationRepository
-                .findByRelationCategoryAndGenerationLevelAndGenderOrderByRelationName(reverseCategory, reverseLevel, genderSource.getGender())
+                .findByRelationCategoryAndGenerationLevelAndGenderOrderByRelationName(reverseCategory, reverseLevel, g)
                 .stream().findFirst().orElse(null);
+    }
+
+    // Exact reverse names where the generic alphabetical pick would be imprecise.
+    // Returns null when the generic lookup is already precise.
+    private static String preferredReverseName(String relationName, String requesterGender) {
+        if (relationName == null) return null;
+        boolean f = "F".equals(requesterGender);
+        switch (relationName.toLowerCase()) {
+            // paternal side -> son's children (NOT "Daughter's Son")
+            case "paternal grandfather":
+            case "paternal grandmother":
+                return f ? "Granddaughter" : "Grandson";
+            // maternal side -> daughter's children
+            case "maternal grandfather":
+            case "maternal grandmother":
+                return f ? "Daughter's Daughter" : "Daughter's Son";
+            // generic grandparent -> paternal default
+            case "grandfather":
+            case "grandmother":
+                return f ? "Granddaughter" : "Grandson";
+            // grandchild -> side-specific grandparent (NOT alphabetical-first
+            // generic): daughter-line keeps maternal side, otherwise paternal
+            // default — keeps downstream in-law inference correct.
+            case "daughter's son":
+                return "Maternal Grandfather";
+            case "daughter's daughter":
+                return "Maternal Grandmother";
+            case "grandson":
+                return "Paternal Grandfather";
+            case "granddaughter":
+                return "Paternal Grandmother";
+            // piblings -> generic niblings (NOT "Brother Son" etc.)
+            case "uncle":
+            case "aunt":
+            case "paternal uncle":
+            case "paternal aunt":
+            case "maternal uncle":
+            case "maternal aunt":
+            case "father elder brother":
+            case "father elder brother wife":
+            case "father younger brother wife":
+            case "father sister husband":
+            case "mother brother wife":
+            case "mother sister husband":
+                return f ? "Niece" : "Nephew";
+            // niblings -> generic piblings (NOT "Father Elder Brother" etc.)
+            case "nephew":
+            case "niece":
+            case "brother son":
+            case "brother daughter":
+            case "sister son":
+            case "sister daughter":
+                return f ? "Aunt" : "Uncle";
+            // elder <-> younger siblings (deterministic by age order)
+            case "elder brother":
+            case "elder sister":
+                return f ? "Younger Sister" : "Younger Brother";
+            case "younger brother":
+            case "younger sister":
+                return f ? "Elder Sister" : "Elder Brother";
+            // generic siblings -> generic siblings (NOT "Elder ..." alphabetical pick)
+            case "brother":
+            case "sister":
+                return f ? "Sister" : "Brother";
+            // in-law specifics -> precise reverses (NOT alphabetical-first).
+            // Each entry: recipient is sender's X; result describes sender as
+            // seen by recipient, gender-aware (f = sender female).
+            case "father-in-law":
+                return f ? "Daughter-in-law" : "Son-in-law";
+            case "mother-in-law":
+                return f ? "Daughter-in-law" : "Son-in-law";
+            case "son-in-law":
+                return f ? "Mother-in-law" : "Father-in-law";
+            case "daughter-in-law":
+                return f ? "Mother-in-law" : "Father-in-law";
+            case "brother-in-law":
+                return f ? "Sister-in-law" : "Brother-in-law";
+            case "sister-in-law":
+                return f ? "Sister-in-law" : "Brother-in-law";
+            case "brother-in-law (husband's brother)":
+                return f ? "Sister-in-law" : "Brother-in-law";
+            case "sister-in-law (husband's sister)":
+                return f ? "Sister-in-law" : "Brother-in-law";
+            case "brother-in-law (sister's husband)":
+                return f ? "Sister-in-law (Wife's Sister)" : "Brother-in-law";
+            case "sister-in-law (wife's sister)":
+                return f ? "Sister-in-law" : "Brother-in-law (Sister's Husband)";
+            case "brother-in-law (wife's brother)":
+                return f ? "Sister-in-law" : "Brother-in-law (Sister's Husband)";
+            case "brother-in-law (wife's sister's husband)":
+                return f ? "Sister-in-law" : "Brother-in-law (Wife's Sister's Husband)";
+            case "sister-in-law (wife's brother's wife)":
+                return f ? "Sister-in-law" : "Brother-in-law";
+            case "husband's elder brother":
+                return f ? "Sister-in-law" : "Brother-in-law";
+            case "husband's elder brother's wife":
+                return f ? "Sister-in-law" : "Brother-in-law";
+            case "husband's sister's husband":
+                return f ? "Sister-in-law" : "Brother-in-law";
+            case "husband's brother's wife":
+                return f ? "Husband's Brother's Wife" : "Brother-in-law";
+            case "child's spouse's father":
+                return f ? "Child's Spouse's Mother" : "Child's Spouse's Father";
+            case "child's spouse's mother":
+                return f ? "Child's Spouse's Mother" : "Child's Spouse's Father";
+            default:
+                return null;
+    }
     }
 }
