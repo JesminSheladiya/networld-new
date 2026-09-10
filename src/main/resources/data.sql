@@ -271,10 +271,6 @@ INSERT INTO relation_inference_rules
 ('SIBLING','F','PIBLING','F','Niece'),
 
 -- PIBLING + CHILD → COUSIN (my uncle's child = cousin of my child)
-('PIBLING','M','CHILD','M','Cousin'),
-('PIBLING','M','CHILD','F','Cousin'),
-('PIBLING','F','CHILD','M','Cousin'),
-('PIBLING','F','CHILD','F','Cousin'),
 
 -- CHILD + PIBLING → NIBLING (my child is nephew/niece of my uncle)
 ('CHILD','M','PIBLING','M','Nephew'),
@@ -299,54 +295,20 @@ INSERT INTO relation_inference_rules
 ('SIBLING','F','NIBLING','F','Aunt'),
 
 -- NIBLING + CHILD → COUSIN (my nephew + my child = cousins)
-('NIBLING','M','CHILD','M','Cousin'),
-('NIBLING','M','CHILD','F','Cousin'),
-('NIBLING','F','CHILD','M','Cousin'),
-('NIBLING','F','CHILD','F','Cousin'),
 
 -- CHILD + NIBLING → COUSIN (same as above, reversed)
-('CHILD','M','NIBLING','M','Cousin'),
-('CHILD','M','NIBLING','F','Cousin'),
-('CHILD','F','NIBLING','M','Cousin'),
-('CHILD','F','NIBLING','F','Cousin'),
 
 -- =============================================
 -- COUSIN Rules
 -- =============================================
 
 -- COUSIN + SIBLING → COUSIN (my cousin is also my sibling's cousin)
-('COUSIN','N','SIBLING','M','Cousin'),
-('COUSIN','N','SIBLING','F','Cousin'),
-('SIBLING','M','COUSIN','N','Cousin'),
-('SIBLING','F','COUSIN','N','Cousin'),
 
 -- COUSIN + SIBLING (gender-specific cousin types)
-('COUSIN','M','SIBLING','M','Cousin'),
-('COUSIN','M','SIBLING','F','Cousin'),
-('COUSIN','F','SIBLING','M','Cousin'),
-('COUSIN','F','SIBLING','F','Cousin'),
-('SIBLING','M','COUSIN','M','Cousin'),
-('SIBLING','M','COUSIN','F','Cousin'),
-('SIBLING','F','COUSIN','M','Cousin'),
-('SIBLING','F','COUSIN','F','Cousin'),
 
 -- COUSIN + CHILD → COUSIN
-('COUSIN','N','CHILD','M','Cousin'),
-('COUSIN','N','CHILD','F','Cousin'),
-('CHILD','M','COUSIN','N','Cousin'),
-('CHILD','F','COUSIN','N','Cousin'),
-('COUSIN','M','CHILD','M','Cousin'),
-('COUSIN','M','CHILD','F','Cousin'),
-('COUSIN','F','CHILD','M','Cousin'),
-('COUSIN','F','CHILD','F','Cousin'),
-('CHILD','M','COUSIN','M','Cousin'),
-('CHILD','M','COUSIN','F','Cousin'),
-('CHILD','F','COUSIN','M','Cousin'),
-('CHILD','F','COUSIN','F','Cousin'),
 
 -- Cousin Brother + Cousin Sister → cousins to each other
-('COUSIN','M','COUSIN','F','Cousin'),
-('COUSIN','F','COUSIN','M','Cousin'),
 
 -- =============================================
 -- PIBLING + PIBLING / NIBLING + NIBLING cross
@@ -365,19 +327,8 @@ INSERT INTO relation_inference_rules
 ('NIBLING','F','NIBLING','F','Sister'),
 
 -- PIBLING + NIBLING → COUSIN (uncle + nephew → cousin? Actually they can't be directly inferred)
-('PIBLING','M','NIBLING','M','Cousin'),
-('PIBLING','M','NIBLING','F','Cousin'),
-('PIBLING','F','NIBLING','M','Cousin'),
-('PIBLING','F','NIBLING','F','Cousin'),
-('NIBLING','M','PIBLING','M','Cousin'),
-('NIBLING','M','PIBLING','F','Cousin'),
-('NIBLING','F','PIBLING','M','Cousin'),
-('NIBLING','F','PIBLING','F','Cousin'),
 
 -- COUSIN + COUSIN → both are cousins to each other
-('COUSIN','N','COUSIN','N','Cousin'),
-('COUSIN','M','COUSIN','M','Cousin'),
-('COUSIN','F','COUSIN','F','Cousin'),
 
 -- COUSIN + PIBLING → NIBLING (my cousin to my uncle = nephew/niece of uncle)
 ('COUSIN','N','PIBLING','M','Nephew'),
@@ -394,18 +345,6 @@ INSERT INTO relation_inference_rules
 ('PIBLING','F','COUSIN','F','Niece'),
 
 -- COUSIN + NIBLING → COUSIN (my cousin + my nephew = also cousins)
-('COUSIN','N','NIBLING','M','Cousin'),
-('COUSIN','N','NIBLING','F','Cousin'),
-('COUSIN','M','NIBLING','M','Cousin'),
-('COUSIN','M','NIBLING','F','Cousin'),
-('COUSIN','F','NIBLING','M','Cousin'),
-('COUSIN','F','NIBLING','F','Cousin'),
-('NIBLING','M','COUSIN','N','Cousin'),
-('NIBLING','F','COUSIN','N','Cousin'),
-('NIBLING','M','COUSIN','M','Cousin'),
-('NIBLING','M','COUSIN','F','Cousin'),
-('NIBLING','F','COUSIN','M','Cousin'),
-('NIBLING','F','COUSIN','F','Cousin'),
 
 -- =============================================
 -- PARENT + PIBLING → SIBLING (my parent + my uncle = siblings)

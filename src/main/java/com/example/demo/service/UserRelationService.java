@@ -121,11 +121,15 @@ public class UserRelationService {
                 .map(ur -> {
                     User s = ur.getFromUser();
                     String name = s.getFullName() != null ? s.getFullName() : s.getDisplayName();
+                    Relation rel = ur.getRelation();
                     return new UserRelationSuggestionDTO(
                             ur.getId(), name, s.getEmail(), s.getPhone(), s.getProfilePicture(),
                             s.getGender(),
-                            ur.getRelation().getRelationName(),
-                            name + " wants to add you as their " + ur.getRelation().getRelationName(),
+                            rel.getRelationName(),
+                            rel.getEnglishRelation(),
+                            rel.getIndianRelation(),
+                            rel.getGenericRelation(),
+                            name + " wants to add you as their " + rel.getRelationName(),
                             "PENDING");
                 }).collect(Collectors.toList());
     }
@@ -138,10 +142,15 @@ public class UserRelationService {
         return relations.stream().map(ur -> {
             User o = ur.getToUser();
             String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
+            Relation rel = ur.getRelation();
             return new UserRelationSuggestionDTO(
                     ur.getId(), name, o.getEmail(), o.getPhone(), o.getProfilePicture(),
                     o.getGender(),
-                    ur.getRelation().getRelationName(), null, "ACCEPTED");
+                    rel.getRelationName(),
+                    rel.getEnglishRelation(),
+                    rel.getIndianRelation(),
+                    rel.getGenericRelation(),
+                    null, "ACCEPTED");
         }).collect(Collectors.toList());
     }
 
@@ -190,10 +199,15 @@ public class UserRelationService {
         return relationsPage.map(ur -> {
             User o = ur.getToUser();
             String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
+            Relation rel = ur.getRelation();
             return new UserRelationSuggestionDTO(
                     ur.getId(), name, o.getEmail(), o.getPhone(), o.getProfilePicture(),
                     o.getGender(),
-                    ur.getRelation().getRelationName(), null, "ACCEPTED");
+                    rel.getRelationName(),
+                    rel.getEnglishRelation(),
+                    rel.getIndianRelation(),
+                    rel.getGenericRelation(),
+                    null, "ACCEPTED");
         });
     }
 
@@ -235,10 +249,14 @@ public class UserRelationService {
                 .stream().map(ur -> {
                     User o = ur.getToUser();
                     String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
+                    Relation rel = ur.getRelation();
                     return new UserRelationSuggestionDTO(
                             ur.getId(), name, o.getEmail(), o.getPhone(), o.getProfilePicture(),
                             o.getGender(),
-                            ur.getRelation().getRelationName(),
+                            rel.getRelationName(),
+                            rel.getEnglishRelation(),
+                            rel.getIndianRelation(),
+                            rel.getGenericRelation(),
                             "Discovered through your network connections",
                             "SUGGESTED");
                 }).collect(Collectors.toList());

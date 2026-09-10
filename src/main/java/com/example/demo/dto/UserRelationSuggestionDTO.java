@@ -10,6 +10,9 @@ public class UserRelationSuggestionDTO {
     private String suggestedUserProfilePic;
     private String suggestedUserGender;
     private String inferredRelation;
+    private String englishRelation;
+    private String indianRelation;
+    private String genericRelation;
     private String reason;
     private String status;
 
@@ -22,6 +25,9 @@ public class UserRelationSuggestionDTO {
                                      String suggestedUserProfilePic,
                                      String suggestedUserGender,
                                      String inferredRelation,
+                                     String englishRelation,
+                                     String indianRelation,
+                                     String genericRelation,
                                      String reason,
                                      String status) {
         this.pendingRelationId      = pendingRelationId;
@@ -31,6 +37,9 @@ public class UserRelationSuggestionDTO {
         this.suggestedUserProfilePic = suggestedUserProfilePic;
         this.suggestedUserGender    = suggestedUserGender;
         this.inferredRelation       = inferredRelation;
+        this.englishRelation        = englishRelation;
+        this.indianRelation         = indianRelation;
+        this.genericRelation        = genericRelation;
         this.reason                 = reason;
         this.status                 = status;
     }
@@ -42,6 +51,9 @@ public class UserRelationSuggestionDTO {
     public String getSuggestedUserProfilePic() { return suggestedUserProfilePic; }
     public String getSuggestedUserGender()     { return suggestedUserGender; }
     public String getInferredRelation()        { return inferredRelation; }
+    public String getEnglishRelation()         { return englishRelation; }
+    public String getIndianRelation()          { return indianRelation; }
+    public String getGenericRelation()         { return genericRelation; }
     public String getReason()                  { return reason; }
     public String getStatus()                  { return status; }
 }
