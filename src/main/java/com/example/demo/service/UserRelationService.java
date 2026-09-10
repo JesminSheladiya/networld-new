@@ -458,20 +458,23 @@ public class UserRelationService {
                 return "Paternal Grandfather";
             case "granddaughter":
                 return "Paternal Grandmother";
-            // piblings -> generic niblings (NOT "Brother Son" etc.)
+            // piblings -> side-specific niblings (NOT generic Nephew):
+            // father's side is brother-line, mother's side sister-line.
             case "uncle":
             case "aunt":
+                return f ? "Niece" : "Nephew";
             case "paternal uncle":
             case "paternal aunt":
-            case "maternal uncle":
-            case "maternal aunt":
             case "father elder brother":
             case "father elder brother wife":
             case "father younger brother wife":
             case "father sister husband":
+                return f ? "Brother Daughter" : "Brother Son";
+            case "maternal uncle":
+            case "maternal aunt":
             case "mother brother wife":
             case "mother sister husband":
-                return f ? "Niece" : "Nephew";
+                return f ? "Sister Daughter" : "Sister Son";
             // niblings -> generic piblings (NOT "Father Elder Brother" etc.)
             case "nephew":
             case "niece":
