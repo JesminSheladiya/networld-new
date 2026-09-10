@@ -7,6 +7,7 @@ import { faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-ico
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { getInverseRelation } from "../UserProfile";
+import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
 
 const AV_COLORS = ["#3b82f6", "#38bdf8", "#0ea5e9", "#10b981", "#f59e0b"];
@@ -16,18 +17,19 @@ function RequestsPage() {
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(false);
   const { bump, key: refreshKey, setPendingCount } = useRefresh();
+  const { relName, relCategory } = useRelationDisplay();
 
-  // Mirror of backend grouping: decides which contacts tab the new contact lands in
-  const categoryOfRelation = (name) => {
-    const r = (name || "").toLowerCase();
-    if (r.includes("in-law")) return "inlaws";
-    if (r.includes("cousin")) return "others";
-    if (r.includes("'s")) return "family";
-    const keys = ["father", "mother", "brother", "sister", "son", "daughter",
-      "husband", "wife", "grand", "uncle", "aunt", "nephew", "niece"];
-    if (keys.some((k) => r.includes(k))) return "family";
-    return "others";
+  // "X wants to add you as their <Relation>" → relation in chosen language
+  const formatReason = (reason) => {
+    if (!reason) return reason;
+    const marker = " as their ";
+    const idx = reason.lastIndexOf(marker);
+    if (idx === -1) return reason;
+    return reason.slice(0, idx + marker.length) + relName(reason.slice(idx + marker.length).trim());
   };
+
+  // Which contacts tab the new contact lands in (master-driven, like backend)
+  const categoryOfRelation = (name) => relCategory(name);
   const categoryLabel = (key) =>
     key === "inlaws" ? "In-Laws" : key === "family" ? "Family" : key === "others" ? "Others" : "All";
 
@@ -60,8 +62,9 @@ function RequestsPage() {
       bump();
       message.success(`Accepted — added to ${categoryLabel(cat)}`);
       navigate("/contacts", { state: { category: cat } });
-    } catch {
-      // silent
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not accept request");
+      fetchPending();
     }
   };
 
@@ -70,8 +73,9 @@ function RequestsPage() {
       await api.decline(id);
       fetchPending();
       bump();
-    } catch {
-      // silent
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not decline request");
+      fetchPending();
     }
   };
 
@@ -113,7 +117,7 @@ function RequestsPage() {
                     <div className="nw-find-info">
                       <div className="nw-find-name">{p.suggestedUserName}</div>
                       <div className="nw-find-email">{p.suggestedUserEmail}</div>
-                      <div className="nw-find-reason">{p.reason}</div>
+                      <div className="nw-find-reason">{formatReason(p.reason)}</div>
                     </div>
                   </div>
                   <div className="nw-req-right">

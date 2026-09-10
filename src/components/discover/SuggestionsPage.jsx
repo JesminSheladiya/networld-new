@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Spin, Button, Tooltip } from "antd";
+import { Spin, Button, Tooltip, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLightbulb, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 import { faArrowRight, faCheck, faXmark, faRotateRight, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
@@ -50,8 +50,11 @@ function SuggestionsPage() {
       setSuggestions((p) => p.filter((x) => x.suggestedUserEmail !== s.suggestedUserEmail));
       setSuggestionsCount(remaining);
       bump();
-    } catch {
-      // silent
+    } catch (e) {
+      // Server is the source of truth — show its message and re-fetch.
+      message.error(e?.response?.data?.message || "Could not send request");
+      fetchSuggestions();
+      bump();
     }
   };
 
@@ -179,6 +182,7 @@ function SuggestionsPage() {
         open={pickerOpen}
         title="Edit Relation"
         personName={suggestions.find((x) => x.suggestedUserEmail === editingEmail)?.suggestedUserName}
+        personGender={suggestions.find((x) => x.suggestedUserEmail === editingEmail)?.suggestedUserGender}
         value={editValue || undefined}
         onClose={() => setPickerOpen(false)}
         onPick={(v) => setEditValue(v)}
