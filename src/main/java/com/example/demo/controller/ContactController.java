@@ -146,6 +146,13 @@ public class ContactController {
         return relationService.getAll();
     }
 
+    // Unfiltered display map for chips/labels (includes hidden engine rows).
+    // Pickers must keep using /relations so hidden rows stay unselectable.
+    @GetMapping("/relations/all")
+    public List<Relation> getRelationsForDisplay() {
+        return relationService.getAllForDisplay();
+    }
+
     @GetMapping("/inferred-relations")
     public ResponseEntity<List<InferredRelationDTO>> getInferredRelations(
             @AuthenticationPrincipal UserDetails userDetails) {

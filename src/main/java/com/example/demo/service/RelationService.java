@@ -42,6 +42,14 @@ public class RelationService {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    // Complete display map (no filter): hidden engine-only rows (Brother,
+    // Grandfather, ...) also carry indian/generic names, and every chip /
+    // label in the app resolves through this — otherwise those fall back
+    // to English regardless of the chosen format.
+    public List<Relation> getAllForDisplay() {
+        return relationRepository.findAll();
+    }
+
 
     public List<InferredRelationDTO> inferRelations(User user) {
 
