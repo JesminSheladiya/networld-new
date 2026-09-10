@@ -52,10 +52,10 @@ export function getInverseRelation(rel, gender = "M") {
         // siblings
         "brother": brotherSister,
         "sister": brotherSister,
-        "elder brother": brotherSister,
-        "elder sister": brotherSister,
-        "younger brother": brotherSister,
-        "younger sister": brotherSister,
+        "elder brother": F ? "younger sister" : "younger brother",
+        "elder sister": F ? "younger sister" : "younger brother",
+        "younger brother": F ? "elder sister" : "elder brother",
+        "younger sister": F ? "elder sister" : "elder brother",
         // uncles / aunts (generic + paternal/maternal + elder/younger variants)
         "uncle": nephewNiece,
         "aunt": nephewNiece,
@@ -90,9 +90,13 @@ export function getInverseRelation(rel, gender = "M") {
         "daughter-in-law": filMil,
         "brother-in-law": bilSil,
         "sister-in-law": bilSil,
-        "brother-in-law (wifes brother)": F ? "Sister-in-law (Wife's Sister)" : "Brother-in-law (Sister's Husband)",
-        "sister-in-law (wifes brothers wife)": F ? "Sister-in-law (Wife's Sister)" : "Brother-in-law (Sister's Husband)",
-        "brother-in-law (wifes sisters husband)": "Brother-in-law (Wife's Sister's Husband)",
+        "brother-in-law (wifes brother)": F ? "Sister-in-law" : "Brother-in-law (Sister's Husband)",
+        "sister-in-law (wifes brothers wife)": F ? "Sister-in-law" : "Brother-in-law",
+        "brother-in-law (wifes sisters husband)": F ? "Sister-in-law" : "Brother-in-law (Wife's Sister's Husband)",
+        "brother-in-law (sisters husband)": F ? "Sister-in-law (Wife's Sister)" : "Brother-in-law",
+        "brother-in-law (husbands brother)": bilSil,
+        "sister-in-law (husbands sister)": bilSil,
+        "sister-in-law (wifes sister)": F ? "Sister-in-law" : "Brother-in-law (Sister's Husband)",
         // neutral
         "friend": "friend",
         // english-compositional aliases (same relations, descriptive names)
@@ -122,10 +126,10 @@ export function getInverseRelation(rel, gender = "M") {
         "wifes sister": bilSil,
         "childs spouses father": F ? "Child's Spouse's Mother" : "Child's Spouse's Father",
         "childs spouses mother": F ? "Child's Spouse's Mother" : "Child's Spouse's Father",
-        "husbands sisters husband": F ? "Sister-in-law (Wife's Brother's Wife)" : "Brother-in-law (Wife's Sister's Husband)",
-        "husbands brothers wife": F ? "Sister-in-law (Wife's Brother's Wife)" : "Brother-in-law (Sister's Husband)",
-        "husbands elder brother": F ? "Sister-in-law (Husband's Brother's Wife)" : "Brother-in-law",
-        "husbands elder brothers wife": F ? "Sister-in-law (Husband's Brother's Wife)" : "Brother-in-law",
+        "husbands sisters husband": F ? "Sister-in-law" : "Brother-in-law",
+        "husbands brothers wife": F ? "Husband's Brother's Wife" : "Brother-in-law",
+        "husbands elder brother": F ? "Sister-in-law" : "Brother-in-law",
+        "husbands elder brothers wife": F ? "Sister-in-law" : "Brother-in-law",
     };
     // match ignoring case + apostrophes ("Father's Sister" -> "father sister")
     const key = rel.toLowerCase().replace(/'/g, "");

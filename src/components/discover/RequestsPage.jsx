@@ -62,8 +62,9 @@ function RequestsPage() {
       bump();
       message.success(`Accepted — added to ${categoryLabel(cat)}`);
       navigate("/contacts", { state: { category: cat } });
-    } catch {
-      // silent
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not accept request");
+      fetchPending();
     }
   };
 
@@ -72,8 +73,9 @@ function RequestsPage() {
       await api.decline(id);
       fetchPending();
       bump();
-    } catch {
-      // silent
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not decline request");
+      fetchPending();
     }
   };
 

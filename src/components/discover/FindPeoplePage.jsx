@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Input, Spin, Empty, Tooltip } from "antd";
+import { Input, Spin, Empty, Tooltip, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass, faArrowRight, faUsers, faXmark, faPaperPlane, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
@@ -16,6 +16,7 @@ function FindPeoplePage() {
   const [sendingMap, setSendingMap] = useState({});
   const [sentMap, setSentMap] = useState({});
   const [pickerEmail, setPickerEmail] = useState(null);
+  const [searchSeq, setSearchSeq] = useState(0);
   const { bump } = useRefresh();
   const { relName } = useRelationDisplay();
 
@@ -56,7 +57,7 @@ function FindPeoplePage() {
       }
     }, 400);
     return () => clearTimeout(handler);
-  }, [query]);
+  }, [query, searchSeq]);
 
   const sendRequest = async (email) => {
     if (!relMap[email]) return;
@@ -66,8 +67,11 @@ function FindPeoplePage() {
       setSentMap((p) => ({ ...p, [email]: true }));
       bump();
     } catch (e) {
-      // error handled silently
-      console.error(e);
+      // Server is the source of truth (e.g. cross-request blocked) —
+      // show its message and re-fetch so the row reflects real state.
+      message.error(e?.response?.data?.message || "Could not send request");
+      setSearchSeq((s) => s + 1);
+      bump();
     } finally {
       setSendingMap((p) => ({ ...p, [email]: false }));
     }
