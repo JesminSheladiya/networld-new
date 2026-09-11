@@ -30,8 +30,11 @@ public class RelationService {
     // Selection lists only: generic duplicates are hidden because specific
     // variants cover them (Grandfather -> Paternal Grandfather,
     // Brother -> Elder/Younger Brother, Uncle -> Paternal/Maternal Uncle,
-    // Nephew -> Brother's/Sister's Son, etc.). Rows stay in the DB because
-    // the suggestion engine outputs these exact generic names.
+    // Nephew -> Brother's/Sister's Son, etc.). Chain relations
+    // ("Brother's Brother-in-law", ...) STAY selectable: users see them in
+    // suggestions and must be able to send them manually too (gender
+    // compatibility is still validated on send). Rows stay in the DB
+    // because the suggestion engine outputs these exact generic names.
     private static final java.util.Set<String> HIDDEN_FROM_SELECTION = java.util.Set.of(
             "cousin", "grandfather", "grandmother", "brother", "sister",
             "uncle", "aunt", "nephew", "niece");
@@ -39,7 +42,98 @@ public class RelationService {
     public List<Relation> getAll() {
         return relationRepository.findAll().stream()
                 .filter(r -> !HIDDEN_FROM_SELECTION.contains(r.getRelationName().toLowerCase()))
+                .sorted(SELECTION_ORDER)
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Selection order: family first, then side by side, so similar
+    // options always sit together ("Jija" next to "Jija (Behen ke Pati)"
+    // instead of scattered pages apart — picking the wrong twin used to
+    // store the wrong relation and derail future suggestions).
+    // Rank 1: blood / immediate family (parents, spouse, siblings,
+    // children, grandparents, grandchildren).
+    // Rank 2: extended sides grouped together — paternal side (tau,
+    // chacha, bua...) before maternal side (mama, mausi...), then
+    // niblings and cousins.
+    // Rank 3: in-laws grouped by base form, then everything else.
+    // Within a group: plain name first, then variants A-Z. Deterministic
+    // in Java (DB heap order can drift), so every picker everywhere shows
+    // the same arrangement. Data-driven: future rows slot in automatically.
+    private static final java.util.List<String> CATEGORY_ORDER = java.util.List.of(
+            "PARENT", "SPOUSE", "SIBLING", "CHILD",
+            "GRANDPARENT", "GRANDCHILD", "PIBLING", "NIBLING", "COUSIN",
+            "INLAW", "OTHER");
+
+    private static final java.util.Comparator<Relation> SELECTION_ORDER =
+            java.util.Comparator
+                    .comparingInt(RelationService::categoryRank)
+                    .thenComparing(RelationService::orderKey)
+                    .thenComparingInt(RelationService::sideRank)
+                    .thenComparing(RelationService::baseForm)
+                    .thenComparing(r -> isPlainForm(r) ? 0 : 1)
+                    .thenComparing(r -> r.getRelationName().toLowerCase());
+
+    // Couple-wise arrangement: husband immediately followed by wife, so a
+    // pair is never split across the list (Devar-Devrani, Sadu-Sali,
+    // Sasur-Saas, ...). Only categories with couples need explicit pairs;
+    // everything unlisted (including future rows) falls back to the generic
+    // side/base-form order below. Keys are lowercase relation names.
+    private static final java.util.List<String> PIBLING_ORDER = java.util.List.of(
+            "father elder brother", "father elder brother wife",
+            "paternal uncle", "father younger brother wife",
+            "father sister husband", "paternal aunt",
+            "maternal uncle", "mother brother wife",
+            "mother sister husband", "maternal aunt");
+
+    private static final java.util.List<String> INLAW_ORDER = java.util.List.of(
+            "brother-in-law",
+            "brother-in-law (wife's brother)", "sister-in-law (wife's brother's wife)",
+            "brother-in-law (wife's sister's husband)", "sister-in-law (wife's sister)",
+            "brother-in-law (husband's brother)", "husband's brother's wife",
+            "husband's elder brother", "husband's elder brother's wife",
+            "husband's sister's husband",
+            "sister-in-law",
+            "child's spouse's father", "child's spouse's mother",
+            "father-in-law", "mother-in-law",
+            "son-in-law", "daughter-in-law");
+
+    // Group key: explicit couple position when listed, else a shared
+    // fallback bucket — the side/base keys after this do the rest, so
+    // paternal sides (dada-dadi, paternal cousins) always precede maternal
+    // ones while unlisted future rows still slot in sensibly.
+    private static String orderKey(Relation r) {
+        String name = r.getRelationName() == null ? "" : r.getRelationName().toLowerCase();
+        String cat = r.getRelationCategory() == null ? "" : r.getRelationCategory().toUpperCase();
+        int idx = -1;
+        if ("PIBLING".equals(cat)) idx = PIBLING_ORDER.indexOf(name);
+        else if ("INLAW".equals(cat)) idx = INLAW_ORDER.indexOf(name);
+        if (idx >= 0) return "0:" + String.format("%03d", idx);
+        return "1:";
+    }
+
+    private static int categoryRank(Relation r) {
+        if (r.getRelationCategory() == null) return Integer.MAX_VALUE;
+        int i = CATEGORY_ORDER.indexOf(r.getRelationCategory().toUpperCase());
+        return i < 0 ? Integer.MAX_VALUE : i;
+    }
+
+    // Paternal side ("Paternal ...", "Father ...") before maternal side
+    // ("Maternal ...", "Mother ..."); sideless names stay in place.
+    private static int sideRank(Relation r) {
+        String n = r.getRelationName() == null ? "" : r.getRelationName().toLowerCase();
+        if (n.contains("paternal") || n.startsWith("father ")) return 0;
+        if (n.contains("maternal") || n.startsWith("mother ")) return 1;
+        return 2;
+    }
+
+    private static String baseForm(Relation r) {
+        String g = r.getGenericRelation();
+        return (g == null || g.isBlank() ? r.getRelationName() : g).toLowerCase();
+    }
+
+    private static boolean isPlainForm(Relation r) {
+        return r.getRelationName() != null
+                && r.getRelationName().equalsIgnoreCase(r.getGenericRelation());
     }
 
     // Complete display map (no filter): hidden engine-only rows (Brother,

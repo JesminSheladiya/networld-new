@@ -24,8 +24,11 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
 
     Page<UserRelation> findByFromUserAndStatus(User fromUser, String status, Pageable pageable);
 
+    // Suggestions are owned per-sender: each user regenerates ONLY their own
+    // outgoing rows (incoming rows belong to the other side's regeneration —
+    // writing both sides caused last-writer-wins flapping on asymmetric pairs).
     @Modifying
-    @Query("DELETE FROM UserRelation ur WHERE ur.status = 'SUGGESTED' AND (ur.fromUser = :user OR ur.toUser = :user)")
+    @Query("DELETE FROM UserRelation ur WHERE ur.status = 'SUGGESTED' AND ur.fromUser = :user")
     void deleteAllSuggestionsFor(@Param("user") User user);
 
     @Query(value = "SELECT pg_advisory_xact_lock(:lockKey)", nativeQuery = true)

@@ -356,6 +356,12 @@ public class UserRelationService {
     // Rebuild every SUGGESTED entry for 'me' from the full accepted-relations graph.
     // Uses a Postgres advisory lock (held until transaction commit) so concurrent
     // regenerations from different users can't both insert the same SUGGESTED pair.
+    //
+    // ONE-SIDED WRITES: only me -> other rows are written here, never
+    // other -> me. The reverse direction belongs to other's own regeneration
+    // (their words for me can legitimately differ from my generic reverse,
+    // e.g. chain relations). Writing both sides caused last-writer-wins
+    // flapping between asymmetric pairs.
     @Transactional
     public void regenerateAllSuggestions(User me) {
         userRelationRepo.lockSuggestionRegeneration(48201927L);
@@ -363,6 +369,18 @@ public class UserRelationService {
 
         List<UserRelation> accepted = userRelationRepo.findByStatus("ACCEPTED");
         Map<Long, RelationshipResolver.RelResult> resolvedMap = resolver.resolveAll(accepted, me);
+
+        // Accepted adjacency for chain bridges: fromUserId -> (toUserId -> relationName).
+        Map<Long, Map<Long, String>> adjLabels = new HashMap<>();
+        Map<Long, User> usersById = new HashMap<>();
+        for (UserRelation ur : accepted) {
+            adjLabels.computeIfAbsent(ur.getFromUser().getId(), k -> new HashMap<>())
+                    .put(ur.getToUser().getId(), ur.getRelation().getRelationName());
+            usersById.put(ur.getFromUser().getId(), ur.getFromUser());
+            usersById.put(ur.getToUser().getId(), ur.getToUser());
+        }
+        Map<Long, Map<Long, RelationshipResolver.RelResult>> inferredCache = new HashMap<>();
+        Map<String, Relation> relationCache = new HashMap<>();
 
         List<User> allUsers = userRepository.findAll();
 
@@ -376,20 +394,117 @@ public class UserRelationService {
             if (reverseExisting.isPresent() && !"SUGGESTED".equals(reverseExisting.get().getStatus())) continue;
 
             RelationshipResolver.RelResult result = resolvedMap.get(other.getId());
-            if (result == null || result.otherToMe == null || result.meToOther == null) continue;
 
-            String otherToMe = result.otherToMe;
-            String meToOther = result.meToOther;
+            String genericName = (result == null) ? null : result.otherToMe;
+            Optional<Relation> genericRel = (genericName == null) ? Optional.empty()
+                    : relationRepository.findByRelationNameIgnoreCase(genericName);
 
-            Optional<Relation> rel1 = relationRepository.findByRelationNameIgnoreCase(otherToMe);
-            Optional<Relation> rel2 = relationRepository.findByRelationNameIgnoreCase(meToOther);
-            if (rel1.isEmpty() || rel2.isEmpty()) continue;
+            // Distant/unnamed pairs get a descriptive chain ("Brother's
+            // Brother-in-law") composed through a bridge person; close blood
+            // truths always keep their generic label. A tainted generic
+            // (built on side-assumptions or in-law translations rather than
+            // an exact composition) is also a chain candidate — the chain
+            // describes the actual path exactly.
+            boolean keepGeneric = genericRel.isPresent()
+                    && (Boolean.TRUE.equals(genericRel.get().getIsBlood())
+                        || (result != null && !result.viaSideRule));
+            String chainName = keepGeneric ? null
+                    : composeChain(me, other, resolvedMap, accepted, adjLabels, usersById,
+                            inferredCache, relationCache);
 
-            userRelationRepo.save(new UserRelation(me, other, rel1.get(), "SUGGESTED"));
-            if (reverseExisting.isEmpty()) {
-                userRelationRepo.save(new UserRelation(other, me, rel2.get(), "SUGGESTED"));
+            String finalName;
+            if (chainName != null) {
+                finalName = chainName;
+            } else if (genericRel.isPresent()) {
+                finalName = genericName;
+            } else {
+                continue;
+            }
+
+            Optional<Relation> finalRel = relationRepository.findByRelationNameIgnoreCase(finalName);
+            if (finalRel.isEmpty()) continue;
+
+            if (existing.isPresent()) {
+                UserRelation ur = existing.get();
+                ur.setRelation(finalRel.get());
+                userRelationRepo.save(ur);
+            } else {
+                userRelationRepo.save(new UserRelation(me, other, finalRel.get(), "SUGGESTED"));
             }
         }
+    }
+
+    // First-link categories for chain composition: simple blood ties only.
+    // Spouse/in-law/nibling/pibling links are excluded (spouse-led chains
+    // collapse into existing in-law rows; compound words like "Brother Son"
+    // or "Maternal Uncle" read poorly as chain heads).
+    private static final java.util.Set<String> CHAIN_HEAD_CATEGORIES = java.util.Set.of(
+            "PARENT", "CHILD", "SIBLING", "GRANDPARENT", "GRANDCHILD");
+
+    // Compose a descriptive chain relation ("Brother's Brother-in-law") for a
+    // distant pair via a bridge person X: "<my label for X>'s <X's label for
+    // target>". Both links may be accepted or inferred-close; the composed
+    // name must match a curated chain row or nothing is returned (caller
+    // keeps the generic label). Correct by construction: a possessive of two
+    // true links. Deterministic: accepted bridges first, then by name.
+    private String composeChain(User me, User other,
+            Map<Long, RelationshipResolver.RelResult> egoMap,
+            List<UserRelation> accepted,
+            Map<Long, Map<Long, String>> adjLabels,
+            Map<Long, User> usersById,
+            Map<Long, Map<Long, RelationshipResolver.RelResult>> inferredCache,
+            Map<String, Relation> relationCache) {
+        List<Long> bridges = new ArrayList<>(egoMap.keySet());
+        bridges.remove(me.getId());
+        bridges.remove(other.getId());
+        Set<Long> acceptedContacts =
+                adjLabels.getOrDefault(me.getId(), java.util.Collections.emptyMap()).keySet();
+        bridges.sort((a, b) -> {
+            boolean aa = acceptedContacts.contains(a);
+            boolean ab = acceptedContacts.contains(b);
+            if (aa != ab) return aa ? -1 : 1;
+            return Long.compare(a, b);
+        });
+
+        for (Long bridgeId : bridges) {
+            RelationshipResolver.RelResult head = egoMap.get(bridgeId);
+            if (head == null || head.otherToMe == null) continue;
+            String headName = head.otherToMe;
+            Relation headRow = relationCache.computeIfAbsent(headName.toLowerCase(),
+                    k -> relationRepository.findByRelationNameIgnoreCase(headName).orElse(null));
+            if (headRow == null || !Boolean.TRUE.equals(headRow.getIsBlood())
+                    || !CHAIN_HEAD_CATEGORIES.contains(
+                            headRow.getRelationCategory() != null
+                                    ? headRow.getRelationCategory().toUpperCase() : "")) {
+                continue;
+            }
+
+            // Second link: bridge's own accepted wording first, else bridge's inference.
+            String tailName = adjLabels.getOrDefault(bridgeId, java.util.Collections.emptyMap())
+                    .get(other.getId());
+            if (tailName == null) {
+                User bridge = usersById.get(bridgeId);
+                if (bridge == null) continue;
+                Map<Long, RelationshipResolver.RelResult> bridgeMap =
+                        inferredCache.computeIfAbsent(bridgeId,
+                                k -> resolver.resolveAll(accepted, bridge));
+                RelationshipResolver.RelResult tail = bridgeMap.get(other.getId());
+                if (tail == null || tail.otherToMe == null) continue;
+                tailName = tail.otherToMe;
+            }
+            final String tailKey = tailName;
+            Relation tailRow = relationCache.computeIfAbsent(tailKey.toLowerCase(),
+                    k -> relationRepository.findByRelationNameIgnoreCase(tailKey).orElse(null));
+            if (tailRow == null) continue;
+            String tailGeneric = tailRow.getGenericRelation() != null
+                    && !tailRow.getGenericRelation().isBlank()
+                    ? tailRow.getGenericRelation().trim() : tailName;
+
+            String candidate = headName + "'s " + tailGeneric;
+            Optional<Relation> hit = relationRepository.findByRelationNameIgnoreCase(candidate);
+            if (hit.isPresent()) return hit.get().getRelationName();
+        }
+        return null;
     }
 
     private static final Map<String, String> CATEGORY_REVERSE = Map.of(
@@ -435,6 +550,41 @@ public class UserRelationService {
         if (relationName == null) return null;
         boolean f = "F".equals(requesterGender);
         switch (relationName.toLowerCase()) {
+            // chain relations ("Brother's Brother-in-law", ...): reverse to
+            // the generic in-law by the sender's gender — always valid, and
+            // the paired chain on the other side is computed by that side's
+            // own composition (which the accept flow preserves).
+            case "brother's brother-in-law":
+            case "sister's brother-in-law":
+            case "son's brother-in-law":
+            case "daughter's brother-in-law":
+                return f ? "Sister-in-law" : "Brother-in-law";
+            case "sister's sister-in-law":
+            case "daughter's sister-in-law":
+            case "brother's sister-in-law":
+            case "son's sister-in-law":
+                return f ? "Sister-in-law" : "Brother-in-law";
+            case "son's father-in-law":
+                // Paired chains, exact in both directions (samdhi is samdhi
+                // back): my son's father-in-law sees me as his daughter's
+                // father/mother-in-law, gender-matched — and mirrored.
+                return f ? "Daughter's Mother-in-law" : "Daughter's Father-in-law";
+            case "daughter's father-in-law":
+                return f ? "Son's Mother-in-law" : "Son's Father-in-law";
+            case "son's mother-in-law":
+                return f ? "Daughter's Mother-in-law" : "Daughter's Father-in-law";
+            case "daughter's mother-in-law":
+                return f ? "Son's Mother-in-law" : "Son's Father-in-law";
+            case "brother's son-in-law":
+            case "sister's son-in-law":
+            case "son's son-in-law":
+            case "daughter's son-in-law":
+                return f ? "Daughter-in-law" : "Son-in-law";
+            case "brother's daughter-in-law":
+            case "sister's daughter-in-law":
+            case "son's daughter-in-law":
+            case "daughter's daughter-in-law":
+                return f ? "Daughter-in-law" : "Son-in-law";
             // paternal side -> son's children (NOT "Daughter's Son")
             case "paternal grandfather":
             case "paternal grandmother":
@@ -511,14 +661,10 @@ public class UserRelationService {
                 return f ? "Sister-in-law" : "Brother-in-law";
             case "brother-in-law (husband's brother)":
                 return f ? "Sister-in-law" : "Brother-in-law";
-            case "sister-in-law (husband's sister)":
-                return f ? "Sister-in-law" : "Brother-in-law";
-            case "brother-in-law (sister's husband)":
-                return f ? "Sister-in-law (Wife's Sister)" : "Brother-in-law";
             case "sister-in-law (wife's sister)":
-                return f ? "Sister-in-law" : "Brother-in-law (Sister's Husband)";
+                return f ? "Sister-in-law" : "Brother-in-law";
             case "brother-in-law (wife's brother)":
-                return f ? "Sister-in-law" : "Brother-in-law (Sister's Husband)";
+                return f ? "Sister-in-law" : "Brother-in-law";
             case "brother-in-law (wife's sister's husband)":
                 return f ? "Sister-in-law" : "Brother-in-law (Wife's Sister's Husband)";
             case "sister-in-law (wife's brother's wife)":
@@ -531,10 +677,10 @@ public class UserRelationService {
                 return f ? "Sister-in-law" : "Brother-in-law";
             case "husband's brother's wife":
                 return f ? "Husband's Brother's Wife" : "Brother-in-law";
-            case "child's spouse's father":
-                return f ? "Child's Spouse's Mother" : "Child's Spouse's Father";
-            case "child's spouse's mother":
-                return f ? "Child's Spouse's Mother" : "Child's Spouse's Father";
+            case "child's father-in-law":
+                return f ? "Child's Mother-in-law" : "Child's Father-in-law";
+            case "child's mother-in-law":
+                return f ? "Child's Mother-in-law" : "Child's Father-in-law";
             default:
                 return null;
     }
