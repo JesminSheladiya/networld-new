@@ -59,6 +59,27 @@ export function RelationDisplayProvider({ children }) {
     return row?.[field] || name;
   }, [master, masterLower, format]);
 
+  // Unique, always-understandable picker labels. Several rows share one
+  // display name in Indian/Generic format (Indian "Jija (Samanya)" vs
+  // "Jija (Behen ke Pati)"; Generic "Brother-in-law" x7). A colliding row
+  // gets its precise English name appended — English is unique across
+  // every row, so the result is collision-free in all three languages.
+  // If English already contains the display name (e.g. Generic
+  // "Brother-in-law" vs English "Brother-in-law (General)"), use English
+  // alone instead of nesting brackets. Future rows are covered
+  // automatically (no per-name list to maintain).
+  const relOptionLabel = useCallback((row, rows) => {
+    if (!row) return "";
+    const field = FIELD_BY_FORMAT[format || 'english'];
+    const base = row?.[field] || row.relationName;
+    const dup = (rows || []).some((o) => o !== row
+      && ((o?.[field] || o.relationName) === base));
+    if (!dup) return base;
+    const en = row.englishRelation || row.relationName;
+    if (!en || en === base) return base;
+    return en.startsWith(base + " (") ? en : `${base} (${en})`;
+  }, [format]);
+
   // Tab category from master metadata; tiny fallback for synthetic names
   const relCategory = useCallback((name) => {
     if (!name) return "others";
@@ -83,11 +104,12 @@ export function RelationDisplayProvider({ children }) {
     hasChosen: !!format,
     setFormat,
     relName,
+    relOptionLabel,
     relCategory,
     pickerOpen,
     openPicker,
     closePicker,
-  }), [format, setFormat, relName, relCategory, pickerOpen, openPicker, closePicker]);
+  }), [format, setFormat, relName, relOptionLabel, relCategory, pickerOpen, openPicker, closePicker]);
 
   return (
     <RelationDisplayContext.Provider value={value}>
