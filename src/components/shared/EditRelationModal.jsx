@@ -4,7 +4,7 @@ import { api } from "../../Services/networld";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 
 function EditRelationModal({ contact, open, onClose, onSaved }) {
-  const { relName } = useRelationDisplay();
+  const { relOptionLabel } = useRelationDisplay();
   const [relations, setRelations] = useState([]);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -28,7 +28,7 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
     const picked = relations.find((r) => r.relationName === finalRel.trim());
     if (picked && !isCompatible(picked)) {
       message.error(
-        `'${relName(picked.relationName)}' can only be sent to ` +
+        `'${relOptionLabel(picked, relations)}' can only be sent to ` +
         (picked.gender === "F" ? "female" : "male") + " users. Request not sent."
       );
       return;
@@ -72,9 +72,23 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
           style={{ width: "100%" }}
           value={editValue}
           onChange={(val) => setEditValue(val)}
+          showSearch
+          placeholder="Choose a relation"
+          filterOption={(input, option) =>
+            (option?.searchText || "").includes(input.trim().toLowerCase())
+          }
           options={relations.map((r) => ({
             value: r.relationName,
-            label: relName(r.relationName),
+            label: relOptionLabel(r, relations),
+            searchText: [
+              r.relationName,
+              r.englishRelation,
+              r.indianRelation,
+              r.genericRelation,
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase(),
             disabled: !isCompatible(r),
           }))}
         />

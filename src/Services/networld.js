@@ -25,6 +25,8 @@ export const api = {
       params: search && search.trim() ? { query: search.trim() } : {},
     }),
   relations: () => http.get(`${API_URL}/relations`),
+  // Unfiltered display map (includes hidden engine rows) for chips/labels.
+  relationsAll: () => http.get(`${API_URL}/relations/all`),
   searchUsers: (q) => http.get(`${BASE}/user-relations/search-users?query=${encodeURIComponent(q)}`),
   send: (toEmail, relationId) => http.post(`${BASE}/user-relations/send`, { toEmail, relationId }),
   suggestions: () => http.get(`${BASE}/user-relations/suggestions`),

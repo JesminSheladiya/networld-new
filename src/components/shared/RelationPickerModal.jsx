@@ -6,7 +6,7 @@ import { useRelationDisplay } from "../../context/RelationDisplayContext";
 const GENDER_LABEL = { M: "Male", F: "Female" };
 
 function RelationPickerModal({ open, title = "Edit Relation", personName, personGender, value, idMode = false, onClose, onPick }) {
-  const { relName } = useRelationDisplay();
+  const { relOptionLabel } = useRelationDisplay();
   const [relations, setRelations] = useState([]);
   const [val, setVal] = useState(value);
 
@@ -28,7 +28,7 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, person
     const picked = relations.find((r) => (idMode ? r.id : r.relationName) === val);
     if (picked && !isCompatible(picked)) {
       message.error(
-        `'${relName(picked.relationName)}' can only be sent to ` +
+        `'${relOptionLabel(picked, relations)}' can only be sent to ` +
         (picked.gender === "F" ? "female" : "male") + " users. Request not sent."
       );
       return;
@@ -72,10 +72,23 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, person
           value={val}
           onChange={(v) => setVal(v)}
           showSearch
-          optionFilterProp="label"
+          filterOption={(input, option) =>
+            (option?.searchText || "").includes(input.trim().toLowerCase())
+          }
           options={visible.map((r) => ({
             value: idMode ? r.id : r.relationName,
-            label: relName(r.relationName),
+            label: relOptionLabel(r, relations),
+            // Search across every name form so "samdhan", "saas",
+            // "father-in-law" etc. all find their rows in any language mode.
+            searchText: [
+              r.relationName,
+              r.englishRelation,
+              r.indianRelation,
+              r.genericRelation,
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase(),
             disabled: !isCompatible(r),
           }))}
         />
