@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { Avatar, Modal } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
-import { faArrowLeft, faPhone } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faPhone, faCakeCandles } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import RelationChip from "./RelationChip";
 import EditRelationModal from "./EditRelationModal";
+import { formatBirthDateWithAge } from "../../utils/dateUtils";
 
 function ContactProfile({ contact, showBack = false, onBack }) {
   const [relations, setRelations] = useState([]);
@@ -58,6 +59,15 @@ function ContactProfile({ contact, showBack = false, onBack }) {
             <span className="nw-profile-row-text">
               <span className="nw-profile-row-label">Email</span>
               <span className="nw-profile-row-value">{contact.email}</span>
+            </span>
+          </div>
+        )}
+        {contact.birthDate && (
+          <div className="nw-profile-row">
+            <span className="nw-profile-row-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
+            <span className="nw-profile-row-text">
+              <span className="nw-profile-row-label">Birth Date</span>
+              <span className="nw-profile-row-value">{formatBirthDateWithAge(contact.birthDate)}</span>
             </span>
           </div>
         )}

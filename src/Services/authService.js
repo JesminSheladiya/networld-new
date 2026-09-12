@@ -8,9 +8,9 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-export const register = async (username, email, phone, password, fullName, gender) => {
+export const register = async (username, email, phone, password, fullName, gender, birthDate) => {
   const { data } = await axios.post(`${API_BASE}/auth/register`,
-    { username, email, phone, password, fullName, gender }); 
+    { username, email, phone, password, fullName, gender, birthDate }); 
   if (data.token) {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data));

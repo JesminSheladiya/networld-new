@@ -8,6 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { register } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
 import NetworkBackground from "./NetworkBackground";
+import ScrollDatePicker from "./shared/ScrollDatePicker";
+import { birthDateValidator, toBirthDateParam } from "../utils/dateUtils";
 import "./css/Auth.css";
 
 const { Title } = Typography;
@@ -33,7 +35,8 @@ function Register() {
         values.phone,
         values.password,
         values.name.trim(),
-        values.gender
+        values.gender,
+        toBirthDateParam(values.birthDate)
       );
       message.success(`Welcome, ${data.username}! Registration successful.`);
       authLogin();
@@ -158,6 +161,14 @@ function Register() {
                 { value: "F", label: "Female" },
               ]}
             />
+          </Form.Item>
+
+          <Form.Item
+            className="auth-field"
+            name="birthDate"
+            rules={[birthDateValidator()]}
+          >
+            <ScrollDatePicker placeholder="Birth Date (optional)" />
           </Form.Item>
 
           <Form.Item className="auth-field auth-submit">

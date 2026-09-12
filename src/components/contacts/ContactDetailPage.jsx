@@ -30,10 +30,11 @@ function ContactDetailPage() {
             profilePicture: found.suggestedUserProfilePic || null,
             relation: found.inferredRelation || "",
             relationId: found.pendingRelationId ?? null,
+            birthDate: found.suggestedUserBirthDate || null,
           });
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
