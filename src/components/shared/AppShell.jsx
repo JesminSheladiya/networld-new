@@ -9,6 +9,7 @@ import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import { api } from "../../Services/networld";
 import { RefreshProvider, useRefresh } from "./RefreshContext";
 import UserProfile from "../UserProfile";
+import ProfilePictureViewer from "../ProfilePictureViewer";
 
 const NAV_ITEMS = [
   { to: "/contacts", label: "Contacts", icon: <FontAwesomeIcon icon={faUsers} /> },
@@ -69,6 +70,7 @@ function ProfileMenu() {
   const { openPicker } = useRelationDisplay();
   const [profileOpen, setProfileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const { bump } = useRefresh();
 
   const fullName = user?.fullName || user?.username || "User";
@@ -116,6 +118,14 @@ function ProfileMenu() {
                           color: "#fff",
                           fontWeight: 700,
                           flexShrink: 0,
+                          cursor: profileAvatar ? "pointer" : "default",
+                        }}
+                        onClick={(e) => {
+                          if (profileAvatar) {
+                            e.stopPropagation();
+                            setViewerOpen(true);
+                            setDropdownOpen(false);
+                          }
                         }}
                     >
                       {!profileAvatar && initials}
@@ -157,6 +167,13 @@ function ProfileMenu() {
             onClose={() => setProfileOpen(false)}
             onProfileUpdate={handleProfileUpdate}
             onRelationAccepted={() => bump()}
+        />
+
+        <ProfilePictureViewer
+            open={viewerOpen}
+            onClose={() => setViewerOpen(false)}
+            src={profileAvatar}
+            name={fullName}
         />
       </>
   );

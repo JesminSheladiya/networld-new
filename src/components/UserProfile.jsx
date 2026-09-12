@@ -183,6 +183,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
     const [newImg, setNewImg] = useState(null);
     const [editorOpen, setEditorOpen] = useState(false);
     const [editorSrc, setEditorSrc] = useState(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
 
     // Refresh local state every time the modal opens (user may have changed)
     useEffect(() => {
@@ -314,7 +315,12 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                         }}>
                             <div
                                 className="up-avatar-wrapper"
-                                style={{ position: "relative", flexShrink: 0 }}
+                                style={{ position: "relative", flexShrink: 0, cursor: user.profilePicture ? "pointer" : "default" }}
+                                onClick={() => {
+                                    if (user.profilePicture) {
+                                        setViewerOpen(true);
+                                    }
+                                }}
                             >
                                 <UserAvatar name={user.fullName || user.username} pic={user.profilePicture} size={56} />
                                 <div className="up-online-dot" style={{
@@ -486,6 +492,13 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                     </Form>
                 )}
             </Modal>
+
+            <ProfilePictureViewer
+                open={viewerOpen}
+                onClose={() => setViewerOpen(false)}
+                src={user?.profilePicture}
+                name={user?.fullName || user?.username}
+            />
 
             {/* WhatsApp-style Profile Picture Editor */}
             <ProfilePictureEditor

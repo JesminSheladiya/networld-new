@@ -1,7 +1,9 @@
+import { createPortal } from "react-dom";
+
 function ProfilePictureViewer({ open, onClose, src, name }) {
     if (!open) return null;
 
-    return (
+    return createPortal(
         <div
             onClick={onClose}
             style={{
@@ -57,7 +59,8 @@ function ProfilePictureViewer({ open, onClose, src, name }) {
                     }}
                 />
             )}
-        </div>
+        </div>,
+        document.body
     );
 }
 
