@@ -1,12 +1,13 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import { Modal } from "antd";
-import { CalendarOutlined } from "@ant-design/icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCalendarDays } from "@fortawesome/free-regular-svg-icons";
 import dayjs from "dayjs";
 import { formatBirthDateWithAge, formatLongDate } from "../../utils/dateUtils";
 
 const DEFAULT_DRAFT = new Date(2000, 0, 1);
 
-const SnapColumn = ({ items, value, onChange, itemHeight = 40, width = '33%' }) => {
+const SnapColumn = ({ items, value, onChange, itemHeight = 40, width = '33%', selectedFontSize = 18, unselectedFontSize = 15 }) => {
   const ref = useRef(null);
   const isProgrammaticScroll = useRef(false);
   const scrollTimeout = useRef(null);
@@ -111,7 +112,8 @@ const SnapColumn = ({ items, value, onChange, itemHeight = 40, width = '33%' }) 
               scrollSnapAlign: 'center',
               opacity: isSelected ? 1 : 0.35,
               fontWeight: isSelected ? 600 : 500,
-              fontSize: isSelected ? 18 : 15,
+              fontSize: isSelected ? selectedFontSize : unselectedFontSize,
+              whiteSpace: 'nowrap',
               color: isSelected ? '#fff' : '#64748b',
               transition: 'all 0.15s ease',
               cursor: 'pointer'
@@ -149,7 +151,10 @@ export default function ScrollDatePicker({ value, onChange, placeholder = "Birth
     if (open) {
       setDraftDate(validValue ? validValue.toDate() : DEFAULT_DRAFT);
     }
-  }, [open, validValue]);
+    // Intentionally only on open/close + valueKey: validValue is a new dayjs
+    // object every render, so depending on it would reset draft while editing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, valueKey]);
 
   const draftKey = dayjs(draftDate).format("YYYY-MM-DD");
 
@@ -164,7 +169,7 @@ export default function ScrollDatePicker({ value, onChange, placeholder = "Birth
   const months = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const d = new Date(2000, i, 1);
-      return { value: i, label: d.toLocaleString('en-US', { month: 'short' }) };
+      return { value: i, label: d.toLocaleString('en-US', { month: 'long' }) };
     });
   }, []);
 
@@ -198,7 +203,7 @@ export default function ScrollDatePicker({ value, onChange, placeholder = "Birth
         <span className={validValue ? "sdp-head-val" : "sdp-head-ph"}>
           {validValue ? formatBirthDateWithAge(valueKey) : placeholder}
         </span>
-        <CalendarOutlined className="auth-input-icon" />
+        <FontAwesomeIcon icon={faCalendarDays} className="auth-input-icon" />
       </div>
       <Modal
         className="sdp-modal"
@@ -248,9 +253,9 @@ export default function ScrollDatePicker({ value, onChange, placeholder = "Birth
             pointerEvents: 'none',
           }} />
 
-          <SnapColumn items={days} value={draftDate.getDate()} onChange={(v) => handleChange('day', v)} width="30%" />
-          <SnapColumn items={months} value={draftDate.getMonth()} onChange={(v) => handleChange('month', v)} width="40%" />
-          <SnapColumn items={years} value={draftDate.getFullYear()} onChange={(v) => handleChange('year', v)} width="30%" />
+          <SnapColumn items={days} value={draftDate.getDate()} onChange={(v) => handleChange('day', v)} width="24%" />
+          <SnapColumn items={months} value={draftDate.getMonth()} onChange={(v) => handleChange('month', v)} width="52%" selectedFontSize={16} unselectedFontSize={13} />
+          <SnapColumn items={years} value={draftDate.getFullYear()} onChange={(v) => handleChange('year', v)} width="24%" />
         </div>
 
         {/* Footer Actions */}
@@ -258,7 +263,6 @@ export default function ScrollDatePicker({ value, onChange, placeholder = "Birth
           <button
             type="button"
             onClick={() => {
-              onChange?.(null);
               setOpen(false);
             }}
             style={{
@@ -266,7 +270,7 @@ export default function ScrollDatePicker({ value, onChange, placeholder = "Birth
               color: '#f87171', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer', transition: 'all 0.2s'
             }}
           >
-            Clear
+            Cancel
           </button>
           <button
             type="button"
@@ -280,7 +284,7 @@ export default function ScrollDatePicker({ value, onChange, placeholder = "Birth
               border: 'none', boxShadow: '0 4px 14px rgba(37,99,235,0.3)', cursor: 'pointer', transition: 'all 0.2s'
             }}
           >
-            Save
+            Next
           </button>
         </div>
       </Modal>

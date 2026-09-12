@@ -181,9 +181,9 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
     const [form] = Form.useForm();
     const [preview, setPreview] = useState(user?.profilePicture || null);
     const [newImg, setNewImg] = useState(null);
-    const [viewerOpen, setViewerOpen] = useState(false);
     const [editorOpen, setEditorOpen] = useState(false);
     const [editorSrc, setEditorSrc] = useState(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
 
     // Refresh local state every time the modal opens (user may have changed)
     useEffect(() => {
@@ -315,9 +315,12 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                         }}>
                             <div
                                 className="up-avatar-wrapper"
-                                onClick={() => user.profilePicture && setViewerOpen(true)}
-                                style={{ position: "relative", cursor: user.profilePicture ? "pointer" : "default", flexShrink: 0 }}
-                                title={user.profilePicture ? "View profile photo" : undefined}
+                                style={{ position: "relative", flexShrink: 0, cursor: user.profilePicture ? "pointer" : "default" }}
+                                onClick={() => {
+                                    if (user.profilePicture) {
+                                        setViewerOpen(true);
+                                    }
+                                }}
                             >
                                 <UserAvatar name={user.fullName || user.username} pic={user.profilePicture} size={56} />
                                 <div className="up-online-dot" style={{
@@ -490,12 +493,11 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                 )}
             </Modal>
 
-            {/* WhatsApp-style Profile Picture Viewer */}
             <ProfilePictureViewer
                 open={viewerOpen}
                 onClose={() => setViewerOpen(false)}
-                src={user.profilePicture}
-                name={user.fullName || user.username}
+                src={user?.profilePicture}
+                name={user?.fullName || user?.username}
             />
 
             {/* WhatsApp-style Profile Picture Editor */}

@@ -86,52 +86,62 @@ function ContactProfile({ contact, showBack = false, onBack }) {
         onSaved={(newRel) => { contact.relation = newRel; }}
       />
 
-      <Modal
-        title={null}
-        open={imageViewerOpen}
-        onCancel={() => setImageViewerOpen(false)}
-        destroyOnClose
-        maskClosable
-        footer={null}
-        closable={false}
-        centered
-        width={640}
-        className="image-viewer-modal-circle instagram-dp-modal"
-        styles={{
-          mask: { backgroundColor: "rgba(0,0,0,0.92)", backdropFilter: "blur(4px)" },
-          content: { background: "transparent", boxShadow: "none", padding: 0, border: "none" },
-          body: { padding: 0, background: "transparent" },
-        }}
-      >
+      {imageViewerOpen && (
         <div
+          onClick={() => setImageViewerOpen(false)}
           style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 2000,
+            background: "rgba(0,0,0,0.92)",
+            backdropFilter: "blur(4px)",
             display: "flex",
-            justifyContent: "center",
             alignItems: "center",
+            justifyContent: "center",
             padding: 16,
           }}
-          onClick={() => setImageViewerOpen(false)}
         >
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              setImageViewerOpen(false);
+            }}
+            style={{
+              position: "fixed",
+              top: 16,
+              right: 16,
+              width: 40,
+              height: 40,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.14)",
+              color: "#fff",
+              fontSize: 18,
+              cursor: "pointer",
+              zIndex: 2001,
+            }}
+          >
+            ✕
+          </span>
           <img
             src={contact.profilePicture}
             alt="Profile full view"
+            onClick={(e) => e.stopPropagation()}
             style={{
-              objectFit: "cover",
-              borderRadius: "50%",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
-              border: "3px solid rgba(255, 255, 255, 0.12)",
-              width: "86vw",
-              height: "86vw",
-              maxWidth: 600,
-              maxHeight: 600,
-              aspectRatio: "1 / 1",
-              cursor: "pointer",
+              objectFit: "contain",
+              width: "min(480px, 100%)",
+              height: "auto",
+              maxHeight: "80vh",
               display: "block",
+              background: "#000",
+              borderRadius: 12,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
             }}
-            onClick={() => setImageViewerOpen(false)}
           />
         </div>
-      </Modal>
+      )}
     </div>
   );
 }
