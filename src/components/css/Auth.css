@@ -324,3 +324,150 @@
     margin-bottom: 18px;
   }
 }
+/* ============================================================
+   ScrollDatePicker (Day | Month | Year columns, dark theme)
+   ============================================================ */
+.sdp-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  background: rgba(13, 21, 38, 0.72);
+  cursor: pointer;
+  outline: none;
+}
+.sdp-field:hover {
+  border-color: rgba(96, 165, 250, 0.45);
+}
+.sdp-field:focus-visible {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+.sdp-field .auth-input-icon {
+  flex-shrink: 0;
+}
+.sdp-head-val {
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sdp-head-ph {
+  color: #64748b;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sdp-modal .ant-modal-content {
+  padding: 0;
+}
+.sdp-modal .ant-btn-default {
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #e2e8f0;
+}
+.sdp-modal .ant-btn-default:hover {
+  border-color: rgba(96, 165, 250, 0.5);
+  color: #fff;
+}
+.sdp-modal .ant-btn-link-dangerous {
+  padding: 4px 8px;
+}
+/* ============================================================
+   Package wheel picker (my-react-mobile-datepicker) dark theme
+   Scoped under .nw-mdp so library styles never leak elsewhere.
+   Column order: Day | Month | Year via flex order.
+   ============================================================ */
+.nw-mdp {
+  background: transparent !important;
+  color: #f1f5f9 !important;
+}
+.nw-mdp .header {
+  display: none !important;
+}
+.sdp-preview {
+  text-align: center;
+  color: #f1f5f9;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  padding: 6px 0 10px;
+}
+.nw-mdp .picker {
+  background: transparent !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+}
+.nw-mdp .picker > .column:nth-child(1) {
+  order: 3;
+  flex: 1.1 1 0% !important;
+}
+.nw-mdp .picker > .column:nth-child(2) {
+  order: 2;
+  flex: 1.5 1 0% !important;
+}
+.nw-mdp .picker > .column:nth-child(3) {
+  order: 1;
+  flex: 0.9 1 0% !important;
+}
+.nw-mdp .column {
+  background: transparent !important;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.nw-mdp .column:active {
+  cursor: grabbing;
+}
+.nw-mdp .picker > .column:nth-child(1),
+.nw-mdp .picker > .column:nth-child(2) {
+  border-left: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+.nw-mdp .item {
+  color: #475569 !important;
+  font-size: 14px !important;
+}
+.nw-mdp .item.selected {
+  color: #7dd3fc !important;
+  font-weight: 800 !important;
+  font-size: 16.5px !important;
+}
+.nw-mdp .item.disabled {
+  color: #1e293b !important;
+}
+.nw-mdp .footer {
+  background: transparent !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
+  display: flex !important;
+  gap: 10px !important;
+  padding: 12px 4px 4px !important;
+}
+.nw-mdp .footer .btn {
+  flex: 1 !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  text-align: center !important;
+  padding: 10px 0 !important;
+  border-radius: 12px !important;
+  cursor: pointer;
+  border: 1px solid transparent !important;
+}
+.nw-mdp .footer .clearBtn {
+  color: #f87171 !important;
+  background: rgba(248, 113, 113, 0.1) !important;
+  border-color: rgba(248, 113, 113, 0.25) !important;
+}
+.nw-mdp .footer .saveBtn {
+  color: #fff !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.85), rgba(37, 99, 235, 0.85)) !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3) !important;
+}
