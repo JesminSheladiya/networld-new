@@ -39,6 +39,9 @@ public class User implements UserDetails {
     @Column(name = "profile_picture", columnDefinition = "TEXT")
     private String profilePicture;
 
+    @Column(name = "birth_date")
+    private java.time.LocalDate birthDate;
+
     @Column(nullable = false)
     private String role = "USER";
 
@@ -70,6 +73,9 @@ public class User implements UserDetails {
 
     public String getProfilePicture() { return profilePicture; }
     public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
+
+    public java.time.LocalDate getBirthDate() { return birthDate; }
+    public void setBirthDate(java.time.LocalDate birthDate) { this.birthDate = birthDate; }
 
     public String getRole()     { return role; }
     public void setRole(String role) { this.role = role; }

@@ -7,6 +7,7 @@ public class UpdateProfileRequest {
     private String newPassword;
     private String profilePicture;
     private String gender;
+    private java.time.LocalDate birthDate;
 
 
     public String getFullName()        { return fullName; }
@@ -26,4 +27,7 @@ public class UpdateProfileRequest {
 
     public String getGender()       { return gender; }
     public void setGender(String v) { this.gender = v; }
+
+    public java.time.LocalDate getBirthDate()       { return birthDate; }
+    public void setBirthDate(java.time.LocalDate v) { this.birthDate = v; }
 }

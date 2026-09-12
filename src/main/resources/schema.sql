@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone     VARCHAR(20),
     full_name VARCHAR(150),
     profile_picture TEXT,
+    birth_date DATE,
     role      VARCHAR(50) NOT NULL DEFAULT 'USER',
     CONSTRAINT uk_users_email  UNIQUE (email),
     CONSTRAINT uk_users_phone  UNIQUE (phone)

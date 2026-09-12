@@ -167,7 +167,7 @@ public class UserRelationService {
                     Relation rel = ur.getRelation();
                     return new UserRelationSuggestionDTO(
                             ur.getId(), name, s.getEmail(), s.getPhone(), s.getProfilePicture(),
-                            s.getGender(),
+                            s.getGender(), s.getBirthDate(),
                             rel.getRelationName(),
                             rel.getEnglishRelation(),
                             rel.getIndianRelation(),
@@ -188,7 +188,7 @@ public class UserRelationService {
             Relation rel = ur.getRelation();
             return new UserRelationSuggestionDTO(
                     ur.getId(), name, o.getEmail(), o.getPhone(), o.getProfilePicture(),
-                    o.getGender(),
+                    o.getGender(), o.getBirthDate(),
                     rel.getRelationName(),
                     rel.getEnglishRelation(),
                     rel.getIndianRelation(),
@@ -233,7 +233,7 @@ public class UserRelationService {
             Relation rel = ur.getRelation();
             return new UserRelationSuggestionDTO(
                     ur.getId(), name, o.getEmail(), o.getPhone(), o.getProfilePicture(),
-                    o.getGender(),
+                    o.getGender(), o.getBirthDate(),
                     rel.getRelationName(),
                     rel.getEnglishRelation(),
                     rel.getIndianRelation(),
@@ -283,7 +283,7 @@ public class UserRelationService {
                     Relation rel = ur.getRelation();
                     return new UserRelationSuggestionDTO(
                             ur.getId(), name, o.getEmail(), o.getPhone(), o.getProfilePicture(),
-                            o.getGender(),
+                            o.getGender(), o.getBirthDate(),
                             rel.getRelationName(),
                             rel.getEnglishRelation(),
                             rel.getIndianRelation(),

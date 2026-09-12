@@ -40,6 +40,7 @@ public class AuthService {
         u.setPhone(req.getPhone());
         u.setFullName(req.getFullName());
         u.setGender(req.getGender());
+        u.setBirthDate(validateBirthDate(req.getBirthDate()));
         users.save(u);
 
         return buildResponse(u);
@@ -72,6 +73,9 @@ public class AuthService {
         if (req.getGender() != null && !req.getGender().isBlank())
             u.setGender(req.getGender());
 
+        if (req.getBirthDate() != null)
+            u.setBirthDate(validateBirthDate(req.getBirthDate()));
+
         if (req.getProfilePicture() != null)
             u.setProfilePicture(req.getProfilePicture());
 
@@ -96,7 +100,20 @@ public class AuthService {
                 u.getFullName(),
                 u.getId(),
                 u.getProfilePicture(),
-                u.getGender()
+                u.getGender(),
+                u.getBirthDate()
         );
+    }
+
+    // Shared birth-date validation (register + profile update): optional,
+    // but when provided it must be a past date within a sane human range.
+    static java.time.LocalDate validateBirthDate(java.time.LocalDate birthDate) {
+        if (birthDate == null) return null;
+        java.time.LocalDate today = java.time.LocalDate.now();
+        if (!birthDate.isBefore(today.plusDays(1)))
+            throw new RuntimeException("Birth date must be in the past");
+        if (birthDate.isBefore(today.minusYears(150)))
+            throw new RuntimeException("Birth date is too far in the past");
+        return birthDate;
     }
 }

@@ -21,6 +21,11 @@ public class RegisterRequest {
 
     private String fullName;
 
+    // Optional: when provided must be a past date (validated in service
+    // together with the 150-year sanity bound).
+    @Past(message = "Birth date must be in the past")
+    private java.time.LocalDate birthDate;
+
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
@@ -38,5 +43,8 @@ public class RegisterRequest {
 
     public String getGender() { return gender; }
     public void setGender(String gender) { this.gender = gender; }
+
+    public java.time.LocalDate getBirthDate() { return birthDate; }
+    public void setBirthDate(java.time.LocalDate birthDate) { this.birthDate = birthDate; }
 }
 
