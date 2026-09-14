@@ -6,7 +6,7 @@ import { faBell } from "@fortawesome/free-regular-svg-icons";
 import { faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
-import { getInverseRelation } from "../UserProfile";
+import { getInverseRelation } from "../../utils/relationUtils";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";

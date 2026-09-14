@@ -21,6 +21,7 @@ function mapContact(item, idx) {
     relationId: item.pendingRelationId ?? null,
     gender: item.suggestedUserGender || null,
     birthDate: item.suggestedUserBirthDate || null,
+    bio: item.suggestedUserBio || "",
   };
 }
 

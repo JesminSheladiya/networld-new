@@ -8,8 +8,6 @@ import { useAuth } from "../../context/AuthContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import { api } from "../../Services/networld";
 import { RefreshProvider, useRefresh } from "./RefreshContext";
-import UserProfile from "../UserProfile";
-import ProfilePictureViewer from "../ProfilePictureViewer";
 import ConfirmPopup from "./ConfirmPopup";
 import { MQ_COMPACT, SMALL_SCREEN_PX } from "../../constants";
 
@@ -68,12 +66,9 @@ function buildConvexBarPath(w, h, rawCx) {
 
 function ProfileMenu() {
   const navigate = useNavigate();
-  const { user, logout: authLogout, updateUser, broadcastUserUpdate, broadcastLogout } = useAuth();
+  const { user, logout: authLogout, broadcastLogout } = useAuth();
   const { openPicker } = useRelationDisplay();
-  const [profileOpen, setProfileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const { bump } = useRefresh();
 
   const fullName = user?.fullName || user?.username || "User";
   const nameParts = fullName.split(" ").filter(Boolean);
@@ -97,15 +92,12 @@ function ProfileMenu() {
     navigate("/login", { replace: true });
   };
 
-  const handleProfileUpdate = async () => {
-    const freshUser = await updateUser();
-    if (freshUser) {
-      broadcastUserUpdate(freshUser);
-    }
-    setProfileOpen(false);
-  };
-
   const closeDropdown = () => setDropdownOpen(false);
+
+  const goProfile = () => {
+    closeDropdown();
+    navigate("/profile");
+  };
 
   return (
       <>
@@ -127,14 +119,11 @@ function ProfileMenu() {
                           color: "#fff",
                           fontWeight: 700,
                           flexShrink: 0,
-                          cursor: profileAvatar ? "pointer" : "default",
+                          cursor: "pointer",
                         }}
                         onClick={(e) => {
-                          if (profileAvatar) {
-                            e.stopPropagation();
-                            setViewerOpen(true);
-                            setDropdownOpen(false);
-                          }
+                          e.stopPropagation();
+                          goProfile();
                         }}
                     >
                       {!profileAvatar && initials}
@@ -145,7 +134,7 @@ function ProfileMenu() {
                     </div>
                   </div>
                   <div className="nw-profile-actions">
-                    <button className="nw-profile-action" onClick={() => { setProfileOpen(true); closeDropdown(); }}>
+                    <button className="nw-profile-action" onClick={goProfile}>
                       <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faCircleUser} /></span>
                       <span>Profile Settings</span>
                     </button>
@@ -171,20 +160,6 @@ function ProfileMenu() {
           </button>
         </Dropdown>
 
-        <UserProfile
-            open={profileOpen}
-            onClose={() => setProfileOpen(false)}
-            onProfileUpdate={handleProfileUpdate}
-            onRelationAccepted={() => bump()}
-        />
-
-        <ProfilePictureViewer
-            open={viewerOpen}
-            onClose={() => setViewerOpen(false)}
-            src={profileAvatar}
-            name={fullName}
-        />
-
         <ConfirmPopup
             open={logoutOpen}
             title="Logout?"
@@ -200,12 +175,16 @@ function ProfileMenu() {
 
 function AppShellNav() {
   const location = useLocation();
+  // -1 when the route is not a tab (e.g. /profile): no tab highlights,
+  // and the bottom notch parks at the last visited tab.
   const activeIndex = (() => {
     const p = location.pathname;
     if (p.startsWith("/contacts")) return 0;
-    const idx = NAV_ITEMS.findIndex((it) => p === it.to);
-    return idx >= 0 ? idx : 0;
+    return NAV_ITEMS.findIndex((it) => p === it.to);
   })();
+  const lastTabRef = useRef(0);
+  if (activeIndex >= 0) lastTabRef.current = activeIndex;
+  const notchIndex = activeIndex >= 0 ? activeIndex : lastTabRef.current;
 
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
   const { pendingCount, suggestionsCount, setPendingCount, setSuggestionsCount, key: refreshKey } = useRefresh();
@@ -240,6 +219,10 @@ function AppShellNav() {
 
   useEffect(() => {
     if (isCompact) return;
+    if (activeIndex < 0) {
+      setTopIndicator((t) => ({ ...t, ready: false }));
+      return;
+    }
     const el = topItemRefs.current[activeIndex];
     if (!el || !topNavRef.current) return;
     const update = () => {
@@ -289,7 +272,7 @@ function AppShellNav() {
 
   useEffect(() => {
     if (!isCompact || !bottomDims.w) return;
-    const targetCx = getTargetCx(activeIndex);
+    const targetCx = getTargetCx(notchIndex);
     const widthChanged = bottomPrevWidthRef.current !== bottomDims.w;
     bottomPrevWidthRef.current = bottomDims.w;
 
@@ -320,7 +303,7 @@ function AppShellNav() {
     return () => {
       if (animRef.raf) cancelAnimationFrame(animRef.raf);
     };
-  }, [activeIndex, isCompact, bottomDims.w, bottomDims.h, getTargetCx]);
+  }, [notchIndex, isCompact, bottomDims.w, bottomDims.h, getTargetCx]);
 
   return (
       <div className="nw-shell">
@@ -398,7 +381,7 @@ function AppShellNav() {
                         d={buildConvexBarPath(
                             bottomDims.w || 1,
                             bottomDims.h || 60,
-                            getTargetCx(activeIndex)
+                            getTargetCx(notchIndex)
                         )}
                         fill="url(#nw-bottombar-fill)"
                         stroke="rgba(56, 189, 248, 0.35)"
