@@ -30,7 +30,7 @@ export const COLORS = {
 };
 
 export const FONT_FAMILY =
-  "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 // ── Ant Design theme config (single source of truth) ──────────────────────
 export const networldTheme = {

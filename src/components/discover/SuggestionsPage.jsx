@@ -2,23 +2,23 @@ import { useEffect, useState, useCallback } from "react";
 import { Spin, Button, Tooltip, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLightbulb, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
-import { faArrowRight, faCheck, faXmark, faRotateRight, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faXmark, faRotateRight, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationPickerModal from "../shared/RelationPickerModal";
 import RelationChip from "../shared/RelationChip";
-
-const AV_COLORS = ["#3b82f6", "#38bdf8", "#0ea5e9", "#10b981", "#f59e0b"];
+import ConfirmPopup from "../shared/ConfirmPopup";
+import { avatarColorFor } from "../../constants";
 
 function SuggestionsPage() {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [relations, setRelations] = useState([]);
   const [editingEmail, setEditingEmail] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editedEmails, setEditedEmails] = useState([]);
+  const [dismissTarget, setDismissTarget] = useState(null);
   const { bump, key: refreshKey, setSuggestionsCount } = useRefresh();
   const { relName } = useRelationDisplay();
 
@@ -40,7 +40,6 @@ function SuggestionsPage() {
 
   useEffect(() => {
     fetchSuggestions();
-    api.relations().then((res) => setRelations(res.data || [])).catch(() => setRelations([]));
   }, [refreshKey, fetchSuggestions]);
 
   const sendRequest = async (s) => {
@@ -117,7 +116,7 @@ function SuggestionsPage() {
             <div className="nw-discover-label">Suggestions · {suggestions.length}</div>
             {suggestions.map((s, i) => {
               const rel = (s.inferredRelation || "").toLowerCase();
-              const avColor = AV_COLORS[((s.suggestedUserName || "").charCodeAt(0) || 0) % AV_COLORS.length];
+              const avColor = avatarColorFor(s.suggestedUserName);
               return (
                 <div className="nw-req-row" key={i}>
                   <div className="nw-req-left">
@@ -169,7 +168,7 @@ function SuggestionsPage() {
                           </button>
                         </Tooltip>
                         <Tooltip title="Dismiss">
-                          <button className="nw-act-btn nw-act-dismiss" onClick={() => dismiss(s)}><FontAwesomeIcon icon={faXmark} /></button>
+                          <button className="nw-act-btn nw-act-dismiss" onClick={() => setDismissTarget(s)}><FontAwesomeIcon icon={faXmark} /></button>
                         </Tooltip>
                       </div>
                     </div>
@@ -189,6 +188,20 @@ function SuggestionsPage() {
         value={editValue || undefined}
         onClose={() => setPickerOpen(false)}
         onPick={(v) => setEditValue(v)}
+      />
+
+      <ConfirmPopup
+        open={dismissTarget !== null}
+        title="Dismiss suggestion?"
+        message="This suggestion will be removed."
+        okText="Dismiss"
+        okIcon={faXmark}
+        onCancel={() => setDismissTarget(null)}
+        onOk={() => {
+          const t = dismissTarget;
+          setDismissTarget(null);
+          dismiss(t);
+        }}
       />
     </div>
   );

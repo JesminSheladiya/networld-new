@@ -10,6 +10,8 @@ import { api } from "../../Services/networld";
 import { RefreshProvider, useRefresh } from "./RefreshContext";
 import UserProfile from "../UserProfile";
 import ProfilePictureViewer from "../ProfilePictureViewer";
+import ConfirmPopup from "./ConfirmPopup";
+import { MQ_COMPACT, SMALL_SCREEN_PX } from "../../constants";
 
 const NAV_ITEMS = [
   { to: "/contacts", label: "Contacts", icon: <FontAwesomeIcon icon={faUsers} /> },
@@ -35,7 +37,7 @@ const NOTCH_MOBILE = {
 // Organic Notch Path Generator
 function buildConvexBarPath(w, h, rawCx) {
   // Screen width threshold updated to 390
-  const isSmallScreen = typeof window !== "undefined" && window.innerWidth < 390;
+  const isSmallScreen = typeof window !== "undefined" && window.innerWidth < SMALL_SCREEN_PX;
   const { halfWidth: nw, height: nh, corner: r } = isSmallScreen ? NOTCH_MOBILE : NOTCH_DEFAULT;
 
   const minCx = nw + r + 2;
@@ -81,11 +83,18 @@ function ProfileMenu() {
   const email = user?.email || "user@mail.com";
   const profileAvatar = user?.profilePicture || user?.avatar || user?.image || null;
 
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
   const handleLogout = () => {
+    setDropdownOpen(false);
+    setLogoutOpen(true);
+  };
+
+  const confirmLogout = () => {
+    setLogoutOpen(false);
     authLogout();
     broadcastLogout();
     navigate("/login", { replace: true });
-    setDropdownOpen(false);
   };
 
   const handleProfileUpdate = async () => {
@@ -175,6 +184,16 @@ function ProfileMenu() {
             src={profileAvatar}
             name={fullName}
         />
+
+        <ConfirmPopup
+            open={logoutOpen}
+            title="Logout?"
+            message="Are you sure you want to logout from NetWorld?"
+            okText="Logout"
+            okIcon={faArrowRightFromBracket}
+            onCancel={() => setLogoutOpen(false)}
+            onOk={confirmLogout}
+        />
       </>
   );
 }
@@ -188,14 +207,14 @@ function AppShellNav() {
     return idx >= 0 ? idx : 0;
   })();
 
-  const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
+  const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
   const { pendingCount, suggestionsCount, setPendingCount, setSuggestionsCount, key: refreshKey } = useRefresh();
   const topNavRef = useRef(null);
   const topItemRefs = useRef([]);
   const [topIndicator, setTopIndicator] = useState({ left: 0, width: 0, ready: false });
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1024px)");
+    const mq = window.matchMedia(MQ_COMPACT);
     const onChange = (e) => setIsCompact(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -297,8 +316,9 @@ function AppShellNav() {
       if (t < 1) bottomAnimRef.current.raf = requestAnimationFrame(step);
     };
     bottomAnimRef.current.raf = requestAnimationFrame(step);
+    const animRef = bottomAnimRef.current;
     return () => {
-      if (bottomAnimRef.current.raf) cancelAnimationFrame(bottomAnimRef.current.raf);
+      if (animRef.raf) cancelAnimationFrame(animRef.raf);
     };
   }, [activeIndex, isCompact, bottomDims.w, bottomDims.h, getTargetCx]);
 
@@ -308,7 +328,7 @@ function AppShellNav() {
             <header className="nw-topnav">
               <div className="nw-brand">
                 <span className="nw-brand-dot" />
-                <span className="nw-brand-text">Net World</span>
+                <span className="nw-brand-text">NetWorld</span>
               </div>
               <nav className="nw-topnav-links" ref={topNavRef}>
                 <span
@@ -352,7 +372,7 @@ function AppShellNav() {
               <header className="nw-topbar-mobile">
                 <div className="nw-brand">
                   <span className="nw-brand-dot" />
-                  <span className="nw-brand-text">Net World</span>
+                  <span className="nw-brand-text">NetWorld</span>
                 </div>
                 <ProfileMenu />
               </header>

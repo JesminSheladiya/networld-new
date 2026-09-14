@@ -6,7 +6,7 @@ export const api = {
     http.get(`${BASE}/user-relations/connections`, {
       params: search && search.trim() ? { query: search.trim() } : {},
     }),
-  connectionsPaged: (page, size, search, category, relations, sort) =>
+  connectionsPaged: (page, size, search, category, relations, sort, skipEmail) =>
     http.get(`${BASE}/user-relations/connections/paged`, {
       params: {
         page, size,
@@ -14,15 +14,22 @@ export const api = {
         ...(category && category !== "all" ? { category } : {}),
         ...(relations && relations.length ? { relations: relations.join(",") } : {}),
         ...(sort ? { sort } : {}),
+        ...(skipEmail ? { skipEmail: true } : {}),
       },
     }),
-  connectionCounts: (search) =>
+  connectionCounts: (search, skipEmail) =>
     http.get(`${BASE}/user-relations/connections/counts`, {
-      params: search && search.trim() ? { query: search.trim() } : {},
+      params: {
+        ...(search && search.trim() ? { query: search.trim() } : {}),
+        ...(skipEmail ? { skipEmail: true } : {}),
+      },
     }),
-  connectionRelations: (search) =>
+  connectionRelations: (search, skipEmail) =>
     http.get(`${BASE}/user-relations/connections/relations`, {
-      params: search && search.trim() ? { query: search.trim() } : {},
+      params: {
+        ...(search && search.trim() ? { query: search.trim() } : {}),
+        ...(skipEmail ? { skipEmail: true } : {}),
+      },
     }),
   relations: () => http.get(`${API_URL}/relations`),
   // Unfiltered display map (includes hidden engine rows) for chips/labels.

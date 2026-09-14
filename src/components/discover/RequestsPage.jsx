@@ -9,13 +9,14 @@ import { useRefresh } from "../shared/RefreshContext";
 import { getInverseRelation } from "../UserProfile";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
-
-const AV_COLORS = ["#3b82f6", "#38bdf8", "#0ea5e9", "#10b981", "#f59e0b"];
+import ConfirmPopup from "../shared/ConfirmPopup";
+import { avatarColorFor } from "../../constants";
 
 function RequestsPage() {
   const navigate = useNavigate();
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [declineId, setDeclineId] = useState(null);
   const { bump, key: refreshKey, setPendingCount } = useRefresh();
   const { relName, relCategory } = useRelationDisplay();
 
@@ -107,7 +108,7 @@ function RequestsPage() {
             <div className="nw-discover-label">Requests · {pending.length}</div>
             {pending.map((p, i) => {
               const rel = getInverseRelation(p.inferredRelation, p.suggestedUserGender)?.toLowerCase() || "";
-              const avColor = AV_COLORS[((p.suggestedUserName || "").charCodeAt(0) || 0) % AV_COLORS.length];
+              const avColor = avatarColorFor(p.suggestedUserName);
               return (
                 <div className="nw-req-row" key={i}>
                   <div className="nw-req-left">
@@ -129,7 +130,7 @@ function RequestsPage() {
                         </button>
                       </Tooltip>
                       <Tooltip title="Decline">
-                        <button className="nw-act-btn nw-act-decline" onClick={() => decline(p.pendingRelationId)}>
+                        <button className="nw-act-btn nw-act-decline" onClick={() => setDeclineId(p.pendingRelationId)}>
                           <FontAwesomeIcon icon={faXmark} />
                         </button>
                       </Tooltip>
@@ -141,6 +142,20 @@ function RequestsPage() {
           </div>
         )}
       </div>
+
+      <ConfirmPopup
+        open={declineId !== null}
+        title="Decline request?"
+        message="This connection request will be removed."
+        okText="Decline"
+        okIcon={faXmark}
+        onCancel={() => setDeclineId(null)}
+        onOk={() => {
+          const id = declineId;
+          setDeclineId(null);
+          decline(id);
+        }}
+      />
     </div>
   );
 }

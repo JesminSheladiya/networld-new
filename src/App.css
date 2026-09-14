@@ -22,8 +22,55 @@ body {
   /*background-image: radial-gradient(1000px 520px at 85% -10%, rgba(37, 99, 235, 0.1), transparent 60%),*/
   /*  radial-gradient(820px 460px at -5% 110%, rgba(14, 165, 233, 0.08), transparent 60%);*/
   background-attachment: fixed;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Form elements don't inherit body font by default — force system font everywhere
+   (native buttons/inputs like chips, list rows, action + filter buttons) */
+button, input, select, textarea, optgroup, option {
+  font-family: inherit;
+}
+
+/* ── Dynamic themed scrollbars (whole project) ──
+   Slim floating thumbs that brighten on hover; transparent tracks. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(13, 33, 76) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(13, 33, 76);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(30, 58, 138);
+  background-clip: content-box;
+  border: 2px solid transparent;
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: rgb(37, 99, 235);
+  background-clip: content-box;
+  border: 2px solid transparent;
 }
 
 .container {

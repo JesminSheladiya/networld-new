@@ -8,6 +8,8 @@ import { updateProfile } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
 import ProfilePictureViewer from "./ProfilePictureViewer";
 import ProfilePictureEditor from "./ProfilePictureEditor";
+import ConfirmPopup from "./shared/ConfirmPopup";
+import { avatarColorFor } from "../constants";
 import ScrollDatePicker from "./shared/ScrollDatePicker";
 import {
     formatBirthDateWithAge,
@@ -116,8 +118,6 @@ export function getInverseRelation(rel, gender = "M") {
         "mothers sister": F ? "sister daughter" : "sister son",
         "sons son": grandfatherGd,
         "sons daughter": grandfatherGd,
-        "daughters son": grandfatherGd,
-        "daughters daughter": grandfatherGd,
         "childs son": grandfatherGd,
         "childs daughter": grandfatherGd,
         "parents siblings son": cousinB,
@@ -146,8 +146,7 @@ export function getInverseRelation(rel, gender = "M") {
     return rel;
 }
 
-const AVATAR_COLORS = ["#2563eb", "#0ea5e9", "#38bdf8", "#1d4ed8", "#0284c7", "#3b82f6"];
-const avatarBg = (name = "") => AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+const avatarBg = (name = "") => avatarColorFor(name);
 
 const UserAvatar = ({ name, pic, size = 36 }) => (
     <Avatar
@@ -185,6 +184,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
     const [editorOpen, setEditorOpen] = useState(false);
     const [editorSrc, setEditorSrc] = useState(null);
     const [viewerOpen, setViewerOpen] = useState(false);
+    const [removePhotoOpen, setRemovePhotoOpen] = useState(false);
 
     // Refresh local state every time the modal opens (user may have changed)
     useEffect(() => {
@@ -237,6 +237,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
             await updateProfile({
                 fullName: values.fullName, phone: values.phone, gender: values.gender,
                 currentPassword: values.currentPassword, newPassword: values.newPassword,
+                confirmPassword: values.confirmPassword,
                 ...(values.birthDate ? { birthDate: toBirthDateParam(values.birthDate) } : {}),
                 ...(newImg !== null && { profilePicture: newImg }),
             });
@@ -414,7 +415,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                                     className="up-btn-remove-photo"
                                     type="link" danger size="small"
                                     style={{ display: "block", margin: "8px auto 0", fontSize: 12 }}
-                                    onClick={() => { setPreview(null); setNewImg(""); }}
+                                    onClick={() => setRemovePhotoOpen(true)}
                                 >
                                     Remove Photo
                                 </Button>
@@ -423,17 +424,17 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
 
                         {/* Fields */}
                         {[
-                            { n: "fullName", l: "Full Name", icon: faUser, ph: "Full name", rules: [{ required: true, message: "Please enter full name!" }] },
+                            { n: "fullName", l: "Full Name", prefix: <FontAwesomeIcon icon={faUser} className="auth-input-icon" />, ph: "Full name", rules: [{ required: true, message: "Please enter full name!" }] },
                             {
-                                n: "phone", l: "Phone", icon: <PhoneOutlined />, ph: "10-digit phone",
+                                n: "phone", l: "Phone", prefix: <PhoneOutlined className="auth-input-icon" />, ph: "10-digit phone",
                                 rules: [{ pattern: /^[0-9]{10}$/, message: "10 digits" }]
                             },
-                        ].map(({ n, l, icon, ph, rules }) => (
+                        ].map(({ n, l, prefix, ph, rules }) => (
                             <Form.Item className="auth-field" key={n} name={n} rules={rules}
                             >
                                 <Input
                                     className="auth-input"
-                                    prefix={<FontAwesomeIcon icon={icon} className="auth-input-icon" />}
+                                    prefix={prefix}
                                     placeholder={ph}
                                     size="large"
                                 />
@@ -466,8 +467,21 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                             {[
                                 { n: "currentPassword", l: "Current Password", ph: "Current password", rules: [] },
                                 { n: "newPassword", l: "New Password", ph: "New password", rules: [{ min: 8, message: "Min 8 chars" }] },
-                            ].map(({ n, l, ph, rules }) => (
-                                <Form.Item className="auth-field" key={n} name={n} rules={rules}
+                                {
+                                    n: "confirmPassword", l: "Confirm Password", ph: "Confirm new password",
+                                    dependencies: ["newPassword"],
+                                    rules: [
+                                        ({ getFieldValue }) => ({
+                                            validator(_, value) {
+                                                if (!value && !getFieldValue("newPassword")) return Promise.resolve();
+                                                if (value !== getFieldValue("newPassword")) return Promise.reject("Passwords do not match!");
+                                                return Promise.resolve();
+                                            },
+                                        }),
+                                    ],
+                                },
+                            ].map(({ n, l, ph, rules, dependencies }) => (
+                                <Form.Item className="auth-field" key={n} name={n} rules={rules} dependencies={dependencies}
                                 >
                                     <Input.Password
                                         className="auth-input"
@@ -475,7 +489,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                                         placeholder={ph}
                                         size="large"
                                         iconRender={(visible) => (
-                                            <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" />
+                                            <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
                                         )}
                                     />
                                 </Form.Item>
@@ -507,6 +521,15 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                 onClose={handleEditorClose}
                 onSave={handleEditorSave}
                 src={editorSrc}
+            />
+
+            <ConfirmPopup
+                open={removePhotoOpen}
+                title="Remove photo?"
+                message="Your profile picture will be removed."
+                okText="Remove"
+                onCancel={() => setRemovePhotoOpen(false)}
+                onOk={() => { setPreview(null); setNewImg(""); setRemovePhotoOpen(false); }}
             />
         </>
     );
