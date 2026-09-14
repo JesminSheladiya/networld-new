@@ -98,7 +98,7 @@ function Login() {
         <div className="auth-footer">
           <Typography.Text className="auth-footer-text">
             Don't have an account?{" "}
-            <a className="auth-switch-link" onClick={() => navigate("/register")}>
+            <a className="auth-switch-link" onClick={() => navigate("/register", { replace: true })}>
               Register here
             </a>
           </Typography.Text>

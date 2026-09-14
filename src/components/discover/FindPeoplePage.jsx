@@ -66,6 +66,7 @@ function FindPeoplePage() {
       await api.send(email, relMap[email]);
       setSentMap((p) => ({ ...p, [email]: true }));
       bump();
+      message.success("Connection request sent");
     } catch (e) {
       // Server is the source of truth (e.g. cross-request blocked) —
       // show its message and re-fetch so the row reflects real state.

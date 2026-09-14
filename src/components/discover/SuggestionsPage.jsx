@@ -50,6 +50,7 @@ function SuggestionsPage() {
       setSuggestions((p) => p.filter((x) => x.suggestedUserEmail !== s.suggestedUserEmail));
       setSuggestionsCount(remaining);
       bump();
+      message.success("Connection request sent");
     } catch (e) {
       // Server is the source of truth — show its message and re-fetch.
       message.error(e?.response?.data?.message || "Could not send request");
@@ -65,6 +66,7 @@ function SuggestionsPage() {
       setSuggestions((p) => p.filter((x) => x.suggestedUserEmail !== s.suggestedUserEmail));
       setSuggestionsCount(remaining);
       bump();
+      message.success("Suggestion dismissed");
     } catch {
       // silent
     }
@@ -84,6 +86,7 @@ function SuggestionsPage() {
     );
     setEditedEmails((prev) => (prev.includes(email) ? prev : [...prev, email]));
     setEditingEmail(null);
+    message.success("Relation updated");
   };
 
   return (

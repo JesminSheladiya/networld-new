@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Modal, Form, Input, Button, message, Avatar, Upload, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
-import { faPhone, faCamera, faLock, faEye, faEyeSlash, faCakeCandles } from "@fortawesome/free-solid-svg-icons";
+import { faCamera, faEye, faEyeSlash, faCakeCandles } from "@fortawesome/free-solid-svg-icons";
+import { PhoneOutlined, LockOutlined } from "@ant-design/icons";
 import { updateProfile } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
 import ProfilePictureViewer from "./ProfilePictureViewer";
@@ -259,7 +260,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
     };
 
     const infoRows = [
-        { label: "Phone", value: user.phone || "—", icon: <FontAwesomeIcon icon={faPhone} /> },
+        { label: "Phone", value: user.phone || "—", icon: <PhoneOutlined /> },
         { label: "Username", value: user.username || "—", icon: <FontAwesomeIcon icon={faUser} /> },
         ...(user.birthDate ? [{
             label: "Birth Date",
@@ -424,7 +425,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                         {[
                             { n: "fullName", l: "Full Name", icon: faUser, ph: "Full name", rules: [{ required: true, message: "Please enter full name!" }] },
                             {
-                                n: "phone", l: "Phone", icon: faPhone, ph: "10-digit phone",
+                                n: "phone", l: "Phone", icon: <PhoneOutlined />, ph: "10-digit phone",
                                 rules: [{ pattern: /^[0-9]{10}$/, message: "10 digits" }]
                             },
                         ].map(({ n, l, icon, ph, rules }) => (
@@ -470,7 +471,7 @@ function UserProfile({ open, onClose, onProfileUpdate, onRelationAccepted }) {
                                 >
                                     <Input.Password
                                         className="auth-input"
-                                        prefix={<FontAwesomeIcon icon={faLock} className="auth-input-icon" />}
+                                        prefix={<LockOutlined className="auth-input-icon" />}
                                         placeholder={ph}
                                         size="large"
                                         iconRender={(visible) => (
