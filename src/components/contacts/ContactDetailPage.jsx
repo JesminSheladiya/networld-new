@@ -31,6 +31,7 @@ function ContactDetailPage() {
             relation: found.inferredRelation || "",
             relationId: found.pendingRelationId ?? null,
             birthDate: found.suggestedUserBirthDate || null,
+            bio: found.suggestedUserBio || "",
           });
         }
       })

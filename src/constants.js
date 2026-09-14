@@ -30,6 +30,9 @@ export const SMALL_SCREEN_PX = 390; // bottom-nav notch sizing
 export const DEFAULT_PAGE_SIZE = 10;
 export const PAGE_SIZE_OPTIONS = ["10", "20", "50", "100"];
 
+// Profile bio (matches backend 500-char limit)
+export const BIO_MAX_LENGTH = 500;
+
 // Avatar fallback palette (initials background)
 export const AVATAR_COLORS = Object.freeze([
   "#3b82f6",

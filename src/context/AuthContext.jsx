@@ -26,6 +26,20 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Optimistic local merge — updates UI instantly with zero refetch flash.
+  // Use after profile saves where the saved values are already known.
+  const patchUser = useCallback((patch) => {
+    const next = { ...getUser(), ...patch };
+    try {
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(next));
+    } catch (e) { /* storage unavailable — memory state still updates */ }
+    setUser(next);
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.postMessage({ type: 'USER_UPDATED', user: next });
+    }
+    return next;
+  }, []);
+
   const logout = useCallback(() => {
     authLogout();
     localStorage.removeItem(STORAGE_KEYS.RELATION_FORMAT);
@@ -119,12 +133,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ 
-      isAuthenticated, 
-      login, 
-      logout, 
-      user, 
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      login,
+      logout,
+      user,
       updateUser,
+      patchUser,
       broadcastUserUpdate,
       broadcastLogout
     }}>

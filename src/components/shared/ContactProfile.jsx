@@ -1,142 +1,127 @@
 import { useState } from "react";
-import { Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 import { faArrowLeft, faCakeCandles } from "@fortawesome/free-solid-svg-icons";
 import { PhoneOutlined } from "@ant-design/icons";
+import { avatarColorFor } from "../../constants";
 import RelationChip from "./RelationChip";
 import EditRelationModal from "./EditRelationModal";
+import ProfileHeader from "../profile/ProfileHeader";
+import ProfilePictureViewer from "../ProfilePictureViewer";
 import { formatBirthDateWithAge } from "../../utils/dateUtils";
+import "../css/profile-page.css";
 
 function ContactProfile({ contact, showBack = false, onBack }) {
   const [editing, setEditing] = useState(false);
-  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [relation, setRelation] = useState(contact.relation || "");
+
+  const name = contact.name || "Unknown";
+  const initial = (name.charAt(0) || "?").toUpperCase();
 
   return (
-    <div className="nw-profile">
+    <div className="pf-page">
       {showBack && (
         <button className="nw-back-btn" onClick={onBack}>
           <FontAwesomeIcon icon={faArrowLeft} /> Back to Contacts
         </button>
       )}
 
-      <div className="nw-profile-head">
-        <div
-          className="nw-profile-avatar-wrap"
-          onClick={() => contact.profilePicture && setImageViewerOpen(true)}
-          style={{ cursor: contact.profilePicture ? "pointer" : "default" }}
-        >
-          <Avatar
-            size={104}
-            src={contact.profilePicture || null}
-            style={{ backgroundColor: contact.profilePicture ? "transparent" : "#2563eb", fontSize: 38 }}
-          >
-            {!contact.profilePicture && contact.name?.charAt(0).toUpperCase()}
-          </Avatar>
+      {/* Same header as own profile — viewer-only slots here. */}
+      <ProfileHeader
+        coverImage={contact?.coverImage}
+        avatarSrc={contact.profilePicture}
+        avatarBg={avatarColorFor(name)}
+        avatarText={initial}
+        onAvatarClick={() => setViewerOpen(true)}
+        name={name}
+        meta={[contact.email, contact.phone].filter(Boolean).join("  ·  ")}
+        stat={
+          relation && (
+            <RelationChip relation={relation} style={{ fontSize: 12 }} />
+          )
+        }
+        actions={
+          <>
+            {contact.profilePicture && (
+              <button className="pf-ghost-btn" onClick={() => setViewerOpen(true)}>
+                View photo
+              </button>
+            )}
+            <button className="pf-ghost-btn" onClick={() => setEditing(true)}>
+              <FontAwesomeIcon icon={faPenToSquare} /> Edit Relation
+            </button>
+          </>
+        }
+      />
+
+      <div className="pf-grid">
+        <div className="pf-main">
+      {/* ── About card ── */}
+      <div className="pf-card">
+        <div className="pf-card-head">
+          <h2 className="pf-card-title">About</h2>
         </div>
-        <h1 className="nw-profile-name">{contact.name}</h1>
-        <RelationChip relation={contact.relation} style={{ fontSize: 13 }} />
+        <p className="pf-bio-text">
+          {contact.bio || <span className="pf-placeholder">No bio added yet.</span>}
+        </p>
       </div>
-
-      <div className="nw-profile-section">
-        {contact.phone && (
-          <div className="nw-profile-row">
-            <span className="nw-profile-row-icon"><PhoneOutlined /></span>
-            <span className="nw-profile-row-text">
-              <span className="nw-profile-row-label">Phone</span>
-              <span className="nw-profile-row-value">{contact.phone}</span>
-            </span>
-          </div>
-        )}
-        {contact.email && (
-          <div className="nw-profile-row">
-            <span className="nw-profile-row-icon"><FontAwesomeIcon icon={faEnvelope} /></span>
-            <span className="nw-profile-row-text">
-              <span className="nw-profile-row-label">Email</span>
-              <span className="nw-profile-row-value">{contact.email}</span>
-            </span>
-          </div>
-        )}
-        {contact.birthDate && (
-          <div className="nw-profile-row">
-            <span className="nw-profile-row-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
-            <span className="nw-profile-row-text">
-              <span className="nw-profile-row-label">Birth Date</span>
-              <span className="nw-profile-row-value">{formatBirthDateWithAge(contact.birthDate)}</span>
-            </span>
-          </div>
-        )}
+        </div>
+        <div className="pf-side">
+      {/* ── Contact info card ── */}
+      <div className="pf-card">
+        <div className="pf-card-head">
+          <h2 className="pf-card-title">Contact info</h2>
+        </div>
+        <div className="pf-info-rows">
+          {contact.phone && (
+            <div className="pf-info-row">
+              <span className="pf-info-icon"><PhoneOutlined /></span>
+              <span className="pf-info-text">
+                <span className="pf-info-label">Phone</span>
+                <span className="pf-info-value">{contact.phone}</span>
+              </span>
+            </div>
+          )}
+          {contact.email && (
+            <div className="pf-info-row" style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}>
+              <span className="pf-info-icon"><FontAwesomeIcon icon={faEnvelope} /></span>
+              <span className="pf-info-text">
+                <span className="pf-info-label">Email</span>
+                <span className="pf-info-value">{contact.email}</span>
+              </span>
+            </div>
+          )}
+          {contact.birthDate && (
+            <div className="pf-info-row" style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}>
+              <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
+              <span className="pf-info-text">
+                <span className="pf-info-label">Birth Date</span>
+                <span className="pf-info-value">{formatBirthDateWithAge(contact.birthDate)}</span>
+              </span>
+            </div>
+          )}
+        </div>
       </div>
-
-      <div className="nw-profile-actions">
-        <button className="nw-edit-btn nw-edit-btn-plain" onClick={() => setEditing(true)}>
-          <FontAwesomeIcon icon={faPenToSquare} /> Edit Relation
-        </button>
+        </div>
       </div>
 
       <EditRelationModal
-        contact={contact}
+        contact={{ ...contact, relation }}
         open={editing}
         onClose={() => setEditing(false)}
-        onSaved={(newRel) => { contact.relation = newRel; }}
+        onSaved={(newRel) => {
+          setRelation(newRel);
+          contact.relation = newRel;
+        }}
       />
 
-      {imageViewerOpen && (
-        <div
-          onClick={() => setImageViewerOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 2000,
-            background: "rgba(0,0,0,0.92)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <span
-            onClick={(e) => {
-              e.stopPropagation();
-              setImageViewerOpen(false);
-            }}
-            style={{
-              position: "fixed",
-              top: 16,
-              right: 16,
-              width: 40,
-              height: 40,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.14)",
-              color: "#fff",
-              fontSize: 18,
-              cursor: "pointer",
-              zIndex: 2001,
-            }}
-          >
-            ✕
-          </span>
-          <img
-            src={contact.profilePicture}
-            alt="Profile full view"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              objectFit: "contain",
-              width: "min(480px, 100%)",
-              height: "auto",
-              maxHeight: "80vh",
-              display: "block",
-              background: "#000",
-              borderRadius: 12,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
-            }}
-          />
-        </div>
-      )}
+      <ProfilePictureViewer
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        src={contact.profilePicture}
+        name={name}
+      />
     </div>
   );
 }
