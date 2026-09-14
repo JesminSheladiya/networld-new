@@ -1,21 +1,16 @@
-import { useEffect, useState } from "react";
-import { Avatar, Modal } from "antd";
+import { useState } from "react";
+import { Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
-import { faArrowLeft, faPhone, faCakeCandles } from "@fortawesome/free-solid-svg-icons";
-import { api } from "../../Services/networld";
+import { faArrowLeft, faCakeCandles } from "@fortawesome/free-solid-svg-icons";
+import { PhoneOutlined } from "@ant-design/icons";
 import RelationChip from "./RelationChip";
 import EditRelationModal from "./EditRelationModal";
 import { formatBirthDateWithAge } from "../../utils/dateUtils";
 
 function ContactProfile({ contact, showBack = false, onBack }) {
-  const [relations, setRelations] = useState([]);
   const [editing, setEditing] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
-
-  useEffect(() => {
-    api.relations().then((res) => setRelations(res.data)).catch(() => {});
-  }, []);
 
   return (
     <div className="nw-profile">
@@ -46,7 +41,7 @@ function ContactProfile({ contact, showBack = false, onBack }) {
       <div className="nw-profile-section">
         {contact.phone && (
           <div className="nw-profile-row">
-            <span className="nw-profile-row-icon"><FontAwesomeIcon icon={faPhone} /></span>
+            <span className="nw-profile-row-icon"><PhoneOutlined /></span>
             <span className="nw-profile-row-text">
               <span className="nw-profile-row-label">Phone</span>
               <span className="nw-profile-row-value">{contact.phone}</span>

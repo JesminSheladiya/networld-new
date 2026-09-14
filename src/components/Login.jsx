@@ -51,7 +51,7 @@ function Login() {
         <div className="auth-header">
           <div className="auth-logo">N</div>
           <Title className="auth-title" level={2}>
-            Net World Login
+            NetWorld Login
           </Title>
         </div>
 
@@ -98,9 +98,9 @@ function Login() {
         <div className="auth-footer">
           <Typography.Text className="auth-footer-text">
             Don't have an account?{" "}
-            <a className="auth-switch-link" onClick={() => navigate("/register")}>
+            <button type="button" className="auth-switch-link" onClick={() => navigate("/register", { replace: true })}>
               Register here
-            </a>
+            </button>
           </Typography.Text>
         </div>
       </Card>

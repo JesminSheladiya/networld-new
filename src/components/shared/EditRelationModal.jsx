@@ -64,7 +64,7 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
           Update relation with <strong style={{ color: "#38bdf8" }}>{contact?.name}</strong>:
         </div>
         {contact?.gender && (contact.gender === "M" || contact.gender === "F") && (
-          <div className="rpm-gender-hint" style={{ marginBottom: 12 }}>
+          <div className="rpm-gender-hint">
             Relations for a {contact.gender === "M" ? "Male" : "Female"} profile
           </div>
         )}

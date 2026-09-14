@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { getToken, getUser, logout as authLogout } from '../Services/authService';
 import { fetchUser as fetchUserApi } from '../Services/authService';
+import { AUTH_CHANNEL, STORAGE_KEYS, USER_POLL_INTERVAL_MS } from '../constants';
 
 const AuthContext = createContext(null);
 
@@ -27,7 +28,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     authLogout();
-    localStorage.removeItem("nw-relation-format");
+    localStorage.removeItem(STORAGE_KEYS.RELATION_FORMAT);
     setIsAuthenticated(false);
     setUser({});
     if (pollIntervalRef.current) {
@@ -43,7 +44,7 @@ export function AuthProvider({ children }) {
   // BroadcastChannel for instant cross-tab communication (same browser)
   useEffect(() => {
     if (typeof BroadcastChannel !== 'undefined') {
-      broadcastChannelRef.current = new BroadcastChannel('networld-auth');
+      broadcastChannelRef.current = new BroadcastChannel(AUTH_CHANNEL);
       broadcastChannelRef.current.onmessage = (event) => {
         if (event.data?.type === 'USER_UPDATED') {
           setUser(event.data.user);
@@ -84,8 +85,7 @@ export function AuthProvider({ children }) {
     // Initial fetch
     poll();
 
-    // Poll every 30 seconds
-    pollIntervalRef.current = setInterval(poll, 30000);
+    pollIntervalRef.current = setInterval(poll, USER_POLL_INTERVAL_MS);
 
     return () => {
       if (pollIntervalRef.current) {
@@ -97,7 +97,7 @@ export function AuthProvider({ children }) {
   // Sync with localStorage changes from other tabs (fallback)
   useEffect(() => {
     const onStorage = (event) => {
-      if (event.key === 'user' || event.key === 'token') {
+      if (event.key === STORAGE_KEYS.USER || event.key === STORAGE_KEYS.TOKEN) {
         setIsAuthenticated(!!getToken());
         setUser(getUser());
       }

@@ -3,7 +3,7 @@ import { Modal } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCalendarDays } from "@fortawesome/free-regular-svg-icons";
 import dayjs from "dayjs";
-import { formatBirthDateWithAge, formatLongDate } from "../../utils/dateUtils";
+import { formatBirthDateWithAge } from "../../utils/dateUtils";
 
 const DEFAULT_DRAFT = new Date(2000, 0, 1);
 

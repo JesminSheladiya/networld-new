@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { api } from '../Services/networld';
 import { useAuth } from './AuthContext';
+import { STORAGE_KEYS } from '../constants';
 
-const STORAGE_KEY = 'nw-relation-format';
+const STORAGE_KEY = STORAGE_KEYS.RELATION_FORMAT;
 
 const FIELD_BY_FORMAT = {
   english: 'englishRelation',

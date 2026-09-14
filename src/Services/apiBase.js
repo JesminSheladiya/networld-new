@@ -1,15 +1,15 @@
 // Backend host resolver.
 //
 // The dev server prints "On Your Network" URLs (e.g. http://192.168.1.5:3000)
-// so phones can open the site — but REACT_APP_API_URL points at
+// so phones can open the site — but the API fallback points at
 // "localhost:8080", which on a phone means the phone itself, so every
 // API call (login included) fails there.
 //
 // Fix: whenever the page is opened via a LAN IP, talk to the backend on
 // that same host (port stays 8080). Works for any current/future DHCP IP
-// with zero .env changes.
-const ENV_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:8080/api/contacts";
+// with zero .env changes. Override with REACT_APP_API_URL.
+export const DEFAULT_API_URL = "http://localhost:8080/api/contacts";
+const ENV_URL = process.env.REACT_APP_API_URL || DEFAULT_API_URL;
 
 function resolveLanUrl(url) {
   try {

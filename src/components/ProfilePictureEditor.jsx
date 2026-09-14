@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Modal, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowsRotate, faRotateRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsRotate, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import "./css/ProfilePictureEditor.css";
@@ -28,7 +28,6 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
     const baseW = ar >= 1 ? stageSize : stageSize * ar;
     const baseH = ar >= 1 ? stageSize / ar : stageSize;
     const S = stageSize * BOX_RATIO; // fixed square box
-    const coverZoom = baseW && baseH ? Math.max(S / baseW, S / baseH) : 1;
     const dispW = baseW * zoom;
     const dispH = baseH * zoom;
     const boxLeft = (stageSize - S) / 2;
@@ -183,7 +182,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
             c.height = img.naturalWidth;
             const ctx = c.getContext("2d");
             ctx.translate(c.width / 2, c.height / 2);
-            ctx.rotate(Math.PI / 2);
+            ctx.rotate(-Math.PI / 2);
             ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
             setWorkSrc(c.toDataURL("image/jpeg", 0.92));
         };
@@ -281,7 +280,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
                     <div className="ppe-midbtns">
                         <Tooltip title="Rotate (R)" placement="top">
                             <button className="ppe-action" onClick={handleRotate} aria-label="Rotate">
-                                <FontAwesomeIcon icon={faRotateRight} />
+                                <FontAwesomeIcon icon={faRotateLeft} />
                             </button>
                         </Tooltip>
                         <Tooltip title="Reset" placement="top">

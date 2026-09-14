@@ -63,7 +63,7 @@ function Register() {
         <div className="auth-header">
           <div className="auth-logo">N</div>
           <Title className="auth-title" level={2}>
-            Net World Register
+            NetWorld Register
           </Title>
         </div>
 
@@ -181,9 +181,9 @@ function Register() {
         <div className="auth-footer">
           <Typography.Text className="auth-footer-text">
             Already have an account?{" "}
-            <a className="auth-switch-link" onClick={() => navigate("/login")}>
+            <button type="button" className="auth-switch-link" onClick={() => navigate("/login", { replace: true })}>
               Login here
-            </a>
+            </button>
           </Typography.Text>
         </div>
       </Card>

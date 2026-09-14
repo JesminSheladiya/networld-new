@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input, Spin, Empty, Tooltip, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faArrowRight, faUsers, faXmark, faPaperPlane, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faUsers, faXmark, faPaperPlane, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
+import { SEARCH_DEBOUNCE_MS } from "../../constants";
 import RelationPickerModal from "../shared/RelationPickerModal";
 
 function FindPeoplePage() {
@@ -28,17 +29,22 @@ function FindPeoplePage() {
     api.relations().then((res) => setRelations(res.data || [])).catch(() => setRelations([]));
   }, []);
 
+  // reqIdRef drops stale responses (fast typing must not overwrite newer results)
+  const reqIdRef = useRef(0);
   useEffect(() => {
     const q = query.trim();
     if (!q) {
+      reqIdRef.current += 1;
       setSearching(false);
       setResults([]);
       return;
     }
     const handler = setTimeout(async () => {
+      const id = ++reqIdRef.current;
       setSearching(true);
       try {
         const res = await api.searchUsers(q);
+        if (reqIdRef.current !== id) return; // stale — a newer search is in flight
         const data = res.data || [];
         setResults(data);
         // Reconcile with server: a declined request is no longer pending,
@@ -51,11 +57,12 @@ function FindPeoplePage() {
           return next;
         });
       } catch {
+        if (reqIdRef.current !== id) return;
         setResults([]);
       } finally {
-        setSearching(false);
+        if (reqIdRef.current === id) setSearching(false);
       }
-    }, 400);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(handler);
   }, [query, searchSeq]);
 
@@ -66,6 +73,7 @@ function FindPeoplePage() {
       await api.send(email, relMap[email]);
       setSentMap((p) => ({ ...p, [email]: true }));
       bump();
+      message.success("Connection request sent");
     } catch (e) {
       // Server is the source of truth (e.g. cross-request blocked) —
       // show its message and re-fetch so the row reflects real state.
@@ -82,14 +90,14 @@ function FindPeoplePage() {
       <div className="nw-page-head">
         <div>
           <h1 className="nw-page-title">Find People</h1>
-          <p className="nw-page-subtitle">Search the Net World and connect with people you know</p>
+          <p className="nw-page-subtitle">Search NetWorld and connect with people you know</p>
         </div>
       </div>
 
       <Input
         className="nw-search nw-search-full"
         prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
-        placeholder="Search by name or email..."
+        placeholder="Search by name, phone or email..."
         allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
         size="large"
         value={query}
@@ -103,7 +111,7 @@ function FindPeoplePage() {
           <div className="nw-state-box">
             <FontAwesomeIcon icon={faUsers} style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">Search for someone to connect with</span>
-            <span className="nw-state-sub">Search works with both names and email addresses</span>
+            <span className="nw-state-sub">Search works with names, phone numbers and email addresses</span>
           </div>
         ) : results.length === 0 ? (
           <div className="nw-state-box"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No users found" /></div>
@@ -117,7 +125,7 @@ function FindPeoplePage() {
                 </div>
                 <div className="nw-find-info">
                   <div className="nw-find-name">{u.name}</div>
-                  <div className="nw-find-email">{u.email}</div>
+                  <div className="nw-find-email">{u.phone || "—"}</div>
                 </div>
                 <div className="nw-find-actions">
                   {u.relationName ? (

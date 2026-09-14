@@ -8,6 +8,7 @@ import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
+import { DEFAULT_PAGE_SIZE, MQ_COMPACT, MQ_NARROW, PAGE_SIZE_OPTIONS, SEARCH_DEBOUNCE_MS } from "../../constants";
 
 function mapContact(item, idx) {
   return {
@@ -45,8 +46,8 @@ function ContactsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [isCompact, setIsCompact] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
-  const [isNarrow, setIsNarrow] = useState(() => window.matchMedia("(max-width: 399px)").matches);
+  const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
+  const [isNarrow, setIsNarrow] = useState(() => window.matchMedia(MQ_NARROW).matches);
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState("all");
   const [loading, setLoading] = useState(false);
@@ -57,7 +58,7 @@ function ContactsPage() {
   const [editingContact, setEditingContact] = useState(null);
   const [viewer, setViewer] = useState(null);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sortParam, setSortParam] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const loaderRef = useRef(null);
@@ -84,17 +85,17 @@ function ContactsPage() {
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, [category, dataSource.length, isNarrow, visibleCategories.length]);
+  }, [category, dataSource.length, isNarrow, visibleCategories, visibleCategories.length]);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1024px)");
+    const mq = window.matchMedia(MQ_COMPACT);
     const onChange = (e) => setIsCompact(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 399px)");
+    const mq = window.matchMedia(MQ_NARROW);
     const onChange = (e) => setIsNarrow(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -108,7 +109,7 @@ function ContactsPage() {
     if (!append) setLoading(true);
     try {
       const res = await api.connectionsPaged(
-        pageNum, pageSize, searchText, category, selectedRelations, sortParam
+        pageNum, pageSize, searchText, category, selectedRelations, sortParam, isCompact
       );
       if (id !== reqIdRef.current) return; // stale — a newer request is in flight
       const mapped = res.data.content.map(mapContact);
@@ -143,7 +144,7 @@ function ContactsPage() {
       resetFetchRef.current = true;
       setPage(0);
       fetchList(0, false);
-    }, 350);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText, category, selectedRelations, pageSize, sortParam, refreshKey, isCompact]);
@@ -174,8 +175,8 @@ function ContactsPage() {
     const handler = setTimeout(async () => {
       try {
         const [cRes, rRes] = await Promise.all([
-          api.connectionCounts(searchText),
-          api.connectionRelations(searchText),
+          api.connectionCounts(searchText, isCompact),
+          api.connectionRelations(searchText, isCompact),
         ]);
         setCounts({
           all: cRes.data?.all ?? 0,
@@ -188,9 +189,9 @@ function ContactsPage() {
         setCounts({ all: 0, family: 0, inlaws: 0, others: 0 });
         setRelationOptions([]);
       }
-    }, 350);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(handler);
-  }, [searchText, refreshKey]);
+  }, [searchText, refreshKey, isCompact]);
 
   // Switching tabs starts a fresh filter context (stale relation sub-filter
   // would otherwise combine with the new tab and show confusing results)
@@ -581,7 +582,7 @@ function ContactsPage() {
             total={totalItems}
             showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} items`}
             showSizeChanger
-            pageSizeOptions={["10", "20", "50", "100"]}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
             showQuickJumper
             showLessItems
             size="small"
