@@ -1,6 +1,8 @@
 /* ============================================================
    Profile pages (own profile + contact profile)
-   App-style: subtle cover banner, overlapping avatar, cards.
+   App-style: short cover banner, centered overlapping avatar,
+   layered glass cards. Borders are deliberately faint — depth
+   comes from color + shadow, not outlines.
    NOTE: .pf-cover renders a gradient by default. To enable a
    user-uploaded cover image later, just set an inline
    background-image on .pf-cover (background-size/position
@@ -19,7 +21,7 @@
 /* Two-column app layout: main content + side rail */
 .pf-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 14px;
   align-items: start;
 }
@@ -32,13 +34,14 @@
   min-width: 0;
 }
 
+/* Soft glass card — color-led depth, near-invisible edge */
 .pf-card {
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.07);
   border-radius: 16px;
-  background: rgba(13, 20, 36, 0.72);
+  background: rgba(13, 20, 36, 0.68);
   backdrop-filter: blur(12px) saturate(130%);
   -webkit-backdrop-filter: blur(12px) saturate(130%);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.32);
   overflow: hidden;
 }
 
@@ -47,42 +50,44 @@
   padding: 0;
 }
 
+/* Short hero: cover bleeds into the identity block below via a
+   gradient — no hard seam — and the avatar sits centered on the
+   transition so cover and profile info read as one unit. */
 .pf-cover {
-  height: 160px;
+  height: 108px;
   background-color: #101a33;
   background-image:
-    linear-gradient(180deg, transparent 30%, rgba(6, 11, 24, 0.55) 100%),
+    linear-gradient(180deg, transparent 18%, rgba(6, 11, 24, 0.82) 100%),
     radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1.5px),
     radial-gradient(520px 190px at 82% 0%, rgba(56, 189, 248, 0.16), transparent 60%),
-    radial-gradient(460px 200px at 8% 100%, rgba(37, 99, 235, 0.18), transparent 60%),
+    radial-gradient(460px 200px at 8% 100%, rgba(37, 99, 235, 0.2), transparent 60%),
     linear-gradient(180deg, #182747 0%, #0d1528 100%);
   background-size: auto, 22px 22px, auto, auto, auto;
   background-position: center;
   background-repeat: no-repeat, repeat, no-repeat, no-repeat, no-repeat;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .pf-head-body {
-  padding: 0 22px 14px;
+  padding: 0 24px 12px;
 }
 
 /* Facebook-style horizontal header: avatar left, identity right */
 .pf-head-row {
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 24px;
   align-items: start;
 }
 
 .pf-head-main {
   min-width: 0;
-  padding-top: 2px;
+  padding-top: 6px;
 }
 
 .pf-head-actions {
   display: flex;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
 
@@ -97,17 +102,17 @@
   align-items: center;
   gap: 8px;
   background: rgba(148, 163, 184, 0.1);
-  border: 1px solid rgba(147, 197, 253, 0.25);
+  border: 1px solid rgba(147, 197, 253, 0.18);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   color: #e2e8f0;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .pf-ghost-btn:hover {
   background: rgba(148, 163, 184, 0.18);
-  border-color: rgba(147, 197, 253, 0.45);
+  border-color: rgba(147, 197, 253, 0.4);
   color: #fff;
 }
 
@@ -120,11 +125,12 @@
 .pf-avatar-wrap {
   position: relative;
   display: inline-block;
-  margin-top: -66px;
+  /* Half the avatar size → avatar centered on the cover/body seam */
+  margin-top: -60px;
 }
 
 .pf-avatar-wrap .ant-avatar {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 .pf-camera-btn {
@@ -151,12 +157,13 @@
   color: #fff;
 }
 
+/* Strongest type on the page */
 .pf-name {
-  color: #f1f5f9;
-  font-size: 22px;
+  color: #f8fafc;
+  font-size: 24px;
   font-weight: 800;
   margin: 0;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.1px;
   overflow-wrap: anywhere;
 }
 
@@ -169,15 +176,15 @@
 
 /* LinkedIn-style meta line: email · phone */
 .pf-meta {
-  color: #7d8aa0;
-  font-size: 12.5px;
-  margin-top: 2px;
+  color: #8b98ad;
+  font-size: 13px;
+  margin-top: 4px;
   overflow-wrap: anywhere;
 }
 
 /* Reserved row so the async stat never shifts layout on pop-in */
 .pf-stat-row {
-  min-height: 26px;
+  min-height: 28px;
   display: flex;
   align-items: center;
 }
@@ -218,42 +225,46 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 16px 22px 4px;
+  padding: 18px 24px 6px;
 }
 
 .pf-card-title {
-  color: #f1f5f9;
-  font-size: 15px;
+  color: #f8fafc;
+  font-size: 16px;
   font-weight: 700;
   margin: 0;
   letter-spacing: 0.2px;
 }
 
-.pf-icon-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: #94a3b8;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
+/* Labeled edit pill — reads clearly as a button */
+.pf-edit-btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  color: #b9c8e0;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.pf-icon-btn:hover {
-  background: rgba(148, 163, 184, 0.12);
-  color: #e2e8f0;
+.pf-edit-btn:hover {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(96, 165, 250, 0.45);
+  color: #fff;
 }
 
 .pf-bio-text {
-  color: #e2e8f0;
+  color: #e5edf8;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.65;
   margin: 0;
-  padding: 10px 22px 20px;
+  padding: 12px 24px 22px;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -263,15 +274,15 @@
 }
 
 .pf-bio-edit {
-  padding: 10px 22px 20px;
+  padding: 10px 24px 22px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 .pf-textarea.ant-input {
-  background: rgba(2, 6, 17, 0.6);
-  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(2, 6, 17, 0.5);
+  border-color: rgba(148, 163, 184, 0.14);
   color: #f1f5f9;
   border-radius: 10px;
 }
@@ -283,28 +294,28 @@
 
 /* ── Info rows ── */
 .pf-info-rows {
-  padding: 6px 22px 16px;
+  padding: 8px 24px 20px;
 }
 
 .pf-info-row {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 0;
+  padding: 13px 0;
 }
 
+/* Tinted tiles instead of bordered tiles — color, not outlines */
 .pf-info-icon {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   flex-shrink: 0;
-  border-radius: 11px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(148, 163, 184, 0.08);
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  color: #94a3b8;
-  font-size: 15px;
+  background: rgba(59, 130, 246, 0.1);
+  color: #7fb4ff;
+  font-size: 16px;
 }
 
 .pf-info-text {
@@ -315,38 +326,78 @@
 }
 
 .pf-info-label {
-  color: #64748b;
-  font-size: 10.5px;
+  color: #6e8099;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 
 .pf-info-value {
   color: #f1f5f9;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 /* ── Forms + actions ── */
 .pf-form {
-  padding: 10px 22px 20px;
+  padding: 8px 24px 22px;
 }
 
 .pf-form .ant-form-item {
   margin-bottom: 12px;
 }
 
+/* Micro-labels above inputs — clearer hierarchy than icons alone */
+.pf-form .ant-form-item-label {
+  padding-bottom: 6px;
+}
+
+.pf-form .ant-form-item-label > label {
+  color: #6e8099;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* New + confirm side by side → halves the section height */
+.pf-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 12px;
+}
+
+/* Compact inputs inside profile forms */
+.pf-form .auth-input.ant-input-affix-wrapper,
+.pf-form .auth-input.ant-input,
+.pf-form .auth-input.ant-select .ant-select-selector {
+  height: 40px;
+  border-radius: 10px !important;
+  background: rgba(2, 6, 17, 0.55) !important;
+  border: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
 .pf-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.pf-hint {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 280px;
 }
 
 /* Primary action button: compact auto-width blue accent */
 .pf-primary-btn {
-  height: 34px;
+  height: 36px;
   padding: 0 20px;
   border-radius: 9px;
   font-size: 13px;
@@ -400,7 +451,7 @@
   }
 
   .pf-avatar-wrap {
-    margin-top: -44px;
+    margin-top: -60px;
   }
 }
 
@@ -411,7 +462,7 @@
   }
 
   .pf-cover {
-    height: 130px;
+    height: 104px;
   }
 
   /* Mobile avatar (compacted for small screens) */
@@ -439,7 +490,11 @@
   }
 
   .pf-name {
-    font-size: 21px;
+    font-size: 22px;
+  }
+
+  .pf-form-grid {
+    grid-template-columns: 1fr;
   }
 
   .pf-card-head,

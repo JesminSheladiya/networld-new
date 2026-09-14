@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form, Input, message, Upload, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUser, faPenToSquare, faCamera, faCakeCandles, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { faUser, faPenToSquare, faCamera, faCakeCandles, faEye, faEyeSlash, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
-import { PhoneOutlined, LockOutlined } from "@ant-design/icons";
+import { PhoneOutlined } from "@ant-design/icons";
 import { updateProfile } from "../../Services/authService";
 import { api } from "../../Services/networld";
 import { useAuth } from "../../context/AuthContext";
@@ -289,8 +289,8 @@ function ProfilePage() {
         <div className="pf-card-head">
           <h2 className="pf-card-title">About</h2>
           {!editing && (
-            <button className="pf-icon-btn" aria-label="Edit profile" onClick={startEdit}>
-              <FontAwesomeIcon icon={faPenToSquare} />
+            <button className="pf-edit-btn" aria-label="Edit profile" onClick={startEdit}>
+              <FontAwesomeIcon icon={faPenToSquare} /> Edit
             </button>
           )}
         </div>
@@ -317,11 +317,10 @@ function ProfilePage() {
           <h2 className="pf-card-title">Change password</h2>
         </div>
         <Form form={pwdForm} layout="vertical" onFinish={savePassword} className="pf-form">
-          <Form.Item name="currentPassword">
+          <Form.Item name="currentPassword" label="Current password">
             <Input.Password
               className="auth-input"
-              prefix={<LockOutlined className="auth-input-icon" />}
-              placeholder="Current password"
+              placeholder="••••••••"
               size="middle"
               iconRender={(visible) => (
                 <FontAwesomeIcon
@@ -332,49 +331,51 @@ function ProfilePage() {
               )}
             />
           </Form.Item>
-          <Form.Item name="newPassword" rules={[{ min: 8, message: "Password must be at least 8 characters!" }]}>
-            <Input.Password
-              className="auth-input"
-              prefix={<LockOutlined className="auth-input-icon" />}
-              placeholder="New password"
-              size="middle"
-              iconRender={(visible) => (
-                <FontAwesomeIcon
-                  icon={visible ? faEye : faEyeSlash}
-                  className="auth-input-icon"
-                  style={{ color: "#3b82f6", cursor: "pointer" }}
-                />
-              )}
-            />
-          </Form.Item>
-          <Form.Item
-            name="confirmPassword"
-            dependencies={["newPassword"]}
-            rules={[
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value && !getFieldValue("newPassword")) return Promise.resolve();
-                  if (value !== getFieldValue("newPassword")) return Promise.reject("Passwords do not match!");
-                  return Promise.resolve();
-                },
-              }),
-            ]}
-          >
-            <Input.Password
-              className="auth-input"
-              prefix={<LockOutlined className="auth-input-icon" />}
-              placeholder="Confirm new password"
-              size="middle"
-              iconRender={(visible) => (
-                <FontAwesomeIcon
-                  icon={visible ? faEye : faEyeSlash}
-                  className="auth-input-icon"
-                  style={{ color: "#3b82f6", cursor: "pointer" }}
-                />
-              )}
-            />
-          </Form.Item>
+          <div className="pf-form-grid">
+            <Form.Item name="newPassword" label="New password" rules={[{ min: 8, message: "At least 8 characters!" }]}>
+              <Input.Password
+                className="auth-input"
+                placeholder="Min 8 characters"
+                size="middle"
+                iconRender={(visible) => (
+                  <FontAwesomeIcon
+                    icon={visible ? faEye : faEyeSlash}
+                    className="auth-input-icon"
+                    style={{ color: "#3b82f6", cursor: "pointer" }}
+                  />
+                )}
+              />
+            </Form.Item>
+            <Form.Item
+              name="confirmPassword"
+              label="Confirm new password"
+              dependencies={["newPassword"]}
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value && !getFieldValue("newPassword")) return Promise.resolve();
+                    if (value !== getFieldValue("newPassword")) return Promise.reject("Passwords do not match!");
+                    return Promise.resolve();
+                  },
+                }),
+              ]}
+            >
+              <Input.Password
+                className="auth-input"
+                placeholder="Repeat it"
+                size="middle"
+                iconRender={(visible) => (
+                  <FontAwesomeIcon
+                    icon={visible ? faEye : faEyeSlash}
+                    className="auth-input-icon"
+                    style={{ color: "#3b82f6", cursor: "pointer" }}
+                  />
+                )}
+              />
+            </Form.Item>
+          </div>
           <div className="pf-actions">
+            <span className="pf-hint">Use at least 8 characters — mix letters, numbers &amp; symbols.</span>
             <button type="submit" className="pf-primary-btn" disabled={!pwdReady || savingPwd}>
               {savingPwd ? "Updating..." : "Update password"}
             </button>
@@ -388,8 +389,8 @@ function ProfilePage() {
         <div className="pf-card-head">
           <h2 className="pf-card-title">Contact info</h2>
           {!editing && (
-            <button className="pf-icon-btn" aria-label="Edit profile" onClick={startEdit}>
-              <FontAwesomeIcon icon={faPenToSquare} />
+            <button className="pf-edit-btn" aria-label="Edit profile" onClick={startEdit}>
+              <FontAwesomeIcon icon={faPenToSquare} /> Edit
             </button>
           )}
         </div>
@@ -431,8 +432,8 @@ function ProfilePage() {
           </Form>
         ) : (
           <div className="pf-info-rows">
-            {infoRows.map(({ label, value, icon }, i) => (
-              <div className="pf-info-row" key={label} style={i > 0 ? { borderTop: "1px solid rgba(148,163,184,0.08)" } : undefined}>
+            {infoRows.map(({ label, value, icon }) => (
+              <div className="pf-info-row" key={label}>
                 <span className="pf-info-icon">{icon}</span>
                 <span className="pf-info-text">
                   <span className="pf-info-label">{label}</span>
@@ -440,6 +441,17 @@ function ProfilePage() {
                 </span>
               </div>
             ))}
+            {connCount > 0 && (
+              <div className="pf-info-row">
+                <span className="pf-info-icon"><FontAwesomeIcon icon={faUsers} /></span>
+                <span className="pf-info-text">
+                  <span className="pf-info-label">Connections</span>
+                  <button className="pf-stat" onClick={() => navigate("/contacts")}>
+                    {connCount} {connCount === 1 ? "connection" : "connections"}
+                  </button>
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -9,7 +9,7 @@ function ProfileHeader({
   avatarSrc,
   avatarBg = "#3b82f6",
   avatarText = "?",
-  avatarSize = 132,
+  avatarSize = 120,
   onAvatarClick,
   cameraControl = null,
   name,
@@ -45,10 +45,10 @@ function ProfileHeader({
                 src={avatarSrc || null}
                 style={{
                   backgroundColor: avatarSrc ? "transparent" : avatarBg,
-                  fontSize: 46,
+                  fontSize: 42,
                   fontWeight: 700,
                   color: "#fff",
-                  border: "4px solid #0d1424",
+                  border: "4px solid #0d1526",
                 }}
               >
               {!avatarSrc && avatarText}

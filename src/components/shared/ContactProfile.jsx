@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
-import { faArrowLeft, faCakeCandles } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faCakeCandles, faLink } from "@fortawesome/free-solid-svg-icons";
 import { PhoneOutlined } from "@ant-design/icons";
 import { avatarColorFor } from "../../constants";
 import RelationChip from "./RelationChip";
@@ -74,6 +74,15 @@ function ContactProfile({ contact, showBack = false, onBack }) {
           <h2 className="pf-card-title">Contact info</h2>
         </div>
         <div className="pf-info-rows">
+          {relation && (
+            <div className="pf-info-row">
+              <span className="pf-info-icon"><FontAwesomeIcon icon={faLink} /></span>
+              <span className="pf-info-text">
+                <span className="pf-info-label">Relation</span>
+                <RelationChip relation={relation} style={{ fontSize: 12 }} />
+              </span>
+            </div>
+          )}
           {contact.phone && (
             <div className="pf-info-row">
               <span className="pf-info-icon"><PhoneOutlined /></span>
@@ -84,7 +93,7 @@ function ContactProfile({ contact, showBack = false, onBack }) {
             </div>
           )}
           {contact.email && (
-            <div className="pf-info-row" style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}>
+            <div className="pf-info-row">
               <span className="pf-info-icon"><FontAwesomeIcon icon={faEnvelope} /></span>
               <span className="pf-info-text">
                 <span className="pf-info-label">Email</span>
@@ -93,7 +102,7 @@ function ContactProfile({ contact, showBack = false, onBack }) {
             </div>
           )}
           {contact.birthDate && (
-            <div className="pf-info-row" style={{ borderTop: "1px solid rgba(148,163,184,0.08)" }}>
+            <div className="pf-info-row">
               <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
               <span className="pf-info-text">
                 <span className="pf-info-label">Birth Date</span>
