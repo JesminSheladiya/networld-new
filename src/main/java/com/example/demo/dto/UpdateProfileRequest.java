@@ -9,6 +9,7 @@ public class UpdateProfileRequest {
     private String profilePicture;
     private String gender;
     private java.time.LocalDate birthDate;
+    private String bio;
 
 
     public String getFullName()        { return fullName; }
@@ -34,4 +35,7 @@ public class UpdateProfileRequest {
 
     public java.time.LocalDate getBirthDate()       { return birthDate; }
     public void setBirthDate(java.time.LocalDate v) { this.birthDate = v; }
+
+    public String getBio()       { return bio; }
+    public void setBio(String v) { this.bio = v; }
 }

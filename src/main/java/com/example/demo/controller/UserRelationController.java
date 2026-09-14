@@ -57,6 +57,7 @@ public class UserRelationController {
             item.put("profilePic", u.getProfilePicture() != null ? u.getProfilePicture() : "");
             item.put("gender",     u.getGender());
             item.put("birthDate",  u.getBirthDate());
+            item.put("bio",        u.getBio());
 
             Optional<UserRelation> fwd = userRelationRepository.findByFromUserAndToUser(me, u);
             Optional<UserRelation> rev = userRelationRepository.findByFromUserAndToUser(u, me);

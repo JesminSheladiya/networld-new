@@ -10,6 +10,7 @@ public class UserRelationSuggestionDTO {
     private String suggestedUserProfilePic;
     private String suggestedUserGender;
     private java.time.LocalDate suggestedUserBirthDate;
+    private String suggestedUserBio;
     private String inferredRelation;
     private String englishRelation;
     private String indianRelation;
@@ -26,6 +27,7 @@ public class UserRelationSuggestionDTO {
                                      String suggestedUserProfilePic,
                                      String suggestedUserGender,
                                      java.time.LocalDate suggestedUserBirthDate,
+                                     String suggestedUserBio,
                                      String inferredRelation,
                                      String englishRelation,
                                      String indianRelation,
@@ -39,6 +41,7 @@ public class UserRelationSuggestionDTO {
         this.suggestedUserProfilePic = suggestedUserProfilePic;
         this.suggestedUserGender    = suggestedUserGender;
         this.suggestedUserBirthDate = suggestedUserBirthDate;
+        this.suggestedUserBio       = suggestedUserBio;
         this.inferredRelation       = inferredRelation;
         this.englishRelation        = englishRelation;
         this.indianRelation         = indianRelation;
@@ -54,6 +57,7 @@ public class UserRelationSuggestionDTO {
     public String getSuggestedUserProfilePic() { return suggestedUserProfilePic; }
     public String getSuggestedUserGender()     { return suggestedUserGender; }
     public java.time.LocalDate getSuggestedUserBirthDate() { return suggestedUserBirthDate; }
+    public String getSuggestedUserBio()      { return suggestedUserBio; }
     public String getInferredRelation()        { return inferredRelation; }
     public String getEnglishRelation()         { return englishRelation; }
     public String getIndianRelation()          { return indianRelation; }

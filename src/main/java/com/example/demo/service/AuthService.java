@@ -76,6 +76,13 @@ public class AuthService {
         if (req.getBirthDate() != null)
             u.setBirthDate(validateBirthDate(req.getBirthDate()));
 
+        if (req.getBio() != null) {
+            String bio = req.getBio().trim();
+            if (bio.length() > 500)
+                throw new RuntimeException("Bio must be 500 characters or less");
+            u.setBio(bio.isEmpty() ? null : bio);
+        }
+
         if (req.getProfilePicture() != null)
             u.setProfilePicture(req.getProfilePicture());
 
@@ -107,7 +114,8 @@ public class AuthService {
                 u.getId(),
                 u.getProfilePicture(),
                 u.getGender(),
-                u.getBirthDate()
+                u.getBirthDate(),
+                u.getBio()
         );
     }
 

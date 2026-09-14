@@ -42,6 +42,9 @@ public class User implements UserDetails {
     @Column(name = "birth_date")
     private java.time.LocalDate birthDate;
 
+    @Column(name = "bio", length = 500)
+    private String bio;
+
     @Column(nullable = false)
     private String role = "USER";
 
@@ -76,6 +79,9 @@ public class User implements UserDetails {
 
     public java.time.LocalDate getBirthDate() { return birthDate; }
     public void setBirthDate(java.time.LocalDate birthDate) { this.birthDate = birthDate; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
 
     public String getRole()     { return role; }
     public void setRole(String role) { this.role = role; }

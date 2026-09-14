@@ -11,10 +11,11 @@ public class AuthResponse {
     private String profilePicture;
     private String gender;
     private java.time.LocalDate birthDate;
+    private String bio;
 
     public AuthResponse(String token, String username, String email,
                         String phone, String fullName, Long id, String profilePicture,
-                        String gender, java.time.LocalDate birthDate) {
+                        String gender, java.time.LocalDate birthDate, String bio) {
         this.token    = token;
         this.username = username;
         this.email    = email;
@@ -24,6 +25,7 @@ public class AuthResponse {
         this.profilePicture = profilePicture;
         this.gender   = gender;
         this.birthDate = birthDate;
+        this.bio      = bio;
     }
 
     public String getToken()    { return token; }
@@ -35,4 +37,5 @@ public class AuthResponse {
     public String getProfilePicture() { return profilePicture; }
     public String getGender()   { return gender; }
     public java.time.LocalDate getBirthDate() { return birthDate; }
+    public String getBio() { return bio; }
 }
