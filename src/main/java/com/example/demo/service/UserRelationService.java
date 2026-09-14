@@ -180,7 +180,7 @@ public class UserRelationService {
     public List<UserRelationSuggestionDTO> getMyConnections(User currentUser, String query) {
         List<UserRelation> relations = (query == null || query.isBlank())
                 ? userRelationRepo.findByFromUserAndStatus(currentUser, "ACCEPTED")
-                : userRelationRepo.searchAcceptedConnections(currentUser, query.trim());
+                : userRelationRepo.searchAcceptedConnections(currentUser, query.trim(), false);
 
         return relations.stream().map(ur -> {
             User o = ur.getToUser();
@@ -220,12 +220,12 @@ public class UserRelationService {
     }
 
     public Page<UserRelationSuggestionDTO> getMyConnectionsPaged(
-            User currentUser, String query, String category, List<String> relations, Pageable pageable) {
+            User currentUser, String query, String category, List<String> relations, boolean skipEmail, Pageable pageable) {
         String q = blankToNull(query);
         String c = normalizeCategory(category);
         Page<UserRelation> relationsPage = (relations != null && !relations.isEmpty())
-                ? userRelationRepo.pageFilteredConnectionsByRelations(currentUser, q, c, relations, pageable)
-                : userRelationRepo.pageFilteredConnections(currentUser, q, c, pageable);
+                ? userRelationRepo.pageFilteredConnectionsByRelations(currentUser, q, c, relations, skipEmail, pageable)
+                : userRelationRepo.pageFilteredConnections(currentUser, q, c, skipEmail, pageable);
 
         return relationsPage.map(ur -> {
             User o = ur.getToUser();
@@ -242,11 +242,11 @@ public class UserRelationService {
         });
     }
 
-    public Map<String, Long> getConnectionCounts(User currentUser, String query) {
+    public Map<String, Long> getConnectionCounts(User currentUser, String query, boolean skipEmail) {
         String q = blankToNull(query);
         List<UserRelation> list = (q == null)
                 ? userRelationRepo.findByFromUserAndStatus(currentUser, "ACCEPTED")
-                : userRelationRepo.searchAcceptedConnections(currentUser, q);
+                : userRelationRepo.searchAcceptedConnections(currentUser, q, skipEmail);
 
         Map<String, Long> counts = new HashMap<>();
         counts.put("all", (long) list.size());
@@ -260,10 +260,10 @@ public class UserRelationService {
         return counts;
     }
 
-    public List<Map<String, Object>> getConnectionRelationCounts(User currentUser, String query) {
+    public List<Map<String, Object>> getConnectionRelationCounts(User currentUser, String query, boolean skipEmail) {
         String q = blankToNull(query);
         List<Map<String, Object>> out = new ArrayList<>();
-        for (Object[] row : userRelationRepo.countConnectionsByRelation(currentUser, q)) {
+        for (Object[] row : userRelationRepo.countConnectionsByRelation(currentUser, q, skipEmail)) {
             Map<String, Object> item = new HashMap<>();
             item.put("value", String.valueOf(row[0]));
             item.put("count", ((Number) row[1]).longValue());

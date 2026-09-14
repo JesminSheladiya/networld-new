@@ -53,6 +53,7 @@ public class UserRelationController {
             item.put("id",         u.getId());
             item.put("name",       u.getFullName() != null ? u.getFullName() : u.getDisplayName());
             item.put("email",      u.getEmail());
+            item.put("phone",      u.getPhone());
             item.put("profilePic", u.getProfilePicture() != null ? u.getProfilePicture() : "");
             item.put("gender",     u.getGender());
             item.put("birthDate",  u.getBirthDate());
@@ -150,26 +151,29 @@ public class UserRelationController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) List<String> relations,
             @RequestParam(required = false) String sort,
+            @RequestParam(defaultValue = "false") boolean skipEmail,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserDetails ud) {
         Pageable pageable = PageRequest.of(page, size, toSort(sort));
         return ResponseEntity.ok(userRelationService.getMyConnectionsPaged(
-                getCurrentUser(ud), query, category, relations, pageable));
+                getCurrentUser(ud), query, category, relations, skipEmail, pageable));
     }
 
     @GetMapping("/connections/counts")
     public ResponseEntity<Map<String, Long>> getConnectionCounts(
             @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "false") boolean skipEmail,
             @AuthenticationPrincipal UserDetails ud) {
-        return ResponseEntity.ok(userRelationService.getConnectionCounts(getCurrentUser(ud), query));
+        return ResponseEntity.ok(userRelationService.getConnectionCounts(getCurrentUser(ud), query, skipEmail));
     }
 
     @GetMapping("/connections/relations")
     public ResponseEntity<List<Map<String, Object>>> getConnectionRelations(
             @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "false") boolean skipEmail,
             @AuthenticationPrincipal UserDetails ud) {
-        return ResponseEntity.ok(userRelationService.getConnectionRelationCounts(getCurrentUser(ud), query));
+        return ResponseEntity.ok(userRelationService.getConnectionRelationCounts(getCurrentUser(ud), query, skipEmail));
     }
 
     private static org.springframework.data.domain.Sort toSort(String sort) {

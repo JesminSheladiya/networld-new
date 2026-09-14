@@ -17,13 +17,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.email = :identifier OR u.phone = :identifier")
     Optional<User> findByIdentifier(@Param("identifier") String identifier);
 
-    // Search users by name or email (excluding current user)
+    // Search users by name, phone or email (excluding current user)
     @Query("""
         SELECT u FROM User u
         WHERE u.id <> :currentUserId
           AND (LOWER(u.fullName)  LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(u.username)  LIKE LOWER(CONCAT('%', :query, '%'))
-            OR LOWER(u.email)     LIKE LOWER(CONCAT('%', :query, '%')))
+            OR LOWER(u.email)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR u.phone            LIKE CONCAT('%', :query, '%'))
     """)
     List<User> searchUsers(@Param("query") String query,
                            @Param("currentUserId") Long currentUserId);

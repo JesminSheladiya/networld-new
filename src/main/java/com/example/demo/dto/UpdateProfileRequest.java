@@ -5,6 +5,7 @@ public class UpdateProfileRequest {
     private String phone;
     private String currentPassword;
     private String newPassword;
+    private String confirmPassword;
     private String profilePicture;
     private String gender;
     private java.time.LocalDate birthDate;
@@ -21,6 +22,9 @@ public class UpdateProfileRequest {
 
     public String getNewPassword()       { return newPassword; }
     public void setNewPassword(String v) { this.newPassword = v; }
+
+    public String getConfirmPassword()       { return confirmPassword; }
+    public void setConfirmPassword(String v) { this.confirmPassword = v; }
 
     public String getProfilePicture()        { return profilePicture; }
     public void   setProfilePicture(String v){ this.profilePicture = v; }

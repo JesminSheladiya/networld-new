@@ -80,8 +80,14 @@ public class AuthService {
             u.setProfilePicture(req.getProfilePicture());
 
         if (req.getNewPassword() != null && !req.getNewPassword().isBlank()) {
+            if (req.getCurrentPassword() == null || req.getCurrentPassword().isBlank())
+                throw new RuntimeException("Current password is required");
             if (!encoder.matches(req.getCurrentPassword(), u.getPassword()))
                 throw new RuntimeException("Current password is incorrect");
+            if (req.getNewPassword().length() < 8)
+                throw new RuntimeException("New password must be at least 8 characters");
+            if (req.getConfirmPassword() == null || !req.getConfirmPassword().equals(req.getNewPassword()))
+                throw new RuntimeException("Passwords do not match");
             u.setPassword(encoder.encode(req.getNewPassword()));
         }
 

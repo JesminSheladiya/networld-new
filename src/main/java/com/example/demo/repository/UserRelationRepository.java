@@ -53,13 +53,14 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
           AND ur.status = 'ACCEPTED'
           AND (LOWER(ur.toUser.fullName)  LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
-            OR LOWER(ur.toUser.email)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR (:skipEmail = FALSE AND LOWER(ur.toUser.email) LIKE LOWER(CONCAT('%', :query, '%')))
             OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%')))
     """)
     List<UserRelation> searchAcceptedConnections(
             @Param("fromUser") User fromUser,
-            @Param("query") String query
+            @Param("query") String query,
+            @Param("skipEmail") boolean skipEmail
     );
 
     @Query("""
@@ -90,7 +91,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
           AND (:query IS NULL OR :query = '' OR (
                LOWER(ur.toUser.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
-            OR LOWER(ur.toUser.email)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR (:skipEmail = FALSE AND LOWER(ur.toUser.email) LIKE LOWER(CONCAT('%', :query, '%')))
             OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
           AND (:category IS NULL OR :category = '' OR :category = 'all'
@@ -102,6 +103,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
             @Param("fromUser") User fromUser,
             @Param("query") String query,
             @Param("category") String category,
+            @Param("skipEmail") boolean skipEmail,
             Pageable pageable
     );
 
@@ -113,7 +115,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
           AND (:query IS NULL OR :query = '' OR (
                LOWER(ur.toUser.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
-            OR LOWER(ur.toUser.email)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR (:skipEmail = FALSE AND LOWER(ur.toUser.email) LIKE LOWER(CONCAT('%', :query, '%')))
             OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
           AND (:category IS NULL OR :category = '' OR :category = 'all'
@@ -127,6 +129,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
             @Param("query") String query,
             @Param("category") String category,
             @Param("relations") List<String> relations,
+            @Param("skipEmail") boolean skipEmail,
             Pageable pageable
     );
 
@@ -138,7 +141,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
           AND (:query IS NULL OR :query = '' OR (
                LOWER(ur.toUser.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
-            OR LOWER(ur.toUser.email)     LIKE LOWER(CONCAT('%', :query, '%'))
+            OR (:skipEmail = FALSE AND LOWER(ur.toUser.email) LIKE LOWER(CONCAT('%', :query, '%')))
             OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
         GROUP BY r.relationName
@@ -146,6 +149,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
     """)
     List<Object[]> countConnectionsByRelation(
             @Param("fromUser") User fromUser,
-            @Param("query") String query
+            @Param("query") String query,
+            @Param("skipEmail") boolean skipEmail
     );
 }
