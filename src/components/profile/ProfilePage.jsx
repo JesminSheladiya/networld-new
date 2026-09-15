@@ -1,25 +1,19 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Form, Input, message, Upload, Select } from "antd";
+import { Form, Input, message, Upload } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUser, faPenToSquare, faCamera, faCakeCandles, faEye, faEyeSlash, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faUser, faCamera, faCakeCandles, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { PhoneOutlined } from "@ant-design/icons";
 import { updateProfile } from "../../Services/authService";
 import { api } from "../../Services/networld";
 import { useAuth } from "../../context/AuthContext";
-import { avatarColorFor, BIO_MAX_LENGTH } from "../../constants";
+import { avatarColorFor } from "../../constants";
 import ProfilePictureViewer from "../ProfilePictureViewer";
 import ProfilePictureEditor from "../ProfilePictureEditor";
 import ProfileHeader from "./ProfileHeader";
 import ConfirmPopup from "../shared/ConfirmPopup";
-import ScrollDatePicker from "../shared/ScrollDatePicker";
-import {
-  formatBirthDateWithAge,
-  birthDateValidator,
-  toBirthDateParam,
-  toBirthDatePickerValue,
-} from "../../utils/dateUtils";
+import { formatBirthDateWithAge } from "../../utils/dateUtils";
 import "../css/profile-page.css";
 
 const GENDER_LABEL = { M: "Male", F: "Female" };
@@ -27,15 +21,11 @@ const GENDER_LABEL = { M: "Male", F: "Female" };
 function ProfilePage() {
   const { user, patchUser } = useAuth();
   const navigate = useNavigate();
-  const [detailsForm] = Form.useForm();
   const [pwdForm] = Form.useForm();
 
-  // Single edit mode: bio + details share one Edit / Save / Cancel.
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
+  // About + Contact info are display-only here — all edits happen
+  // on the standalone /profile/edit page.
   const [savingPwd, setSavingPwd] = useState(false);
-
-  const [bioDraft, setBioDraft] = useState("");
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorSrc, setEditorSrc] = useState(null);
@@ -43,12 +33,17 @@ function ProfilePage() {
   const [removePhotoOpen, setRemovePhotoOpen] = useState(false);
   const [savingPhoto, setSavingPhoto] = useState(false);
   const [connCount, setConnCount] = useState(null);
+  const [suggCount, setSuggCount] = useState(null);
 
   useEffect(() => {
     api
       .connectionCounts("")
       .then((res) => setConnCount(res.data?.all ?? 0))
       .catch(() => setConnCount(null));
+    api
+      .suggestions()
+      .then((res) => setSuggCount(Array.isArray(res.data) ? res.data.length : 0))
+      .catch(() => setSuggCount(null));
   }, []);
 
   const fullName = user?.fullName || user?.username || "User";
@@ -63,57 +58,7 @@ function ProfilePage() {
   // Server echoes back exactly what we send (bio trimmed, blanks cleared),
   // so merge locally — no refetch flash, no avatar reload blink.
 
-  useEffect(() => {
-    if (editing) {
-      setBioDraft(user?.bio || "");
-      detailsForm.setFieldsValue({
-        fullName: user?.fullName,
-        phone: user?.phone,
-        gender: user?.gender,
-        birthDate: toBirthDatePickerValue(user?.birthDate),
-      });
-    }
-  }, [editing, user, detailsForm]);
-
-  const startEdit = () => setEditing(true);
-
-  const cancelEdit = () => {
-    detailsForm.resetFields();
-    setEditing(false);
-  };
-
-  // One request saves bio + details together; one toast, no refetch flash.
-  const saveAll = async (values) => {
-    const bio = bioDraft.trim();
-    if (bio.length > BIO_MAX_LENGTH) {
-      message.error(`Bio must be ${BIO_MAX_LENGTH} characters or less`);
-      return;
-    }
-    setSaving(true);
-    try {
-      const birthDate = values.birthDate ? toBirthDateParam(values.birthDate) : user?.birthDate;
-      await updateProfile({
-        bio,
-        fullName: values.fullName,
-        phone: values.phone,
-        gender: values.gender,
-        ...(values.birthDate ? { birthDate } : {}),
-      });
-      patchUser({
-        bio: bio === "" ? null : bio,
-        fullName: values.fullName,
-        phone: values.phone,
-        gender: values.gender,
-        birthDate,
-      });
-      message.success("Profile updated");
-      setEditing(false);
-    } catch (e) {
-      message.error(e.response?.data?.message || "Update failed, try again");
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Contact info is display-only — no edit/save here.
 
   // Update stays disabled until every password field is filled.
   const pwdValues = Form.useWatch([], pwdForm);
@@ -215,7 +160,7 @@ function ProfilePage() {
 
   return (
     <div className="nw-page pf-page">
-      {/* Same header as contact profiles — owner-only slots gated below. */}
+      {/* Sketch header: cover + divider + overlapping avatar + identity + stats. */}
       <ProfileHeader
         coverImage={user?.coverImage}
         avatarSrc={user?.profilePicture}
@@ -241,74 +186,34 @@ function ProfilePage() {
           </Upload>
         }
         name={fullName}
-        meta={[user?.email, user?.phone].filter(Boolean).join("  ·  ")}
-        stat={
-          connCount !== null &&
-          connCount > 0 && (
-            <button className="pf-stat" onClick={() => navigate("/contacts")}>
-              {connCount} {connCount === 1 ? "connection" : "connections"}
+        username={user?.username}
+        email={user?.email}
+        phone={user?.phone}
+        connectionsCount={connCount}
+        suggestionsCount={suggCount}
+        onConnectionsClick={() => navigate("/contacts")}
+        onSuggestionsClick={() => navigate("/discover/suggestions")}
+        belowAvatarAction={
+          user?.profilePicture ? (
+            <button
+              className="pf-sk-remove"
+              onClick={() => setRemovePhotoOpen(true)}
+            >
+              Remove Profile
             </button>
-          )
+          ) : null
         }
-        actions={
-          editing ? (
-            <>
-              <button className="pf-ghost-btn" onClick={cancelEdit}>
-                Cancel
-              </button>
-              <button
-                className="pf-primary-btn"
-                onClick={() => detailsForm.submit()}
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="pf-ghost-btn" onClick={startEdit}>
-                <FontAwesomeIcon icon={faPenToSquare} /> Edit profile
-              </button>
-              {user?.profilePicture && (
-                <button
-                  className="pf-ghost-btn pf-ghost-danger"
-                  onClick={() => setRemovePhotoOpen(true)}
-                >
-                  Remove
-                </button>
-              )}
-            </>
-          )
-        }
+        onEditClick={() => navigate("/profile/edit")}
       />
 
       <div className="pf-grid">
         <div className="pf-main">
-      {/* ── About / bio card ── */}
+      {/* ── About / bio card ── display-only, edits on /profile/edit */}
       <div className="pf-card">
         <div className="pf-card-head">
           <h2 className="pf-card-title">About</h2>
-          {!editing && (
-            <button className="pf-edit-btn" aria-label="Edit profile" onClick={startEdit}>
-              <FontAwesomeIcon icon={faPenToSquare} /> Edit
-            </button>
-          )}
         </div>
-        {editing ? (
-          <div className="pf-bio-edit">
-            <Input.TextArea
-              className="pf-textarea"
-              rows={4}
-              maxLength={BIO_MAX_LENGTH}
-              showCount
-              value={bioDraft}
-              onChange={(e) => setBioDraft(e.target.value)}
-              placeholder="Write a short bio..."
-            />
-          </div>
-        ) : (
-          <p className="pf-bio-text">{user?.bio || <span className="pf-placeholder">Add a short bio so people know you better.</span>}</p>
-        )}
+        <p className="pf-bio-text">{user?.bio || <span className="pf-placeholder">Add a short bio so people know you better.</span>}</p>
       </div>
 
       {/* ── Security card ── */}
@@ -384,76 +289,22 @@ function ProfilePage() {
       </div>
         </div>
         <div className="pf-side">
-      {/* ── Contact info card ── */}
+      {/* ── Contact info card ── display-only */}
       <div className="pf-card">
         <div className="pf-card-head">
           <h2 className="pf-card-title">Contact info</h2>
-          {!editing && (
-            <button className="pf-edit-btn" aria-label="Edit profile" onClick={startEdit}>
-              <FontAwesomeIcon icon={faPenToSquare} /> Edit
-            </button>
-          )}
         </div>
-        {editing ? (
-          <Form form={detailsForm} layout="vertical" onFinish={saveAll} className="pf-form pf-form-compact">
-            <Form.Item name="fullName" rules={[{ required: true, message: "Please enter full name!" }]}>
-              <Input
-                className="auth-input"
-                prefix={<FontAwesomeIcon icon={faUser} className="auth-input-icon" />}
-                placeholder="Full name"
-                size="middle"
-              />
-            </Form.Item>
-            <Form.Item
-              name="phone"
-              rules={[{ pattern: /^[0-9]{10}$/, message: "Phone must be 10 digits!" }]}
-            >
-              <Input
-                className="auth-input"
-                prefix={<PhoneOutlined className="auth-input-icon" />}
-                placeholder="10-digit phone"
-                size="middle"
-              />
-            </Form.Item>
-            <Form.Item name="gender" rules={[{ required: true, message: "Please select gender!" }]}>
-              <Select
-                className="auth-input"
-                placeholder="Select gender"
-                size="middle"
-                options={[
-                  { value: "M", label: "Male" },
-                  { value: "F", label: "Female" },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item name="birthDate" rules={[birthDateValidator()]}>
-              <ScrollDatePicker placeholder="Birth date" />
-            </Form.Item>
-          </Form>
-        ) : (
-          <div className="pf-info-rows">
-            {infoRows.map(({ label, value, icon }) => (
-              <div className="pf-info-row" key={label}>
-                <span className="pf-info-icon">{icon}</span>
-                <span className="pf-info-text">
-                  <span className="pf-info-label">{label}</span>
-                  <span className="pf-info-value">{value}</span>
-                </span>
-              </div>
-            ))}
-            {connCount > 0 && (
-              <div className="pf-info-row">
-                <span className="pf-info-icon"><FontAwesomeIcon icon={faUsers} /></span>
-                <span className="pf-info-text">
-                  <span className="pf-info-label">Connections</span>
-                  <button className="pf-stat" onClick={() => navigate("/contacts")}>
-                    {connCount} {connCount === 1 ? "connection" : "connections"}
-                  </button>
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="pf-info-rows">
+          {infoRows.map(({ label, value, icon }) => (
+            <div className="pf-info-row" key={label}>
+              <span className="pf-info-icon">{icon}</span>
+              <span className="pf-info-text">
+                <span className="pf-info-label">{label}</span>
+                <span className="pf-info-value">{value}</span>
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
         </div>

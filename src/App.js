@@ -16,6 +16,7 @@ const AppShell = lazy(() => import('./components/shared/AppShell'));
 const ContactsPage = lazy(() => import('./components/contacts/ContactsPage'));
 const ContactDetailPage = lazy(() => import('./components/contacts/ContactDetailPage'));
 const ProfilePage = lazy(() => import('./components/profile/ProfilePage'));
+const EditProfilePage = lazy(() => import('./components/profile/EditProfilePage'));
 const FindPeoplePage = lazy(() => import('./components/discover/FindPeoplePage'));
 const RequestsPage = lazy(() => import('./components/discover/RequestsPage'));
 const SuggestionsPage = lazy(() => import('./components/discover/SuggestionsPage'));
@@ -64,6 +65,7 @@ function AppRoutes() {
         <Route element={<AppShell />}>
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/contacts/:email" element={<ContactDetailPage />} />
+          <Route path="/profile/edit" element={<EditProfilePage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/discover/find" element={<FindPeoplePage />} />
           <Route path="/discover/requests" element={<RequestsPage />} />

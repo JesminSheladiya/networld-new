@@ -35,7 +35,8 @@ function ContactProfile({ contact, showBack = false, onBack }) {
         avatarText={initial}
         onAvatarClick={() => setViewerOpen(true)}
         name={name}
-        meta={[contact.email, contact.phone].filter(Boolean).join("  ·  ")}
+        email={contact.email}
+        phone={contact.phone}
         stat={
           relation && (
             <RelationChip relation={relation} style={{ fontSize: 12 }} />
