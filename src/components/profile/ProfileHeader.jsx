@@ -1,9 +1,12 @@
 import { Avatar } from "antd";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
 
-// Shared profile header — identical structure for own + contact profiles
-// (Facebook/Instagram style: cover, overlapping avatar, identity block).
-// Owner-only things (camera upload, edit/remove actions) are passed in
-// as slots, so they render only where provided.
+// Shared profile header — sketch layout:
+// cover on top, full-width divider line, avatar overlapping the line
+// on the left, identity (name/email/phone) next to avatar,
+// stats (Connections / Suggestions) on the right,
+// optional red text action centered under the avatar.
 function ProfileHeader({
   coverImage,
   avatarSrc,
@@ -13,33 +16,48 @@ function ProfileHeader({
   onAvatarClick,
   cameraControl = null,
   name,
+  username,
+  email = "",
+  phone = "",
   meta = "",
+  connectionsCount = null,
+  suggestionsCount = null,
+  onConnectionsClick,
+  onSuggestionsClick,
   stat = null,
   actions = null,
+  belowAvatarAction = null,
+  onEditClick,  // NEW: edit profile click handler
 }) {
   const clickable = !!avatarSrc && !!onAvatarClick;
+  const showStats =
+    connectionsCount !== null ||
+    suggestionsCount !== null ||
+    stat !== null;
   return (
-    <div className="pf-card pf-head-card">
+    <div className="pf-card pf-head-card pf-sk-card">
       <div
-        className="pf-cover"
+        className="pf-cover pf-sk-cover"
         style={coverImage ? { backgroundImage: `url(${coverImage})` } : undefined}
       />
-      <div className="pf-head-body">
-        <div className="pf-head-row">
-          <div
-            className="pf-avatar-wrap"
-            onClick={
-              clickable
-                ? (e) => {
-                    // Camera/upload clicks must reach their own trigger
-                    // (file dialog) — everything else opens the viewer.
-                    if (e.target.closest(".pf-camera-btn")) return;
-                    onAvatarClick();
-                  }
-                : undefined
-            }
-            style={{ cursor: clickable ? "pointer" : "default" }}
-          >
+      {/* Divider line — avatar sits centered on it */}
+      <div className="pf-sk-divider">
+        <div className="pf-sk-row">
+          <div className="pf-sk-left">
+            <div
+              className="pf-avatar-wrap pf-sk-avatar"
+              onClick={
+                clickable
+                  ? (e) => {
+                      // Camera/upload clicks must reach their own trigger
+                      // (file dialog) — everything else opens the viewer.
+                      if (e.target.closest(".pf-camera-btn")) return;
+                      onAvatarClick();
+                    }
+                  : undefined
+              }
+              style={{ cursor: clickable ? "pointer" : "default" }}
+            >
               <Avatar
                 size={avatarSize}
                 src={avatarSrc || null}
@@ -51,16 +69,56 @@ function ProfileHeader({
                   border: "4px solid #0d1526",
                 }}
               >
-              {!avatarSrc && avatarText}
-            </Avatar>
-            {cameraControl}
+                {!avatarSrc && avatarText}
+              </Avatar>
+              {cameraControl}
+            </div>
+            {(belowAvatarAction || actions) && (
+              <div className="pf-sk-under">
+                {belowAvatarAction}
+                {actions}
+              </div>
+            )}
           </div>
-          <div className="pf-head-main">
+          <div className="pf-sk-identity">
             <h1 className="pf-name">{name}</h1>
+            {username && <div className="pf-sk-username">@{username}</div>}
             {meta && <div className="pf-meta">{meta}</div>}
-            {stat && <div className="pf-stat-row">{stat}</div>}
-            {actions && <div className="pf-head-actions">{actions}</div>}
+            {onEditClick && (
+              <button
+                className="pf-edit-btn-sm"
+                onClick={onEditClick}
+                aria-label="Edit profile"
+              >
+                <FontAwesomeIcon icon={faPenToSquare} className="pf-edit-icon" /> Edit Profile
+              </button>
+            )}
           </div>
+          {showStats && (
+            <div className="pf-sk-stats">
+              {connectionsCount !== null && (
+                <button
+                  className="pf-sk-stat"
+                  onClick={onConnectionsClick}
+                  disabled={!onConnectionsClick}
+                >
+                  <span className="pf-sk-stat-num">{connectionsCount}</span>
+                  <span className="pf-sk-stat-label">Connections</span>
+                </button>
+              )}
+              {suggestionsCount !== null && (
+                <button
+                  className="pf-sk-stat"
+                  onClick={onSuggestionsClick}
+                  disabled={!onSuggestionsClick}
+                >
+                  <span className="pf-sk-stat-num">{suggestionsCount}</span>
+                  <span className="pf-sk-stat-label">Suggestions</span>
+                </button>
+              )}
+              {stat && <div className="pf-sk-stat-custom">{stat}</div>}
+            </div>
+          )}
         </div>
       </div>
     </div>

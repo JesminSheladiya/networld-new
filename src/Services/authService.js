@@ -35,6 +35,25 @@ export const fetchUser = async () => {
   return data;
 };
 
+export const checkUsernameAvailable = async (username) => {
+  const { data } = await http.get(`${API_BASE}/auth/username-available`, {
+    params: { username },
+  });
+  return data;
+};
+
+export const suggestUsernames = async (base, limit = 5) => {
+  const { data } = await http.get(`${API_BASE}/auth/username-suggestions`, {
+    params: { base, limit },
+  });
+  return data;
+};
+
+export const getUsernameChangeInfo = async () => {
+  const { data } = await http.get(`${API_BASE}/auth/username-change-info`);
+  return data;
+};
+
 
 // Corrupt storage must never crash the app — fall back to empty session.
 export const getUser = () => {
