@@ -41,4 +41,26 @@ public class AuthController {
             @RequestBody UpdateProfileRequest req) {
         return ResponseEntity.ok(auth.updateProfile(userDetails.getUsername(), req));
     }
+
+    @GetMapping("/username-available")
+    public ResponseEntity<?> usernameAvailable(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam("username") String username) {
+        return ResponseEntity.ok(java.util.Map.of("available",
+                auth.isUsernameAvailable(userDetails.getUsername(), username)));
+    }
+
+    @GetMapping("/username-suggestions")
+    public ResponseEntity<?> usernameSuggestions(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(value = "base", required = false) String base,
+            @RequestParam(value = "limit", required = false, defaultValue = "5") int limit) {
+        return ResponseEntity.ok(auth.suggestUsernames(userDetails.getUsername(), base, limit));
+    }
+
+    @GetMapping("/username-change-info")
+    public ResponseEntity<?> usernameChangeInfo(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(auth.usernameChangeInfo(userDetails.getUsername()));
+    }
 }

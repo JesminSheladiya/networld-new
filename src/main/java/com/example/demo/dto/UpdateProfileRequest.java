@@ -1,6 +1,7 @@
 package com.example.demo.dto;
 
 public class UpdateProfileRequest {
+    private String username;
     private String fullName;
     private String phone;
     private String currentPassword;
@@ -11,6 +12,9 @@ public class UpdateProfileRequest {
     private java.time.LocalDate birthDate;
     private String bio;
 
+
+    public String getUsername()        { return username; }
+    public void setUsername(String v)  { this.username = v; }
 
     public String getFullName()        { return fullName; }
     public void setFullName(String v)  { this.fullName = v; }
