@@ -39,10 +39,13 @@ public class User implements UserDetails {
     @Column(name = "profile_picture", columnDefinition = "TEXT")
     private String profilePicture;
 
+    @Column(name = "cover_image", columnDefinition = "TEXT")
+    private String coverImage;
+
     @Column(name = "birth_date")
     private java.time.LocalDate birthDate;
 
-    @Column(name = "bio", length = 500)
+    @Column(name = "bio", length = 200)
     private String bio;
 
     @Column(nullable = false)
@@ -76,6 +79,9 @@ public class User implements UserDetails {
 
     public String getProfilePicture() { return profilePicture; }
     public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
+
+    public String getCoverImage() { return coverImage; }
+    public void setCoverImage(String coverImage) { this.coverImage = coverImage; }
 
     public java.time.LocalDate getBirthDate() { return birthDate; }
     public void setBirthDate(java.time.LocalDate birthDate) { this.birthDate = birthDate; }

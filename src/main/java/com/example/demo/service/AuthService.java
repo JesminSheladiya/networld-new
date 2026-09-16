@@ -103,13 +103,16 @@ public class AuthService {
 
         if (req.getBio() != null) {
             String bio = req.getBio().trim();
-            if (bio.length() > 150)
-                throw new RuntimeException("Bio must be 150 characters or less");
+            if (bio.length() > 200)
+                throw new RuntimeException("Bio must be 200 characters or less");
             u.setBio(bio.isEmpty() ? null : bio);
         }
 
         if (req.getProfilePicture() != null)
             u.setProfilePicture(req.getProfilePicture());
+
+        if (req.getCoverImage() != null)
+            u.setCoverImage(req.getCoverImage());
 
         if (req.getNewPassword() != null && !req.getNewPassword().isBlank()) {
             if (req.getCurrentPassword() == null || req.getCurrentPassword().isBlank())
@@ -226,6 +229,7 @@ public class AuthService {
                 u.getFullName(),
                 u.getId(),
                 u.getProfilePicture(),
+                u.getCoverImage(),
                 u.getGender(),
                 u.getBirthDate(),
                 u.getBio()
