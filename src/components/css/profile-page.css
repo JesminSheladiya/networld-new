@@ -21,7 +21,7 @@
 /* Two-column app layout: main content + side rail */
 .pf-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 400px;
   gap: 14px;
   align-items: start;
 }
@@ -38,7 +38,8 @@
 .pf-card {
   border: 1px solid rgba(148, 163, 184, 0.07);
   border-radius: 16px;
-  background: rgba(13, 20, 36, 0.68);
+  background: linear-gradient(180deg, rgba(16, 26, 48, 0.62) 0%, rgba(13, 21, 38, 0.55) 100%) !important;
+  border: 1px solid rgba(96, 165, 250, 0.22) !important;
   backdrop-filter: blur(12px) saturate(130%);
   -webkit-backdrop-filter: blur(12px) saturate(130%);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.32);
@@ -94,10 +95,6 @@
   align-items: center;
   flex-shrink: 0;
   width: 132px;
-}
-
-.pf-sk-avatar {
-  margin-top: -60px !important;
 }
 
 .pf-sk-under {
@@ -301,7 +298,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   position: relative;
   display: inline-block;
   /* Half the avatar size → avatar centered on the cover/body seam */
-  margin-top: -60px;
+  margin-top: -70px;
 }
 
 .pf-avatar-wrap .ant-avatar {
@@ -312,15 +309,15 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   position: absolute;
   bottom: 5px;
   right: 5px;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 1px solid rgba(148, 163, 184, 0.35);
   background: rgba(13, 20, 36, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: #e2e8f0;
-  font-size: 12px;
+  color: #ffffff;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -521,7 +518,13 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   cursor: not-allowed;
 }
 
-/* ── Edit profile page: match login/register field styling ── */
+/* ── Edit profile page: pixel-match login/register field styling ──
+   Same values as Auth.css (.auth-input), re-declared at higher
+   specificity so the older .pf-form compact rules can't interfere. */
+.pf-form-edit {
+  padding: 8px 16px 22px;
+}
+
 .pf-form-edit.auth-form .ant-form-item {
   margin-bottom: 16px;
 }
@@ -533,6 +536,63 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   border-radius: 10px !important;
   background: #0d1424 !important;
   border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  color: #f1f5f9 !important;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.pf-form-edit .auth-input.ant-input-affix-wrapper:hover,
+.pf-form-edit .auth-input.ant-input-affix-wrapper-focused,
+.pf-form-edit .auth-input.ant-input-affix-wrapper:focus-within,
+.pf-form-edit .auth-input.ant-input:hover,
+.pf-form-edit .auth-input.ant-input:focus,
+.pf-form-edit .pf-textarea.ant-input:hover,
+.pf-form-edit .pf-textarea.ant-input:focus,
+.pf-form-edit .auth-input.ant-select-focused .ant-select-selector {
+  border-color: rgba(59, 130, 246, 0.7) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  background: rgba(14, 23, 41, 0.6) !important;
+}
+
+/* Disabled fields (Phone/Email) never react to hover/focus */
+.pf-form-edit .auth-input.ant-input-affix-wrapper-disabled:hover,
+.pf-form-edit .auth-input.ant-input-affix-wrapper-disabled:focus-within,
+.pf-form-edit .auth-input.ant-input-affix-wrapper-disabled.ant-input-affix-wrapper-focused {
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  box-shadow: none !important;
+  background: #0d1424 !important;
+}
+
+.pf-form-edit .auth-input .ant-input {
+  background: transparent !important;
+  color: #f1f5f9 !important;
+}
+
+/* Disabled (Phone/Email) — dull, clearly read-only */
+.pf-form-edit .auth-input.ant-input-affix-wrapper-disabled,
+.pf-form-edit .auth-input.ant-input[disabled] {
+  opacity: 0.55;
+}
+
+.pf-form-edit .auth-input.ant-input-affix-wrapper-disabled input {
+  cursor: not-allowed;
+}
+
+/* Birth-date picker — same dimensions/background as auth inputs */
+.pf-form-edit .sdp-field {
+  min-height: 46px;
+  padding: 9px 11px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  background: #0d1424;
+}
+
+.pf-form-edit .sdp-field:hover {
+  border-color: rgba(96, 165, 250, 0.45);
+}
+
+.pf-form-edit .sdp-head-val {
+  font-weight: 400;
 }
 
 .pf-form-edit .pf-textarea.ant-input {
@@ -542,17 +602,55 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   font-size: 14px;
 }
 
-.pf-cancel-row {
-  text-align: center;
-  margin: 2px 0 4px;
+/* Edit form actions — both buttons same height, right aligned */
+.pf-form-edit .pf-form-actions {
+  align-items: center;
+}
+
+.pf-form-edit .pf-form-actions .pf-ghost-btn,
+.pf-form-edit .pf-form-actions .pf-primary-btn {
+  height: 36px;
 }
 
 @media (max-width: 480px) {
+
   .pf-form-edit .auth-input.ant-input-affix-wrapper,
   .pf-form-edit .auth-input.ant-input,
-  .pf-form-edit .auth-input.ant-select .ant-select-selector {
+  .pf-form-edit .auth-input.ant-select .ant-select-selector,
+  .pf-form-edit .pf-textarea.ant-input {
     height: 46px;
-    font-size: 16px;
+    font-size: 14px;
+  }
+
+  .pf-form-edit .pf-textarea.ant-input {
+    height: auto;
+    min-height: 110px;
+  }
+}
+
+/* Username feedback spans the full row on desktop */
+.pf-username-feedback {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* Edit form stacks to one column at 600px (instead of 480px) and the
+   username feedback moves directly under the username field */
+@media (max-width: 600px) {
+  .pf-form-edit .pf-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-form-edit .pf-username-item {
+    order: 1;
+  }
+
+  .pf-form-edit .pf-username-feedback {
+    order: 2;
+  }
+
+  .pf-form-edit .pf-fullname-item {
+    order: 3;
   }
 }
 
@@ -615,14 +713,30 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 /* ── Info rows ── */
 .pf-info-rows {
-  padding: 8px 24px 20px;
+  padding: 8px 24px 14px;
+}
+
+/* Profile page contact card: single column by default, 2 columns
+   between 650–860px, back to single below 650px */
+@media (max-width: 860px) {
+  .pf-contact-card .pf-info-rows {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    column-gap: 24px;
+  }
+}
+
+@media (max-width: 650px) {
+  .pf-contact-card .pf-info-rows {
+    grid-template-columns: 1fr;
+  }
 }
 
 .pf-info-row {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 13px 0;
+  padding: 10px 0;
 }
 
 /* Tinted tiles instead of bordered tiles — color, not outlines */
@@ -636,7 +750,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   justify-content: center;
   background: rgba(59, 130, 246, 0.1);
   color: #7fb4ff;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .pf-info-text {
@@ -698,6 +812,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   border-radius: 10px !important;
   background: rgba(2, 6, 17, 0.55) !important;
   border: 1px solid rgba(148, 163, 184, 0.12) !important;
+  font-size: 14px;
 }
 
 .pf-actions {
@@ -748,7 +863,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 .pf-primary-btn:disabled {
   opacity: 0.6;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 /* Primary save button: single blue accent */
@@ -770,8 +885,32 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 /* ── Stack columns below desktop ── */
 @media (max-width: 860px) {
+
+  /* Mobile card order: About → Contact info → Change password.
+     Wrappers go flat so cards can interleave across columns. */
   .pf-grid {
     grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .pf-main,
+  .pf-side {
+    display: contents;
+  }
+
+  .pf-about-card {
+    order: 1;
+  }
+
+  .pf-contact-card {
+    order: 2;
+  }
+
+  .pf-password-card {
+    order: 3;
   }
 
   .pf-head-row {
@@ -796,8 +935,44 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
     gap: 36px;
     margin-left: 0;
     width: 100%;
-    justify-content: flex-start;
+    justify-content: center;
     padding-left: 4px;
+  }
+}
+
+/* ── Profile header stacks to a left-aligned column at 600px ── */
+@media (max-width: 600px) {
+  .pf-sk-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pf-sk-left {
+    margin-left: 0;
+    width: auto;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+    gap: 20px;
+  }
+
+  .pf-sk-under {
+    align-items: flex-start;
+  }
+
+  .pf-sk-identity {
+    padding-top: 0;
+    width: 100%;
+  }
+
+  .pf-sk-stats {
+    margin-left: 0;
+    padding-top: 0;
+    padding-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 32px;
   }
 }
 
@@ -807,12 +982,8 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
     gap: 12px;
   }
 
-  .pf-cover {
-    height: 104px;
-  }
-
   .pf-sk-cover {
-    height: 110px;
+    height: 140px;
   }
 
   /* Mobile avatar (compacted for small screens) */
@@ -831,26 +1002,21 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
     margin-top: -50px !important;
   }
 
-  .pf-sk-left {
-    width: 108px;
-    margin-left: 0;
-  }
-
   .pf-sk-divider {
     padding: 0 16px 18px;
   }
 
   .pf-sk-row {
-    gap: 14px;
+    gap: 12px;
   }
 
   .pf-sk-identity {
-    padding-top: 10px;
+    padding-top: 0;
   }
 
   .pf-sk-stats {
     gap: 28px;
-    padding-top: 4px;
+    padding-top: 0;
   }
 
   .pf-camera-btn {

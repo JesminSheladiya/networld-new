@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Form, Input, Select, Button, message } from "antd";
+import { Form, Input, Select, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faAt, faUser } from "@fortawesome/free-solid-svg-icons";
-import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
+import { faArrowLeft, faAt } from "@fortawesome/free-solid-svg-icons";
+import { faEnvelope, faUser } from "@fortawesome/free-regular-svg-icons";
 import { PhoneOutlined } from "@ant-design/icons";
 import {
   updateProfile,
@@ -38,6 +38,23 @@ function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const bioValue = Form.useWatch("bio", form);
   const bioLen = (bioValue || "").length;
+
+  // Save stays disabled until something actually changes.
+  const allValues = Form.useWatch([], form);
+  const isDirty = useMemo(() => {
+    if (!allValues) return false;
+    const norm = (v) => (v || "").toString().trim();
+    if (norm(allValues.username).toLowerCase() !== norm(user?.username).toLowerCase())
+      return true;
+    if (norm(allValues.fullName) !== norm(user?.fullName)) return true;
+    if ((allValues.gender || "") !== (user?.gender || "")) return true;
+    const watchedBirth = allValues.birthDate
+      ? toBirthDateParam(allValues.birthDate)
+      : null;
+    if ((watchedBirth || null) !== (user?.birthDate || null)) return true;
+    if (norm(allValues.bio) !== norm(user?.bio)) return true;
+    return false;
+  }, [allValues, user]);
 
   // Live username availability + suggestions (debounced).
   const usernameValue = Form.useWatch("username", form);
@@ -169,7 +186,7 @@ function EditProfilePage() {
   return (
     <div className="nw-page pf-page">
       <button className="nw-back-btn" onClick={goBack}>
-        <FontAwesomeIcon icon={faArrowLeft} /> Back to Profile
+        <FontAwesomeIcon icon={faArrowLeft} /> Back
       </button>
 
       <div className="pf-card">
@@ -180,7 +197,7 @@ function EditProfilePage() {
           form={form}
           layout="vertical"
           onFinish={save}
-          className="pf-form pf-form-edit auth-form"
+          className="pf-form-edit auth-form"
           autoComplete="off"
           initialValues={{
             username: user?.username,
@@ -190,23 +207,10 @@ function EditProfilePage() {
             bio: user?.bio || "",
           }}
         >
-          {/* Row 1: Full name + Username */}
+          {/* Row 1: Username + Full name */}
           <div className="pf-form-grid">
             <Form.Item
-              className="auth-field"
-              name="fullName"
-              rules={[{ required: true, message: "Please enter full name!" }]}
-            >
-              <Input
-                className="auth-input"
-                prefix={<FontAwesomeIcon icon={faUser} className="auth-input-icon" />}
-                placeholder="Full name"
-                size="large"
-                autoComplete="name"
-              />
-            </Form.Item>
-            <Form.Item
-              className="auth-field"
+              className="auth-field pf-username-item"
               name="username"
               normalize={(v) => (v ? v.toLowerCase().replace(/\s+/g, "_") : v)}
               rules={[
@@ -227,54 +231,71 @@ function EditProfilePage() {
                 autoComplete="off"
               />
             </Form.Item>
+            <Form.Item
+              className="auth-field pf-fullname-item"
+              name="fullName"
+              rules={[{ required: true, message: "Please enter full name!" }]}
+            >
+              <Input
+                className="auth-input"
+                prefix={<FontAwesomeIcon icon={faUser} className="auth-input-icon" />}
+                placeholder="Full name"
+                size="large"
+                autoComplete="name"
+              />
+            </Form.Item>
+            {/* Username feedback lives inside the row: full-width under the
+                row on desktop, directly under username when stacked ≤600px */}
+            <div className="pf-username-feedback">
+              {isUsernameChanged && usernameStatus === "checking" && (
+                <div className="pf-username-status pf-checking">
+                  Checking availability…
+                </div>
+              )}
+              {isUsernameChanged && usernameStatus === "available" && (
+                <div className="pf-username-status pf-ok">✓ Username available</div>
+              )}
+              {isUsernameChanged && usernameStatus === "taken" && !usernameLocked && (
+                <div className="pf-username-status pf-err">
+                  This username is already taken. Try one of the suggestions below.
+                </div>
+              )}
+              {isUsernameChanged &&
+                suggestions.length > 0 &&
+                usernameStatus !== "available" &&
+                !usernameLocked && (
+                  <div className="pf-suggest-row">
+                    <span className="pf-suggest-label">Suggestions:</span>
+                    {suggestions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        className="pf-suggest-chip"
+                        onClick={() => form.setFieldsValue({ username: s })}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              {isUsernameChanged && changeInfo && changeInfo.changesLeft > 0 && (
+                <div className="pf-username-status pf-budget">
+                  {changeInfo.changesLeft} of {changeInfo.maxPerWeek} username
+                  changes left this week
+                </div>
+              )}
+              {isUsernameChanged && changeInfo && changeInfo.changesLeft <= 0 && (
+                <div className="pf-username-status pf-err">
+                  No username changes left this week
+                  {changeInfo.nextAvailableAt
+                    ? ` — try again after ${new Date(
+                      changeInfo.nextAvailableAt
+                    ).toLocaleDateString()}`
+                    : ""}
+                </div>
+              )}
+            </div>
           </div>
-          {isUsernameChanged && usernameStatus === "checking" && (
-            <div className="pf-username-status pf-checking">
-              Checking availability…
-            </div>
-          )}
-          {isUsernameChanged && usernameStatus === "available" && (
-            <div className="pf-username-status pf-ok">✓ Username available</div>
-          )}
-          {isUsernameChanged && usernameStatus === "taken" && !usernameLocked && (
-            <div className="pf-username-status pf-err">
-              This username is already taken. Try one of the suggestions below.
-            </div>
-          )}
-          {isUsernameChanged &&
-            suggestions.length > 0 &&
-            usernameStatus !== "available" &&
-            !usernameLocked && (
-              <div className="pf-suggest-row">
-                <span className="pf-suggest-label">Suggestions:</span>
-                {suggestions.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    className="pf-suggest-chip"
-                    onClick={() => form.setFieldsValue({ username: s })}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
-          {isUsernameChanged && changeInfo && changeInfo.changesLeft > 0 && (
-            <div className="pf-username-status pf-budget">
-              {changeInfo.changesLeft} of {changeInfo.maxPerWeek} username
-              changes left this week
-            </div>
-          )}
-          {isUsernameChanged && changeInfo && changeInfo.changesLeft <= 0 && (
-            <div className="pf-username-status pf-err">
-              No username changes left this week
-              {changeInfo.nextAvailableAt
-                ? ` — try again after ${new Date(
-                    changeInfo.nextAvailableAt
-                  ).toLocaleDateString()}`
-                : ""}
-            </div>
-          )}
           {/* Row 2: Phone + Email */}
           <div className="pf-form-grid">
             <Form.Item className="auth-field">
@@ -332,23 +353,16 @@ function EditProfilePage() {
           <div className="pf-bio-count">
             {bioLen} / {BIO_MAX_LENGTH}
           </div>
-          <Form.Item className="auth-field auth-submit">
-            <Button
-              className="auth-btn"
-              type="primary"
-              htmlType="submit"
-              loading={saving}
-              block
-              size="large"
-            >
-              Save changes
-            </Button>
+          <Form.Item className="auth-field auth-submit" style={{ marginBottom: 0 }}>
+            <div className="pf-form-actions">
+              <button type="button" className="pf-ghost-btn" onClick={goBack}>
+                Cancel
+              </button>
+              <button type="submit" className="pf-primary-btn" disabled={saving || !isDirty}>
+                {saving ? "Saving..." : "Save changes"}
+              </button>
+            </div>
           </Form.Item>
-          <div className="pf-cancel-row">
-            <button type="button" className="auth-switch-link" onClick={goBack}>
-              Cancel
-            </button>
-          </div>
         </Form>
       </div>
     </div>

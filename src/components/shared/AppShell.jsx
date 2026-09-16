@@ -182,6 +182,9 @@ function AppShellNav() {
     if (p.startsWith("/contacts")) return 0;
     return NAV_ITEMS.findIndex((it) => p === it.to);
   })();
+  // No bottom nav on profile pages (mobile) — they have their own
+  // Back button and full-width content.
+  const hideBottomNav = location.pathname.startsWith("/profile");
   const lastTabRef = useRef(0);
   if (activeIndex >= 0) lastTabRef.current = activeIndex;
   const notchIndex = activeIndex >= 0 ? activeIndex : lastTabRef.current;
@@ -243,6 +246,15 @@ function AppShellNav() {
   const bottomPrevWidthRef = useRef(0);
   const [bottomDims, setBottomDims] = useState({ w: 0, h: 60 });
 
+  // Bumped whenever the bottom nav (re)mounts — its refs and measured
+  // dims go stale while unmounted (profile pages), which would otherwise
+  // freeze the notch in a broken state on return.
+  const [bottomNavRev, setBottomNavRev] = useState(0);
+  useEffect(() => {
+    if (!isCompact || hideBottomNav) return;
+    setBottomNavRev((r) => r + 1);
+  }, [isCompact, hideBottomNav]);
+
   // Exact DOM Element Center Calculation
   const getTargetCx = useCallback((idx) => {
     const barEl = bottomBarRef.current;
@@ -257,7 +269,7 @@ function AppShellNav() {
   }, []);
 
   useEffect(() => {
-    if (!isCompact) return;
+    if (!isCompact || hideBottomNav) return;
     const el = bottomBarRef.current;
     if (!el) return;
     const measure = () => {
@@ -268,10 +280,10 @@ function AppShellNav() {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [isCompact]);
+  }, [isCompact, hideBottomNav, bottomNavRev]);
 
   useEffect(() => {
-    if (!isCompact || !bottomDims.w) return;
+    if (!isCompact || !bottomDims.w || hideBottomNav) return;
     const targetCx = getTargetCx(notchIndex);
     const widthChanged = bottomPrevWidthRef.current !== bottomDims.w;
     bottomPrevWidthRef.current = bottomDims.w;
@@ -303,7 +315,7 @@ function AppShellNav() {
     return () => {
       if (animRef.raf) cancelAnimationFrame(animRef.raf);
     };
-  }, [notchIndex, isCompact, bottomDims.w, bottomDims.h, getTargetCx]);
+  }, [notchIndex, isCompact, bottomDims.w, bottomDims.h, getTargetCx, hideBottomNav, bottomNavRev]);
 
   return (
       <div className="nw-shell">
@@ -360,6 +372,7 @@ function AppShellNav() {
                 <ProfileMenu />
               </header>
 
+              {!hideBottomNav && (
               <div className="nw-bottomnav-wrapper">
                 <nav className="nw-bottomnav" ref={bottomBarRef}>
                   <svg
@@ -420,10 +433,11 @@ function AppShellNav() {
                   </ul>
                 </nav>
               </div>
+              )}
             </>
         )}
 
-        <main className={isCompact ? "nw-content nw-content-compact" : "nw-content"}>
+        <main className={isCompact ? `nw-content nw-content-compact${hideBottomNav ? " nw-content-no-bottomnav" : ""}` : "nw-content"}>
           <Outlet />
         </main>
       </div>

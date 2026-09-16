@@ -269,7 +269,7 @@
 }
 
 /* Keep avatar + chip from squeezing the middle column */
-.nw-list-row > span:first-child {
+.nw-list-row>span:first-child {
   flex-shrink: 0;
 }
 
@@ -459,6 +459,7 @@
 }
 
 .nw-back-btn {
+  width: max-content;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -671,7 +672,7 @@
     padding: 10px;
   }
 
-  .nw-list-row > span:first-child {
+  .nw-list-row>span:first-child {
     flex: 0 0 auto;
   }
 
