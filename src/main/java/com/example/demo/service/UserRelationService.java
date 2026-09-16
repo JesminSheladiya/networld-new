@@ -166,7 +166,8 @@ public class UserRelationService {
                     String name = s.getFullName() != null ? s.getFullName() : s.getDisplayName();
                     Relation rel = ur.getRelation();
                     return new UserRelationSuggestionDTO(
-                            ur.getId(), name, s.getEmail(), s.getPhone(), s.getProfilePicture(),
+                            ur.getId(), name, s.getDisplayName(), s.getEmail(), s.getPhone(), s.getProfilePicture(),
+                            s.getCoverImage(),
                             s.getGender(), s.getBirthDate(), s.getBio(),
                             rel.getRelationName(),
                             rel.getEnglishRelation(),
@@ -187,7 +188,8 @@ public class UserRelationService {
             String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
             Relation rel = ur.getRelation();
             return new UserRelationSuggestionDTO(
-                    ur.getId(), name, o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                    ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                    o.getCoverImage(),
                     o.getGender(), o.getBirthDate(), o.getBio(),
                     rel.getRelationName(),
                     rel.getEnglishRelation(),
@@ -232,7 +234,8 @@ public class UserRelationService {
             String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
             Relation rel = ur.getRelation();
             return new UserRelationSuggestionDTO(
-                    ur.getId(), name, o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                    ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                    o.getCoverImage(),
                     o.getGender(), o.getBirthDate(), o.getBio(),
                     rel.getRelationName(),
                     rel.getEnglishRelation(),
@@ -281,9 +284,10 @@ public class UserRelationService {
                     User o = ur.getToUser();
                     String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
                     Relation rel = ur.getRelation();
-                    return new UserRelationSuggestionDTO(
-                            ur.getId(), name, o.getEmail(), o.getPhone(), o.getProfilePicture(),
-                            o.getGender(), o.getBirthDate(), o.getBio(),
+            return new UserRelationSuggestionDTO(
+                    ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                    o.getCoverImage(),
+                    o.getGender(), o.getBirthDate(), o.getBio(),
                             rel.getRelationName(),
                             rel.getEnglishRelation(),
                             rel.getIndianRelation(),

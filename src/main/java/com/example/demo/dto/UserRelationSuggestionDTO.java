@@ -5,9 +5,11 @@ public class UserRelationSuggestionDTO {
 
     private Long   pendingRelationId;
     private String suggestedUserName;
+    private String suggestedUserUsername;
     private String suggestedUserEmail;
     private String suggestedUserPhone;
     private String suggestedUserProfilePic;
+    private String suggestedUserCoverImage;
     private String suggestedUserGender;
     private java.time.LocalDate suggestedUserBirthDate;
     private String suggestedUserBio;
@@ -22,9 +24,11 @@ public class UserRelationSuggestionDTO {
 
     public UserRelationSuggestionDTO(Long pendingRelationId,
                                      String suggestedUserName,
+                                     String suggestedUserUsername,
                                      String suggestedUserEmail,
                                      String suggestedUserPhone,
                                      String suggestedUserProfilePic,
+                                     String suggestedUserCoverImage,
                                      String suggestedUserGender,
                                      java.time.LocalDate suggestedUserBirthDate,
                                      String suggestedUserBio,
@@ -35,10 +39,12 @@ public class UserRelationSuggestionDTO {
                                      String reason,
                                      String status) {
         this.pendingRelationId      = pendingRelationId;
-        this.suggestedUserName      = suggestedUserName;
-        this.suggestedUserEmail     = suggestedUserEmail;
-        this.suggestedUserPhone     = suggestedUserPhone;
+        this.suggestedUserName       = suggestedUserName;
+        this.suggestedUserUsername   = suggestedUserUsername;
+        this.suggestedUserEmail      = suggestedUserEmail;
+        this.suggestedUserPhone      = suggestedUserPhone;
         this.suggestedUserProfilePic = suggestedUserProfilePic;
+        this.suggestedUserCoverImage = suggestedUserCoverImage;
         this.suggestedUserGender    = suggestedUserGender;
         this.suggestedUserBirthDate = suggestedUserBirthDate;
         this.suggestedUserBio       = suggestedUserBio;
@@ -52,9 +58,11 @@ public class UserRelationSuggestionDTO {
 
     public Long   getPendingRelationId()       { return pendingRelationId; }
     public String getSuggestedUserName()       { return suggestedUserName; }
+    public String getSuggestedUserUsername()   { return suggestedUserUsername; }
     public String getSuggestedUserEmail()      { return suggestedUserEmail; }
     public String getSuggestedUserPhone()      { return suggestedUserPhone; }
     public String getSuggestedUserProfilePic() { return suggestedUserProfilePic; }
+    public String getSuggestedUserCoverImage() { return suggestedUserCoverImage; }
     public String getSuggestedUserGender()     { return suggestedUserGender; }
     public java.time.LocalDate getSuggestedUserBirthDate() { return suggestedUserBirthDate; }
     public String getSuggestedUserBio()      { return suggestedUserBio; }
