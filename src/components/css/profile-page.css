@@ -74,7 +74,90 @@
 }
 
 .pf-sk-cover {
-  height: 150px;
+  height: 180px;
+  position: relative;
+}
+
+/* Uploaded cover photo fills the banner (gradient stays when empty) */
+.pf-cover-has-image {
+  background-size: cover;
+  background-position: center;
+}
+
+.pf-cover-has-image[role="button"] {
+  cursor: pointer;
+}
+
+/* Cover options — small icon button, actions in a dropdown menu */
+.pf-cover-actions {
+  position: static;
+}
+
+.pf-cover-menu-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #e2e8f0;
+  background: rgba(13, 20, 36, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.pf-cover-menu-btn:hover:not(:disabled) {
+  border-color: rgba(148, 163, 184, 0.6);
+  color: #fff;
+}
+
+.pf-cover-menu-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Compact cover menu — same avatar-dropdown look, smaller footprint */
+.nw-profile-dropdown.pf-cover-dropdown {
+  border-radius: 14px;
+}
+
+.nw-profile-dropdown.pf-cover-dropdown .nw-profile-actions {
+  padding: 4px;
+}
+
+.nw-profile-dropdown.pf-cover-dropdown .nw-profile-action {
+  font-size: 12.5px;
+  padding: 7px 9px;
+  gap: 8px;
+}
+
+.nw-profile-dropdown.pf-cover-dropdown .nw-profile-action-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.nw-profile-dropdown.pf-cover-dropdown .nw-profile-action-icon svg {
+  font-size: 14px;
+}
+
+/* Upload cover — same look as the header Edit Profile button
+   (.pf-edit-btn-sm), pinned bottom-right of the cover */
+.pf-cover-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+}
+
+.pf-cover-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* Full-width divider line — avatar overlaps its center (see sketch) */
@@ -983,7 +1066,24 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   }
 
   .pf-sk-cover {
-    height: 140px;
+    height: 150px;
+  }
+
+  .pf-cover-actions {
+    position: static;
+  }
+
+  .pf-cover-menu-btn {
+    top: 8px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .pf-cover-btn {
+    bottom: 8px;
+    right: 10px;
   }
 
   /* Mobile avatar (compacted for small screens) */

@@ -28,8 +28,11 @@ function ProfileHeader({
   actions = null,
   belowAvatarAction = null,
   onEditClick,  // NEW: edit profile click handler
+  coverControl = null, // owner-only cover upload/edit button (bottom-right)
+  onCoverClick, // cover fullscreen viewer
 }) {
   const clickable = !!avatarSrc && !!onAvatarClick;
+  const coverClickable = !!coverImage && !!onCoverClick;
   const showStats =
     connectionsCount !== null ||
     suggestionsCount !== null ||
@@ -37,9 +40,30 @@ function ProfileHeader({
   return (
     <div className="pf-card pf-head-card pf-sk-card">
       <div
-        className="pf-cover pf-sk-cover"
+        className={`pf-cover pf-sk-cover${coverImage ? " pf-cover-has-image" : ""}`}
         style={coverImage ? { backgroundImage: `url(${coverImage})` } : undefined}
-      />
+        onClick={
+          coverClickable
+            ? (e) => {
+                // Cover menu clicks stay on their own trigger.
+                if (e.target.closest(".pf-cover-actions")) return;
+                onCoverClick();
+              }
+            : undefined
+        }
+        role={coverClickable ? "button" : undefined}
+        aria-label={coverClickable ? "View cover photo" : undefined}
+        tabIndex={coverClickable ? 0 : undefined}
+        onKeyDown={
+          coverClickable
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") onCoverClick();
+              }
+            : undefined
+        }
+      >
+        {coverControl}
+      </div>
       {/* Divider line — avatar sits centered on it */}
       <div className="pf-sk-divider">
         <div className="pf-sk-row">

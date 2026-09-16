@@ -6,14 +6,28 @@ import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import "./css/ProfilePictureEditor.css";
 
-const OUTPUT_SIZE = 512;
-const BOX_RATIO = 0.8; // square crop box = 80% of stage
+const BOX_RATIO = 0.8; // square crop box = 80% of stage (aspect === 1 path)
 
-function ProfilePictureEditor({ open, onClose, onSave, src }) {
+// Fixed-ratio crop editor (drag to move, scroll/pinch to zoom).
+// Defaults are the profile-photo flow (1:1 box, 512x512 output).
+// Cover flow passes aspect={3} etc. — geometry below generalizes to
+// any box via BW/BH; the square path is byte-for-byte the old behavior.
+function ProfilePictureEditor({
+    open,
+    onClose,
+    onSave,
+    src,
+    aspect = 1,
+    outputWidth = 512,
+    outputHeight = 512,
+    stageAspect = 1,
+    modalWidth = 440,
+    title = "Edit photo",
+}) {
     const [workSrc, setWorkSrc] = useState(src);
     const [origSrc, setOrigSrc] = useState(src);
     const [nat, setNat] = useState({ w: 0, h: 0 });
-    const [stageSize, setStageSize] = useState(320);
+    const [stageW, setStageW] = useState(320);
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
 
@@ -23,52 +37,67 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
     const stRef = useRef({ zoom, pan });
     stRef.current = { zoom, pan };
 
+    const stageH = stageW / (stageAspect || 1);
+
+    // ---- crop box (stage px, centered) ----
+    const S = stageW * BOX_RATIO;
+    let BW = S;
+    let BH = S;
+    if (aspect !== 1) {
+        BW = stageW * 0.92;
+        BH = BW / aspect;
+        if (BH > stageH * 0.9) {
+            BH = stageH * 0.9;
+            BW = BH * aspect;
+        }
+    }
+
     // ---- derived geometry (all in stage px) ----
-    const ar = nat.w && nat.h ? nat.w / nat.h : 1;
-    const baseW = ar >= 1 ? stageSize : stageSize * ar;
-    const baseH = ar >= 1 ? stageSize / ar : stageSize;
-    const S = stageSize * BOX_RATIO; // fixed square box
+    // image fitted into the stage (contain)
+    const fitScale = nat.w && nat.h ? Math.min(stageW / nat.w, stageH / nat.h) : 0;
+    const baseW = fitScale ? nat.w * fitScale : 0;
+    const baseH = fitScale ? nat.h * fitScale : 0;
     const dispW = baseW * zoom;
     const dispH = baseH * zoom;
-    const boxLeft = (stageSize - S) / 2;
-    const boxTop = (stageSize - S) / 2;
-    const boxCx = stageSize / 2;
-    const boxCy = stageSize / 2;
-    const imgLeft = (stageSize - dispW) / 2 + pan.x;
-    const imgTop = (stageSize - dispH) / 2 + pan.y;
+    const boxLeft = (stageW - BW) / 2;
+    const boxTop = (stageH - BH) / 2;
+    const boxCx = stageW / 2;
+    const boxCy = stageH / 2;
+    const imgLeft = (stageW - dispW) / 2 + pan.x;
+    const imgTop = (stageH - dispH) / 2 + pan.y;
 
     // percent crop for react-image-crop (fixed box over the image)
     const crop = dispW > 0 ? {
         unit: "%",
-        aspect: 1,
+        aspect,
         x: ((boxLeft - imgLeft) / dispW) * 100,
         y: ((boxTop - imgTop) / dispH) * 100,
-        width: (S / dispW) * 100,
-        height: (S / dispH) * 100,
+        width: (BW / dispW) * 100,
+        height: (BH / dispH) * 100,
     } : undefined;
 
     // proper clamp: image must always cover the fixed box
     const clampPanReal = useCallback((p, z) => {
         const dw = baseW * z;
         const dh = baseH * z;
-        const left0 = (stageSize - dw) / 2;
-        const top0 = (stageSize - dh) / 2;
-        // imgLeft = left0 + x must stay in [boxLeft + S - dw, boxLeft]
-        const minX = boxLeft + S - dw - left0;
+        const left0 = (stageW - dw) / 2;
+        const top0 = (stageH - dh) / 2;
+        // imgLeft = left0 + x must stay in [boxLeft + BW - dw, boxLeft]
+        const minX = boxLeft + BW - dw - left0;
         const maxX = boxLeft - left0;
-        const minY = boxTop + S - dh - top0;
+        const minY = boxTop + BH - dh - top0;
         const maxY = boxTop - top0;
         return {
             x: Math.min(maxX, Math.max(minX, p.x)),
             y: Math.min(maxY, Math.max(minY, p.y)),
         };
-    }, [baseW, baseH, boxLeft, boxTop, S, stageSize]);
+    }, [baseW, baseH, boxLeft, boxTop, BW, BH, stageW, stageH]);
 
+    const coverZoom = baseW && baseH ? Math.max(BW / baseW, BH / baseH) : 1;
     const resetAll = useCallback(() => {
-        const cz = baseW && baseH ? Math.max(S / baseW, S / baseH) : 1;
-        setZoom(cz);
+        setZoom(coverZoom);
         setPan({ x: 0, y: 0 });
-    }, [baseW, baseH, S]);
+    }, [coverZoom]);
 
     useEffect(() => {
         if (open) {
@@ -86,7 +115,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
         if (!open) return;
         const el = stageRef.current;
         if (!el) return;
-        const update = () => setStageSize(el.clientWidth || 320);
+        const update = () => setStageW(el.clientWidth || 320);
         update();
         const ro = new ResizeObserver(update);
         ro.observe(el);
@@ -99,33 +128,31 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
         img.onload = () => {
             const w = img.naturalWidth, h = img.naturalHeight;
             setNat({ w, h });
-            const a = w / h;
-            const bw = a >= 1 ? stageSize : stageSize * a;
-            const bh = a >= 1 ? stageSize / a : stageSize;
-            setZoom(Math.max((stageSize * BOX_RATIO) / bw, (stageSize * BOX_RATIO) / bh));
+            const sc = Math.min(stageW / w, (stageW / (stageAspect || 1)) / h);
+            setZoom(Math.max((BW / (w * sc)) || 1, (BH / (h * sc)) || 1));
             setPan({ x: 0, y: 0 });
         };
         img.src = workSrc;
-    }, [open, workSrc, stageSize]);
+    }, [open, workSrc, stageW, stageAspect, BW, BH]);
 
     // zoom IMAGE around the fixed box center (crop box never changes size)
     const zoomImage = useCallback((factor) => {
         const { zoom: z, pan: p } = stRef.current;
-        const cz = Math.max(S / baseW, S / baseH);
+        const cz = Math.max(BW / baseW, BH / baseH);
         const nz = Math.min(cz * 8, Math.max(cz, z * factor));
         if (nz === z || !baseW) return;
         const ratio = nz / z;
-        const left0 = (stageSize - baseW * z) / 2;
-        const top0 = (stageSize - baseH * z) / 2;
+        const left0 = (stageW - baseW * z) / 2;
+        const top0 = (stageH - baseH * z) / 2;
         const imgCx = left0 + p.x;
         const imgCy = top0 + p.y;
         const nLeft = boxCx - (boxCx - imgCx) * ratio;
         const nTop = boxCy - (boxCy - imgCy) * ratio;
-        const nLeft0 = (stageSize - baseW * nz) / 2;
-        const nTop0 = (stageSize - baseH * nz) / 2;
+        const nLeft0 = (stageW - baseW * nz) / 2;
+        const nTop0 = (stageH - baseH * nz) / 2;
         setZoom(nz);
         setPan(clampPanReal({ x: nLeft - nLeft0, y: nTop - nTop0 }, nz));
-    }, [S, baseW, baseH, boxCx, boxCy, stageSize, clampPanReal]);
+    }, [BW, BH, baseW, baseH, boxCx, boxCy, stageW, stageH, clampPanReal]);
 
     useEffect(() => {
         const el = stageRef.current;
@@ -191,8 +218,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
 
     const handleReset = () => {
         setWorkSrc(origSrc || src);
-        const cz = baseW && baseH ? Math.max(S / baseW, S / baseH) : 1;
-        setZoom(cz);
+        setZoom(coverZoom);
         setPan({ x: 0, y: 0 });
     };
 
@@ -200,16 +226,17 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
 
     const handleSave = async () => {
         if (!workSrc || !nat.w || !dispW) return;
-        // fixed square box in stage px -> source px
+        // fixed box in stage px -> source px
         const sx = ((boxLeft - imgLeft) / dispW) * nat.w;
         const sy = ((boxTop - imgTop) / dispH) * nat.h;
-        const sw = (S / dispW) * nat.w;
+        const sw = (BW / dispW) * nat.w;
+        const sh = (BH / dispH) * nat.h;
         const img = new Image();
         await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = workSrc; });
         const canvas = document.createElement("canvas");
-        canvas.width = OUTPUT_SIZE;
-        canvas.height = OUTPUT_SIZE;
-        canvas.getContext("2d").drawImage(img, sx, sy, sw, sw, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+        canvas.width = outputWidth;
+        canvas.height = outputHeight;
+        canvas.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, outputWidth, outputHeight);
         canvas.toBlob((blob) => { if (blob && onSave) onSave(blob); }, "image/jpeg", 0.92);
     };
 
@@ -234,7 +261,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
             closable={false}
             maskClosable={false}
             centered
-            width={440}
+            width={modalWidth}
             className="ppe-modal"
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.88)", backdropFilter: "blur(4px)" },
@@ -244,13 +271,14 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
         >
             <div className="ppe-card ppe-ig">
                 <div className="ppe-topbar">
-                    <div className="ppe-title">Edit photo</div>
+                    <div className="ppe-title">{title}</div>
                 </div>
 
                 <div className="ppe-stage-wrap ppe-bleed">
                     <div
                         ref={stageRef}
                         className="ppe-stage ppe-lib-stage"
+                        style={{ aspectRatio: `${stageAspect || 1} / 1` }}
                         onPointerDown={onPointerDown}
                         onPointerMove={onPointerMove}
                         onPointerUp={endPointer}
@@ -262,7 +290,7 @@ function ProfilePictureEditor({ open, onClose, onSave, src }) {
                                 <ReactCrop
                                     crop={crop}
                                     onChange={() => { }}
-                                    aspect={1}
+                                    aspect={aspect}
                                     ruleOfThirds
                                     keepSelection
                                 >
