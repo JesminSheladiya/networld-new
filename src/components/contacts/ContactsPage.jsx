@@ -5,25 +5,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 import { faMagnifyingGlass, faXmark, faFilter, faCheck, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
+import { mapConnectionToContact as mapContact } from "../../utils/contactMapper";
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
 import { DEFAULT_PAGE_SIZE, MQ_COMPACT, MQ_NARROW, PAGE_SIZE_OPTIONS, SEARCH_DEBOUNCE_MS } from "../../constants";
-
-function mapContact(item, idx) {
-  return {
-    key: idx,
-    name: item.suggestedUserName || "",
-    email: item.suggestedUserEmail || "",
-    phone: item.suggestedUserPhone || "",
-    profilePicture: item.suggestedUserProfilePic || null,
-    relation: item.inferredRelation || "",
-    relationId: item.pendingRelationId ?? null,
-    gender: item.suggestedUserGender || null,
-    birthDate: item.suggestedUserBirthDate || null,
-    bio: item.suggestedUserBio || "",
-  };
-}
 
 const CATEGORIES = [
   { key: "all", label: "All" },
