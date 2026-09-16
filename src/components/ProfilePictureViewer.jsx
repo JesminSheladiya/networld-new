@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 
-function ProfilePictureViewer({ open, onClose, src, name }) {
+function ProfilePictureViewer({ open, onClose, src, name, maxWidth = "min(480px, 100%)", alt }) {
     if (!open) return null;
 
     return createPortal(
@@ -45,11 +45,11 @@ function ProfilePictureViewer({ open, onClose, src, name }) {
             {src && (
                 <img
                     src={src}
-                    alt="Profile full view"
+                    alt={alt || (name ? `${name} — full view` : "Profile full view")}
                     onClick={(e) => e.stopPropagation()}
                     style={{
                         objectFit: "contain",
-                        width: "min(480px, 100%)",
+                        width: maxWidth,
                         height: "auto",
                         maxHeight: "80vh",
                         display: "block",

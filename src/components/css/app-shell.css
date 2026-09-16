@@ -182,12 +182,13 @@
 /* ── Glass profile dropdown (matches nw panels + glass reference) ── */
 .nw-profile-dropdown {
   position: relative;
-  width: 248px;
+  min-width: 150px;
+  width: max-content;
   max-width: calc(100vw - 32px);
   border-radius: 16px;
   overflow: hidden;
   color: #f1f5f9;
-  background: linear-gradient(160deg, rgba(37, 99, 235, 0.34) 0%, rgba(15, 26, 49, 0.78) 52%, rgba(9, 14, 26, 0.88) 100%);
+  background: linear-gradient(160deg, rgb(37 99 235 / 68%) 0%, rgb(15 26 49 / 83%) 52%, rgba(9, 14, 26, 0.88) 100%);
   border: 1px solid rgba(147, 197, 253, 0.32);
   backdrop-filter: blur(22px) saturate(150%);
   -webkit-backdrop-filter: blur(22px) saturate(150%);
@@ -341,16 +342,16 @@
 
 .nw-profile-dropdown .nw-profile-logout,
 .nw-profile-dropdown .nw-profile-logout .nw-profile-action-icon svg {
-  color: #fca5a5;
+  color: #f87171;
 }
 
 .nw-profile-dropdown .nw-profile-logout:hover {
   background: rgba(239, 68, 68, 0.12);
-  color: #fecaca;
+  color: #ff4d4d;
 }
 
 .nw-profile-dropdown .nw-profile-logout:hover .nw-profile-action-icon svg {
-  color: #fecaca;
+  color: #ff4d4d;
 }
 
 /* ── Mobile Header ── */
