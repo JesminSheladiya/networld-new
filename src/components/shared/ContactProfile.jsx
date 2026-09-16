@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEnvelope, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
+import { faEnvelope, faPenToSquare, faUser } from "@fortawesome/free-regular-svg-icons";
 import { faArrowLeft, faCakeCandles, faLink } from "@fortawesome/free-solid-svg-icons";
 import { PhoneOutlined } from "@ant-design/icons";
 import { avatarColorFor } from "../../constants";
@@ -11,10 +11,17 @@ import ProfilePictureViewer from "../ProfilePictureViewer";
 import { formatBirthDateWithAge } from "../../utils/dateUtils";
 import "../css/profile-page.css";
 
-function ContactProfile({ contact, showBack = false, onBack }) {
+function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) {
   const [editing, setEditing] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [coverViewerOpen, setCoverViewerOpen] = useState(false);
   const [relation, setRelation] = useState(contact.relation || "");
+
+  // Fresh server data (detail refetch) replaces the snapshot — keep the
+  // chip in sync instead of sticking with the first snapshot.
+  useEffect(() => {
+    setRelation(contact.relation || "");
+  }, [contact.email, contact.relation]);
 
   const name = contact.name || "Unknown";
   const initial = (name.charAt(0) || "?").toUpperCase();
@@ -34,7 +41,9 @@ function ContactProfile({ contact, showBack = false, onBack }) {
         avatarBg={avatarColorFor(name)}
         avatarText={initial}
         onAvatarClick={() => setViewerOpen(true)}
+        onCoverClick={() => setCoverViewerOpen(true)}
         name={name}
+        username={contact.username}
         email={contact.email}
         phone={contact.phone}
         stat={
@@ -102,6 +111,15 @@ function ContactProfile({ contact, showBack = false, onBack }) {
               </span>
             </div>
           )}
+          {contact.gender && (
+            <div className="pf-info-row">
+              <span className="pf-info-icon"><FontAwesomeIcon icon={faUser} /></span>
+              <span className="pf-info-text">
+                <span className="pf-info-label">Gender</span>
+                <span className="pf-info-value">{contact.gender === "M" ? "Male" : contact.gender === "F" ? "Female" : contact.gender}</span>
+              </span>
+            </div>
+          )}
           {contact.birthDate && (
             <div className="pf-info-row">
               <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
@@ -123,6 +141,7 @@ function ContactProfile({ contact, showBack = false, onBack }) {
         onSaved={(newRel) => {
           setRelation(newRel);
           contact.relation = newRel;
+          onRelationSaved?.(newRel);
         }}
       />
 
@@ -131,6 +150,14 @@ function ContactProfile({ contact, showBack = false, onBack }) {
         onClose={() => setViewerOpen(false)}
         src={contact.profilePicture}
         name={name}
+      />
+      <ProfilePictureViewer
+        open={coverViewerOpen}
+        onClose={() => setCoverViewerOpen(false)}
+        src={contact.coverImage}
+        name={name}
+        alt="Cover full view"
+        maxWidth="min(960px, 100%)"
       />
     </div>
   );
