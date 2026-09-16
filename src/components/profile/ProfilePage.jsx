@@ -50,6 +50,18 @@ function ProfilePage() {
   const [coverMenuOpen, setCoverMenuOpen] = useState(false);
   const menuClosedAtRef = useRef(0);
 
+  // Mobile (<=480px): icon + dropdown only — the pill doesn't fit there.
+  const [isMobileCover, setIsMobileCover] = useState(
+    () => window.matchMedia("(max-width: 480px)").matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 480px)");
+    const onChange = (e) => setIsMobileCover(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   const openCoverViewer = () => {
     if (coverMenuOpen) return;
     if (Date.now() - menuClosedAtRef.current < 350) return;
@@ -293,7 +305,7 @@ function ProfilePage() {
         }
         coverControl={
           <div className="pf-cover-actions">
-            {user?.coverImage ? (
+            {user?.coverImage || isMobileCover ? (
               <Dropdown
                 trigger={["click"]}
                 placement="bottomRight"
@@ -306,30 +318,47 @@ function ProfilePage() {
                 dropdownRender={() => (
                   <div className="nw-profile-dropdown pf-cover-dropdown">
                     <div className="nw-profile-actions">
-                      <button
-                        className="nw-profile-action"
-                        onClick={() => {
-                          closeCoverMenu();
-                          coverFileRef.current?.click();
-                        }}
-                      >
-                        <span className="nw-profile-action-icon">
-                          <FontAwesomeIcon icon={faCamera} />
-                        </span>
-                        <span>Edit cover</span>
-                      </button>
-                      <button
-                        className="nw-profile-action nw-profile-logout"
-                        onClick={() => {
-                          closeCoverMenu();
-                          setRemoveCoverOpen(true);
-                        }}
-                      >
-                        <span className="nw-profile-action-icon">
-                          <FontAwesomeIcon icon={faTrashCan} />
-                        </span>
-                        <span>Remove cover</span>
-                      </button>
+                      {user?.coverImage ? (
+                        <>
+                          <button
+                            className="nw-profile-action"
+                            onClick={() => {
+                              closeCoverMenu();
+                              coverFileRef.current?.click();
+                            }}
+                          >
+                            <span className="nw-profile-action-icon">
+                              <FontAwesomeIcon icon={faCamera} />
+                            </span>
+                            <span>Edit cover</span>
+                          </button>
+                          <button
+                            className="nw-profile-action nw-profile-logout"
+                            onClick={() => {
+                              closeCoverMenu();
+                              setRemoveCoverOpen(true);
+                            }}
+                          >
+                            <span className="nw-profile-action-icon">
+                              <FontAwesomeIcon icon={faTrashCan} />
+                            </span>
+                            <span>Remove cover</span>
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          className="nw-profile-action"
+                          onClick={() => {
+                            closeCoverMenu();
+                            coverFileRef.current?.click();
+                          }}
+                        >
+                          <span className="nw-profile-action-icon">
+                            <FontAwesomeIcon icon={faCamera} />
+                          </span>
+                          <span>Upload cover</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

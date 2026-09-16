@@ -63,7 +63,7 @@
   height: 108px;
   background-color: #101a33;
   background-image:
-    linear-gradient(180deg, transparent 18%, rgba(6, 11, 24, 0.82) 100%),
+    linear-gradient(180deg, transparent 18%, transparent),
     radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1.5px),
     radial-gradient(520px 190px at 82% 0%, rgba(56, 189, 248, 0.16), transparent 60%),
     radial-gradient(460px 200px at 8% 100%, rgba(37, 99, 235, 0.2), transparent 60%),
@@ -126,6 +126,7 @@
 /* Compact cover menu — same avatar-dropdown look, smaller footprint */
 .nw-profile-dropdown.pf-cover-dropdown {
   border-radius: 14px;
+  background: linear-gradient(160deg, rgb(37 99 235 / 90%) 0%, rgb(15 26 49 / 90%) 52%, rgb(9 14 26 / 90%) 100%);
 }
 
 .nw-profile-dropdown.pf-cover-dropdown .nw-profile-actions {
