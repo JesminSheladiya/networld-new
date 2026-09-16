@@ -8,6 +8,7 @@ public class UpdateProfileRequest {
     private String newPassword;
     private String confirmPassword;
     private String profilePicture;
+    private String coverImage;
     private String gender;
     private java.time.LocalDate birthDate;
     private String bio;
@@ -33,6 +34,9 @@ public class UpdateProfileRequest {
 
     public String getProfilePicture()        { return profilePicture; }
     public void   setProfilePicture(String v){ this.profilePicture = v; }
+
+    public String getCoverImage()        { return coverImage; }
+    public void   setCoverImage(String v){ this.coverImage = v; }
 
     public String getGender()       { return gender; }
     public void setGender(String v) { this.gender = v; }

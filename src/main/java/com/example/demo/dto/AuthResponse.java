@@ -9,12 +9,14 @@ public class AuthResponse {
     private String fullName;
     private Long id;
     private String profilePicture;
+    private String coverImage;
     private String gender;
     private java.time.LocalDate birthDate;
     private String bio;
 
     public AuthResponse(String token, String username, String email,
                         String phone, String fullName, Long id, String profilePicture,
+                        String coverImage,
                         String gender, java.time.LocalDate birthDate, String bio) {
         this.token    = token;
         this.username = username;
@@ -23,6 +25,7 @@ public class AuthResponse {
         this.fullName = fullName;
         this.id       = id;
         this.profilePicture = profilePicture;
+        this.coverImage = coverImage;
         this.gender   = gender;
         this.birthDate = birthDate;
         this.bio      = bio;
@@ -35,6 +38,7 @@ public class AuthResponse {
     public String getFullName() { return fullName; }
     public Long   getId()       { return id; }
     public String getProfilePicture() { return profilePicture; }
+    public String getCoverImage() { return coverImage; }
     public String getGender()   { return gender; }
     public java.time.LocalDate getBirthDate() { return birthDate; }
     public String getBio() { return bio; }
