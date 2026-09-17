@@ -16,7 +16,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByUsernameIgnoreCase(String username);
     boolean existsByUsernameIgnoreCaseAndEmailNot(String username, String email);
 
-    @Query("SELECT u FROM User u WHERE u.email = :identifier OR u.phone = :identifier")
+    @Query("SELECT u FROM User u WHERE u.email = :identifier OR u.phone = :identifier OR LOWER(u.username) = LOWER(:identifier)")
     Optional<User> findByIdentifier(@Param("identifier") String identifier);
 
     // Search users by name, phone or email (excluding current user)
