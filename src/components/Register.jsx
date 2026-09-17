@@ -1,36 +1,111 @@
 import { useState, useEffect, useRef } from "react";
-import { Form, Input, Button, Card, message, Typography, Select } from "antd";
+import { Form, Input, Card, message, Typography, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faEnvelope } from "@fortawesome/free-regular-svg-icons";
+import { faAt, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { LockOutlined, PhoneOutlined } from "@ant-design/icons";
-import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
-import { register } from "../Services/authService";
+import { register, checkUsernameAvailable, suggestUsernames } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
 import NetworkBackground from "./NetworkBackground";
 import ScrollDatePicker from "./shared/ScrollDatePicker";
 import { birthDateValidator, toBirthDateParam } from "../utils/dateUtils";
 import "./css/Auth.css";
+import "./css/profile-page.css";
 
 const { Title } = Typography;
+
+const USERNAME_RE = /^(?!\.)(?!.*\.$)[a-z0-9._]+$/;
+const isUsernameFormatOk = (v) => !!v && v.length <= 30 && USERNAME_RE.test(v);
 
 function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login: authLogin } = useAuth();
   const firstInputRef = useRef(null);
+  const [form] = Form.useForm();
+
+  // Same as profile update — stays disabled until every required field is filled.
+  const values = Form.useWatch([], form);
+  const registerReady = Boolean(
+    values?.name?.trim() &&
+      values?.username?.trim() &&
+      values?.email?.trim() &&
+      values?.phone?.trim() &&
+      values?.password &&
+      values?.confirmPassword &&
+      values?.gender
+  );
+
+  // Live username availability + IG-style suggestions dropdown (debounced).
+  const usernameValue = Form.useWatch("username", form);
+  const fullNameValue = Form.useWatch("name", form);
+  const [usernameStatus, setUsernameStatus] = useState(null); // checking | available | taken | null
+  const [suggestions, setSuggestions] = useState([]);
+  const [userFocused, setUserFocused] = useState(false);
+
+  useEffect(() => {
+    const v = (usernameValue || "").trim();
+    if (!v || !isUsernameFormatOk(v)) {
+      setUsernameStatus(null);
+      return;
+    }
+    setUsernameStatus("checking");
+    const t = setTimeout(async () => {
+      try {
+        const res = await checkUsernameAvailable(v);
+        setUsernameStatus(res?.available ? "available" : "taken");
+      } catch {
+        setUsernameStatus(null);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [usernameValue]);
+
+  useEffect(() => {
+    const rawBase = (usernameValue || "").trim() || (fullNameValue || "");
+    const base = rawBase.replace(/_/g, " ");
+    if (!base.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const list = await suggestUsernames(base, 5);
+        const current = (usernameValue || "").trim();
+        setSuggestions(
+          Array.isArray(list) ? list.filter((s) => s !== current) : []
+        );
+      } catch {
+        // Best-effort — never block the form.
+      }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [usernameValue, fullNameValue]);
+
+  const showSuggestDrop =
+    userFocused &&
+    (usernameValue || "").trim() !== "" &&
+    usernameStatus === "taken";
 
   useEffect(() => {
     firstInputRef.current?.focus();
   }, []);
 
   const onFinish = async (values) => {
+    const username = (values.username || "").trim();
+    if (!isUsernameFormatOk(username)) {
+      message.error("Username: lowercase a-z, 0-9, _ and . only; max 30 chars; can't start/end with .");
+      return;
+    }
+    if (usernameStatus === "taken") {
+      message.error("This username is already taken. Try one of the suggestions below.");
+      return;
+    }
     setLoading(true);
     try {
-      const firstName = values.name.trim().split(" ")[0];
-
       const data = await register(
-        firstName,
+        username,
         values.email,
         values.phone,
         values.password,
@@ -38,7 +113,7 @@ function Register() {
         values.gender,
         toBirthDateParam(values.birthDate)
       );
-      message.success(`Welcome, ${data.username}! Registration successful.`);
+      message.success(`Welcome, ${(data.fullName || "").trim().split(/\s+/)[0] || data.username}! Registration successful.`);
       authLogin();
       navigate("/contacts", { replace: true });
     } catch (error) {
@@ -67,7 +142,8 @@ function Register() {
           </Title>
         </div>
 
-        <Form className="auth-form" name="register" onFinish={onFinish} autoComplete="off" layout="vertical">
+        <Form form={form} className="auth-form" name="register" onFinish={onFinish} autoComplete="off" layout="vertical">
+          <div className="auth-form-grid">
           <Form.Item
             className="auth-field"
             name="name"
@@ -94,6 +170,62 @@ function Register() {
             />
           </Form.Item>
 
+          <div className="auth-suggest-wrap">
+          <Form.Item
+            className="auth-field"
+            name="username"
+            normalize={(v) => (v ? v.toLowerCase().replace(/\s+/g, "_") : v)}
+            rules={[
+              { required: true, message: "Please enter username!" },
+              { max: 30, message: "Max 30 characters!" },
+              {
+                pattern: /^(?!\.)(?!.*\.$)[a-z0-9._]+$/,
+                message: "Lowercase a-z, 0-9, _ and . only; can't start/end with .",
+              },
+            ]}
+          >
+            <Input
+              className="auth-input"
+              prefix={<FontAwesomeIcon icon={faAt} className="auth-input-icon" />}
+              placeholder="Username"
+              size="large"
+              autoComplete="username"
+              onFocus={() => setUserFocused(true)}
+              onBlur={() => setUserFocused(false)}
+            />
+          </Form.Item>
+          {(usernameValue || "").trim() !== "" && usernameStatus === "checking" && (
+            <div className="auth-username-status auth-checking">Checking availability…</div>
+          )}
+          {(usernameValue || "").trim() !== "" && usernameStatus === "available" && (
+            <div className="auth-username-status auth-ok">✓ Username available</div>
+          )}
+          {showSuggestDrop && (
+            <div className="auth-suggest-drop">
+              <div className="auth-suggest-error">
+                This username is already taken. Try one below:
+              </div>
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className="auth-suggest-item"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    form.setFieldsValue({ username: s });
+                    setUserFocused(false);
+                  }}
+                >
+                  <FontAwesomeIcon icon={faAt} className="auth-input-icon" />
+                  <span>{s}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          </div>
+          </div>
+
+          <div className="auth-form-grid">
           <Form.Item
             className="auth-field"
             name="email"
@@ -127,7 +259,9 @@ function Register() {
               size="large"
             />
           </Form.Item>
+          </div>
 
+          <div className="auth-form-grid">
           <Form.Item
             className="auth-field"
             name="password"
@@ -147,6 +281,33 @@ function Register() {
             />
           </Form.Item>
 
+          <Form.Item
+            className="auth-field"
+            name="confirmPassword"
+            dependencies={["password"]}
+            rules={[
+              { required: true, message: "Please confirm password!" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("password") === value) return Promise.resolve();
+                  return Promise.reject("Passwords do not match!");
+                },
+              }),
+            ]}
+          >
+            <Input.Password
+              className="auth-input"
+              prefix={<LockOutlined className="auth-input-icon" />}
+              placeholder="Confirm Password"
+              size="large"
+              iconRender={(visible) => (
+                <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
+              )}
+            />
+          </Form.Item>
+          </div>
+
+          <div className="auth-form-grid">
           <Form.Item
             className="auth-field"
             name="gender"
@@ -170,11 +331,17 @@ function Register() {
           >
             <ScrollDatePicker placeholder="Birth Date (optional)" />
           </Form.Item>
+          </div>
 
           <Form.Item className="auth-field auth-submit">
-            <Button className="auth-btn" type="primary" htmlType="submit" loading={loading} block size="large">
-              Register
-            </Button>
+            <button
+              type="submit"
+              className="pf-primary-btn"
+              style={{ width: "100%", justifyContent: "center" }}
+              disabled={!registerReady || loading}
+            >
+              {loading ? "Registering..." : "Register"}
+            </button>
           </Form.Item>
         </Form>
 

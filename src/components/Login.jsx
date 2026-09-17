@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Form, Input, Button, Card, message, Typography } from "antd";
+import { Form, Input, Card, message, Typography } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
 import { LockOutlined } from "@ant-design/icons";
@@ -9,6 +9,7 @@ import { login } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
 import NetworkBackground from "./NetworkBackground";
 import "./css/Auth.css";
+import "./css/profile-page.css";
 
 const { Title } = Typography;
 
@@ -17,6 +18,11 @@ function Login() {
   const navigate = useNavigate();
   const { login: authLogin } = useAuth();
   const firstInputRef = useRef(null);
+  const [form] = Form.useForm();
+
+  // Same as profile update — stays disabled until every field is filled.
+  const values = Form.useWatch([], form);
+  const loginReady = Boolean(values?.identifier?.trim() && values?.password);
 
   useEffect(() => {
     firstInputRef.current?.focus();
@@ -26,7 +32,8 @@ function Login() {
     setLoading(true);
     try {
       const data = await login(values.identifier, values.password);
-      message.success(`Welcome, ${data.username}!`);
+      const firstName = (data.fullName || "").trim().split(/\s+/)[0] || data.username;
+      message.success(`Welcome, ${firstName}!`);
       authLogin();
       navigate("/contacts", { replace: true });
     } catch (error) {
@@ -55,19 +62,19 @@ function Login() {
           </Title>
         </div>
 
-        <Form className="auth-form" name="login" onFinish={onFinish} autoComplete="off" layout="vertical">
+        <Form form={form} className="auth-form" name="login" onFinish={onFinish} autoComplete="off" layout="vertical">
           <Form.Item
             className="auth-field"
             name="identifier"
-            rules={[{ required: true, message: "Please enter email or phone!" }]}
+            rules={[{ required: true, message: "Please enter email, phone or username!" }]}
           >
             <Input
               className="auth-input"
               prefix={<FontAwesomeIcon icon={faUser} className="auth-input-icon" />}
-              placeholder="Email / Phone"
+              placeholder="Email / Phone / Username"
               size="large"
               ref={firstInputRef}
-              autoComplete="email"
+              autoComplete="username"
               inputMode="text"
             />
           </Form.Item>
@@ -89,9 +96,14 @@ function Login() {
           </Form.Item>
 
           <Form.Item className="auth-field auth-submit">
-            <Button className="auth-btn" type="primary" htmlType="submit" loading={loading} block size="large">
-              Login
-            </Button>
+            <button
+              type="submit"
+              className="pf-primary-btn"
+              style={{ width: "100%", justifyContent: "center" }}
+              disabled={!loginReady || loading}
+            >
+              {loading ? "Logging in..." : "Login"}
+            </button>
           </Form.Item>
         </Form>
 
