@@ -4,7 +4,10 @@ import jakarta.validation.constraints.*;
 
 public class RegisterRequest {
 
-    @NotBlank @Size(min = 1, max = 50)
+    @NotBlank
+    @Size(max = 30, message = "Username must be 30 characters or less")
+    @Pattern(regexp = "^(?!\\.)(?!.*\\.$)[a-z0-9._]+$",
+             message = "Username: lowercase a-z, 0-9, _ and . only; cannot start or end with a period")
     private String username;
 
     @NotBlank @Size(min = 8, message = "Password must be at least 8 characters")

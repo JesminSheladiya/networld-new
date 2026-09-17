@@ -33,15 +33,16 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest req) {
-//        if (users.existsByUsername(req.getUsername()))
-//            throw new RuntimeException("Username already exists");
+        String username = validateUsername(req.getUsername());
+        if (users.existsByUsernameIgnoreCase(username))
+            throw new RuntimeException("Username already taken");
         if (users.existsByEmail(req.getEmail()))
             throw new RuntimeException("Email already exists");
         if (users.existsByPhone(req.getPhone()))
             throw new RuntimeException("Phone already exists");
 
         User u = new User();
-        u.setUsername(req.getUsername());
+        u.setUsername(username);
         u.setPassword(encoder.encode(req.getPassword()));
         u.setEmail(req.getEmail());
         u.setPhone(req.getPhone());
@@ -148,10 +149,12 @@ public class AuthService {
 
     // Available = format-valid and not used by any other user
     // (case-insensitive). The caller's own current username counts as available.
+    // Anonymous callers (register page) pass null email — then every match counts.
     public boolean isUsernameAvailable(String email, String username) {
         if (username == null || username.isBlank()) return false;
         String v = username.trim();
         if (!USERNAME_PATTERN.matcher(v).matches()) return false;
+        if (email == null) return !users.existsByUsernameIgnoreCase(v);
         return !users.existsByUsernameIgnoreCaseAndEmailNot(v, email);
     }
 
@@ -174,7 +177,8 @@ public class AuthService {
             if (!variants.contains(clean)) variants.add(clean);
         }
         if (variants.isEmpty()) variants.add("user");
-        String own = users.findByEmail(email).map(User::getDisplayName).orElse("");
+        String own = (email == null) ? "" :
+                users.findByEmail(email).map(User::getDisplayName).orElse("");
         java.util.List<String> out = new java.util.ArrayList<>();
         String[] suffixes = {"", "1", "12", "123", "_1", "_12", "1234", "_123", "2026", "_2026"};
         for (String s : suffixes) {
@@ -185,7 +189,10 @@ public class AuthService {
                 c = c.replaceAll("\\.+$", "");
                 if (!USERNAME_PATTERN.matcher(c).matches()) continue;
                 if (c.equalsIgnoreCase(own == null ? "" : own)) continue;
-                if (users.existsByUsernameIgnoreCaseAndEmailNot(c, email)) continue;
+                boolean taken = (email == null)
+                        ? users.existsByUsernameIgnoreCase(c)
+                        : users.existsByUsernameIgnoreCaseAndEmailNot(c, email);
+                if (taken) continue;
                 if (!out.contains(c)) out.add(c);
             }
             if (out.size() >= n) break;

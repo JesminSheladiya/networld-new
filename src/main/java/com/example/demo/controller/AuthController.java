@@ -42,12 +42,14 @@ public class AuthController {
         return ResponseEntity.ok(auth.updateProfile(userDetails.getUsername(), req));
     }
 
+    // Public (register page is anonymous) — email null means every match counts.
     @GetMapping("/username-available")
     public ResponseEntity<?> usernameAvailable(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam("username") String username) {
+        String email = userDetails == null ? null : userDetails.getUsername();
         return ResponseEntity.ok(java.util.Map.of("available",
-                auth.isUsernameAvailable(userDetails.getUsername(), username)));
+                auth.isUsernameAvailable(email, username)));
     }
 
     @GetMapping("/username-suggestions")
@@ -55,7 +57,8 @@ public class AuthController {
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(value = "base", required = false) String base,
             @RequestParam(value = "limit", required = false, defaultValue = "5") int limit) {
-        return ResponseEntity.ok(auth.suggestUsernames(userDetails.getUsername(), base, limit));
+        String email = userDetails == null ? null : userDetails.getUsername();
+        return ResponseEntity.ok(auth.suggestUsernames(email, base, limit));
     }
 
     @GetMapping("/username-change-info")
