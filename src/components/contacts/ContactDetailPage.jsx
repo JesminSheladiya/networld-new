@@ -8,15 +8,30 @@ import { mapConnectionToContact } from "../../utils/contactMapper";
 import { useRefresh } from "../shared/RefreshContext";
 import ContactProfile from "../shared/ContactProfile";
 
+// Profile URLs are username slugs (/contacts/:username, Instagram-style).
+// Legacy email links still resolve via the email fallback below.
+function matchesSlug(item, slug) {
+  const username = (item.suggestedUserUsername || "").toLowerCase();
+  if (username && username === slug.toLowerCase()) return true;
+  return item.suggestedUserEmail === slug;
+}
+
+function seedMatchesSlug(seed, slug) {
+  if (!seed) return false;
+  const username = (seed.username || "").toLowerCase();
+  if (username && username === slug.toLowerCase()) return true;
+  return seed.email === slug;
+}
+
 function ContactDetailPage() {
   const navigate = useNavigate();
-  const { email } = useParams();
+  const { username } = useParams();
   const location = useLocation();
   const { bump } = useRefresh();
 
-  const decodedEmail = email ? decodeURIComponent(email) : "";
+  const slug = username ? decodeURIComponent(username) : "";
   const seed = location.state?.contact;
-  const hasSeed = !!seed && seed.email === decodedEmail;
+  const hasSeed = seedMatchesSlug(seed, slug);
 
   // List snapshot paints instantly; fresh server data replaces it below —
   // the screen is never stuck showing a stale contact.
@@ -26,37 +41,60 @@ function ContactDetailPage() {
   useEffect(() => {
     let cancelled = false;
     const urlSeed = location.state?.contact;
-    if (urlSeed && urlSeed.email === decodedEmail) {
+    if (seedMatchesSlug(urlSeed, slug)) {
       setContact(urlSeed);
       setLoading(false);
     } else {
       setContact(null);
       setLoading(true);
     }
-    api.connections()
-      .then((res) => {
+    (async () => {
+      try {
+        const res = await api.connections();
         if (cancelled) return;
-        const found = (res.data || []).find(
-          (c) => c.suggestedUserEmail === decodedEmail
-        );
-        // Keep the seed if the request fails or finds nothing mid-flight —
-        // only an explicit "not found" clears a seedless view.
-        if (found) setContact(mapConnectionToContact(found, 0));
-        else if (!urlSeed || urlSeed.email !== decodedEmail) setContact(null);
-      })
-      .catch(() => {
-        if (!cancelled && (!urlSeed || urlSeed.email !== decodedEmail)) {
+        const found = (res.data || []).find((c) => matchesSlug(c, slug));
+        if (found) {
+          setContact(mapConnectionToContact(found, 0));
+          return;
+        }
+        // Not a connection — resolve any app user so profiles open from
+        // Find/Requests/Suggestions too (Instagram-style public profile).
+        const r2 = await api.searchUsers(slug);
+        if (cancelled) return;
+        const list = r2.data || [];
+        const exact =
+          list.find((u) => (u.username || "").toLowerCase() === slug.toLowerCase()) ||
+          list.find((u) => u.email === slug);
+        if (exact) {
+          setContact({
+            key: 0,
+            name: exact.name || "",
+            username: exact.username || "",
+            email: exact.email || "",
+            phone: exact.phone || "",
+            profilePicture: exact.profilePic || null,
+            relation: exact.relationName || "",
+            relationId: null,
+            gender: exact.gender || null,
+            birthDate: exact.birthDate || null,
+            bio: exact.bio || "",
+          });
+        } else if (!seedMatchesSlug(urlSeed, slug)) {
           setContact(null);
         }
-      })
-      .finally(() => {
+      } catch {
+        if (!cancelled && !seedMatchesSlug(location.state?.contact, slug)) {
+          setContact(null);
+        }
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decodedEmail]);
+  }, [slug]);
 
   if (loading) {
     return (

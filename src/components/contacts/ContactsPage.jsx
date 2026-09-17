@@ -207,7 +207,7 @@ function ContactsPage() {
   }, [isCompact, hasMore, dataSource.length, loading, loadingMore]);
 
   const openContact = (rec) => {
-    navigate(`/contacts/${encodeURIComponent(rec.email)}`, { state: { contact: rec } });
+    navigate(`/contacts/${encodeURIComponent(rec.username || rec.email)}`, { state: { contact: rec } });
   };
 
   const sortOrderFor = (key) => {
@@ -335,7 +335,14 @@ function ContactsPage() {
       key: "name",
       sorter: true,
       sortOrder: sortOrderFor("name"),
-      render: (name) => <span style={{ color: "#f1f5f9", fontWeight: 600 }}>{name}</span>,
+      render: (name, rec) => (
+        <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.35 }}>
+          <span style={{ color: "#f1f5f9", fontWeight: 600 }}>{name}</span>
+          {rec.username && (
+            <span style={{ color: "#64748b", fontSize: 12 }}>@{rec.username}</span>
+          )}
+        </span>
+      ),
     },
     {
       title: "Phone Number",
@@ -448,7 +455,7 @@ function ContactsPage() {
             <Input
               className="nw-search"
               prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
-              placeholder="Search contacts..."
+              placeholder="Search name, username, phone..."
               allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
@@ -532,7 +539,7 @@ function ContactsPage() {
                 </span>
                 <span className="nw-list-info">
                   <span className="nw-list-name">{rec.name}</span>
-                  <span className="nw-list-sub">{rec.phone || rec.email}</span>
+                  <span className="nw-list-sub">{rec.username ? `@${rec.username}` : (rec.phone || rec.email)}</span>
                 </span>
                 <RelationChip relation={rec.relation} style={{ flexShrink: 0, fontSize: 11 }} />
               </button>

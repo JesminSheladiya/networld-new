@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { Spin, Button, Tooltip, message } from "antd";
+import { useNavigate } from "react-router-dom";
+import { Spin, Button, Tooltip, message, Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLightbulb, faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 import { faCheck, faXmark, faRotateRight, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
@@ -12,6 +13,7 @@ import ConfirmPopup from "../shared/ConfirmPopup";
 import { avatarColorFor } from "../../constants";
 
 function SuggestionsPage() {
+  const navigate = useNavigate();
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingEmail, setEditingEmail] = useState(null);
@@ -41,6 +43,27 @@ function SuggestionsPage() {
   useEffect(() => {
     fetchSuggestions();
   }, [refreshKey, fetchSuggestions]);
+
+  // Instagram-style: open anyone's profile from a result row.
+  const openProfile = (s) => {
+    const contact = {
+      key: s.suggestedUserEmail,
+      name: s.suggestedUserName || "",
+      username: s.suggestedUserUsername || "",
+      email: s.suggestedUserEmail || "",
+      phone: s.suggestedUserPhone || "",
+      profilePicture: s.suggestedUserProfilePic || null,
+      relation: s.inferredRelation || "",
+      relationId: null,
+      gender: s.suggestedUserGender || null,
+      birthDate: s.suggestedUserBirthDate || null,
+      bio: s.suggestedUserBio || "",
+    };
+    navigate(
+      `/contacts/${encodeURIComponent(s.suggestedUserUsername || s.suggestedUserEmail)}`,
+      { state: { contact } }
+    );
+  };
 
   const sendRequest = async (s) => {
     try {
@@ -118,14 +141,30 @@ function SuggestionsPage() {
               const rel = (s.inferredRelation || "").toLowerCase();
               const avColor = avatarColorFor(s.suggestedUserName);
               return (
-                <div className="nw-req-row" key={i}>
+                <div
+                  className="nw-req-row"
+                  key={i}
+                  onClick={() => openProfile(s)}
+                  title="View profile"
+                  style={{ cursor: "pointer" }}
+                >
                   <div className="nw-req-left">
-                    <div className="nw-find-avatar" style={{ background: avColor }}>
-                      {(s.suggestedUserName || "?").charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar
+                      size={40}
+                      src={s.suggestedUserProfilePic || null}
+                      style={{
+                        backgroundColor: s.suggestedUserProfilePic ? "transparent" : avColor,
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: "#fff",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {!(s.suggestedUserProfilePic) && (s.suggestedUserName || "?").charAt(0).toUpperCase()}
+                    </Avatar>
                     <div className="nw-find-info">
                       <div className="nw-find-name">{s.suggestedUserName}</div>
-                      <div className="nw-find-email">{s.suggestedUserEmail}</div>
+                      <div className="nw-find-email">{s.suggestedUserUsername ? `@${s.suggestedUserUsername}` : s.suggestedUserEmail}</div>
                       <div className="nw-find-reason">
                         <span className="nw-auto-badge">AUTO</span> {s.reason}
                       </div>
@@ -133,7 +172,7 @@ function SuggestionsPage() {
                   </div>
 
                   {editingEmail === s.suggestedUserEmail ? (
-                    <div className="nw-edit-inline">
+                    <div className="nw-edit-inline" onClick={(e) => e.stopPropagation()}>
                       <button
                         className="nw-relation-pick-btn"
                         onClick={() => setPickerOpen(true)}
@@ -158,7 +197,7 @@ function SuggestionsPage() {
                           <span className="nw-edited-tag">Edited</span>
                         )}
                       </span>
-                      <div className="nw-req-actions">
+                      <div className="nw-req-actions" onClick={(e) => e.stopPropagation()}>
                         <Tooltip title="Edit Relation">
                           <Button size="small" type="text" icon={<FontAwesomeIcon icon={faPenToSquare} style={{ color: "#64748b", fontSize: 14 }} />} onClick={() => startEdit(s)} style={{ padding: 0, width: 30, height: 30 }} />
                         </Tooltip>
