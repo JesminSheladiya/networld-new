@@ -56,6 +56,7 @@ public class UserRelationController {
             item.put("email",      u.getEmail());
             item.put("phone",      u.getPhone());
             item.put("profilePic", u.getProfilePicture() != null ? u.getProfilePicture() : "");
+            item.put("coverImage", u.getCoverImage() != null ? u.getCoverImage() : "");
             item.put("gender",     u.getGender());
             item.put("birthDate",  u.getBirthDate());
             item.put("bio",        u.getBio());
@@ -145,6 +146,14 @@ public class UserRelationController {
             @RequestParam(required = false) String query,
             @AuthenticationPrincipal UserDetails ud) {
         return ResponseEntity.ok(userRelationService.getMyConnections(getCurrentUser(ud), query));
+    }
+
+    @GetMapping("/connections/of")
+    public ResponseEntity<List<UserRelationSuggestionDTO>> getConnectionsOf(
+            @RequestParam String email,
+            @AuthenticationPrincipal UserDetails ud) {
+        getCurrentUser(ud); // authenticated only; no private filtering by design
+        return ResponseEntity.ok(userRelationService.getConnectionsOf(email));
     }
 
     @GetMapping("/connections/paged")

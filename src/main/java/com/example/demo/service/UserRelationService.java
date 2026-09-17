@@ -178,8 +178,7 @@ public class UserRelationService {
                 }).collect(Collectors.toList());
     }
 
-    public List<UserRelationSuggestionDTO> getMyConnections(User currentUser, String query) {
-        List<UserRelation> relations = (query == null || query.isBlank())
+    public List<UserRelationSuggestionDTO> getMyConnections(User currentUser, String query) {        List<UserRelation> relations = (query == null || query.isBlank())
                 ? userRelationRepo.findByFromUserAndStatus(currentUser, "ACCEPTED")
                 : userRelationRepo.searchAcceptedConnections(currentUser, query.trim(), false);
 
@@ -197,6 +196,14 @@ public class UserRelationService {
                     rel.getGenericRelation(),
                     null, "ACCEPTED");
         }).collect(Collectors.toList());
+    }
+
+    // Any user's accepted connections (accept creates reverse rows, so this
+    // is complete for every user — no private filtering by design).
+    public List<UserRelationSuggestionDTO> getConnectionsOf(String email) {
+        User target = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return getMyConnections(target, null);
     }
 
     // Category grouping shared with the app tabs, driven by the master
