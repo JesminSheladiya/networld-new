@@ -14,6 +14,7 @@ import ProfilePictureEditor from "../ProfilePictureEditor";
 import ProfileHeader from "./ProfileHeader";
 import ConfirmPopup from "../shared/ConfirmPopup";
 import { formatBirthDateWithAge } from "../../utils/dateUtils";
+import { toDataUrl } from "../../utils/imageUtils";
 import "../css/profile-page.css";
 
 const GENDER_LABEL = { M: "Male", F: "Female" };
@@ -263,7 +264,7 @@ function ProfilePage() {
       {/* Sketch header: cover + divider + overlapping avatar + identity + stats. */}
       <ProfileHeader
         coverImage={user?.coverImage}
-        avatarSrc={user?.profilePicture}
+        avatarSrc={toDataUrl(user?.profilePicture)}
         avatarBg={avatarColorFor(fullName)}
         avatarText={initials}
         onAvatarClick={() => setViewerOpen(true)}
@@ -505,13 +506,13 @@ function ProfilePage() {
       <ProfilePictureViewer
         open={viewerOpen}
         onClose={() => setViewerOpen(false)}
-        src={user?.profilePicture}
+        src={toDataUrl(user?.profilePicture)}
         name={fullName}
       />
       <ProfilePictureViewer
         open={coverViewerOpen}
         onClose={() => setCoverViewerOpen(false)}
-        src={user?.coverImage}
+        src={toDataUrl(user?.coverImage)}
         name={fullName}
         alt="Cover full view"
         maxWidth="min(960px, 100%)"

@@ -10,6 +10,7 @@ import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
 import { DEFAULT_PAGE_SIZE, MQ_COMPACT, MQ_NARROW, PAGE_SIZE_OPTIONS, SEARCH_DEBOUNCE_MS } from "../../constants";
+import { toDataUrl } from "../../utils/imageUtils";
 
 const CATEGORIES = [
   { key: "all", label: "All" },
@@ -308,25 +309,25 @@ function ContactsPage() {
       dataIndex: "profilePicture",
       key: "profilePicture",
       width: 70,
-      render: (pic, record) => (
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <Avatar
-            size={42}
-            src={pic || null}
-            style={{
-              backgroundColor: pic ? "transparent" : "#3b82f6",
-              fontSize: 17,
-              cursor: pic ? "pointer" : "default",
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (pic) setViewer({ pic, name: record.name });
-            }}
-          >
-            {!pic && record.name?.charAt(0).toUpperCase()}
-          </Avatar>
-        </div>
-      ),
+render: (pic, record) => (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <Avatar
+              size={42}
+              src={toDataUrl(pic)}
+              style={{
+                backgroundColor: pic ? "transparent" : "#3b82f6",
+                fontSize: 17,
+                cursor: pic ? "pointer" : "default",
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (pic) setViewer({ pic: toDataUrl(pic), name: record.name });
+              }}
+            >
+              {!pic && record.name?.charAt(0).toUpperCase()}
+            </Avatar>
+          </div>
+        ),
     },
     {
       title: "Name",
@@ -524,17 +525,17 @@ function ContactsPage() {
                   onClick={(e) => {
                     if (rec.profilePicture) {
                       e.stopPropagation();
-                      setViewer({ pic: rec.profilePicture, name: rec.name });
+                      setViewer({ pic: toDataUrl(rec.profilePicture), name: rec.name });
                     }
                   }}
                   style={{ display: "inline-flex", flexShrink: 0, cursor: rec.profilePicture ? "pointer" : "default" }}
                 >
                 <Avatar
                   size={44}
-                  src={rec.profilePicture || null}
+                  src={toDataUrl(rec.profilePicture)}
                   style={{ backgroundColor: rec.profilePicture ? "transparent" : "#3b82f6", fontSize: 17, flexShrink: 0 }}
                 >
-                  {!rec.profilePicture && rec.name?.charAt(0).toUpperCase()}
+                  {!(rec.profilePicture) && rec.name?.charAt(0).toUpperCase()}
                 </Avatar>
                 </span>
                 <span className="nw-list-info">
