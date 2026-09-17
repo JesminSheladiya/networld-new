@@ -52,6 +52,7 @@ public class UserRelationController {
             Map<String, Object> item = new HashMap<>();
             item.put("id",         u.getId());
             item.put("name",       u.getFullName() != null ? u.getFullName() : u.getDisplayName());
+            item.put("username",   u.getDisplayName());
             item.put("email",      u.getEmail());
             item.put("phone",      u.getPhone());
             item.put("profilePic", u.getProfilePicture() != null ? u.getProfilePicture() : "");
