@@ -64,7 +64,7 @@ function AppRoutes() {
       <Route element={<Protected />}>
         <Route element={<AppShell />}>
           <Route path="/contacts" element={<ContactsPage />} />
-          <Route path="/contacts/:email" element={<ContactDetailPage />} />
+          <Route path="/contacts/:username" element={<ContactDetailPage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/discover/find" element={<FindPeoplePage />} />

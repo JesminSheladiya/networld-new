@@ -58,9 +58,11 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
                 View photo
               </button>
             )}
-            <button className="pf-ghost-btn" onClick={() => setEditing(true)}>
-              <FontAwesomeIcon icon={faPenToSquare} /> Edit Relation
-            </button>
+            {contact.relationId != null && (
+              <button className="pf-ghost-btn" onClick={() => setEditing(true)}>
+                <FontAwesomeIcon icon={faPenToSquare} /> Edit Relation
+              </button>
+            )}
           </>
         }
       />
@@ -93,42 +95,28 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
               </span>
             </div>
           )}
-          {contact.phone && (
-            <div className="pf-info-row">
-              <span className="pf-info-icon"><PhoneOutlined /></span>
+          {[
+            { label: "Phone", value: contact.phone || "—", icon: <PhoneOutlined /> },
+            { label: "Email", value: contact.email || "—", icon: <FontAwesomeIcon icon={faEnvelope} /> },
+            {
+              label: "Gender",
+              value: contact.gender === "M" ? "Male" : contact.gender === "F" ? "Female" : (contact.gender || "—"),
+              icon: <FontAwesomeIcon icon={faUser} />,
+            },
+            {
+              label: "Birth Date",
+              value: contact.birthDate ? formatBirthDateWithAge(contact.birthDate) : "—",
+              icon: <FontAwesomeIcon icon={faCakeCandles} />,
+            },
+          ].map(({ label, value, icon }) => (
+            <div className="pf-info-row" key={label}>
+              <span className="pf-info-icon">{icon}</span>
               <span className="pf-info-text">
-                <span className="pf-info-label">Phone</span>
-                <span className="pf-info-value">{contact.phone}</span>
+                <span className="pf-info-label">{label}</span>
+                <span className="pf-info-value">{value}</span>
               </span>
             </div>
-          )}
-          {contact.email && (
-            <div className="pf-info-row">
-              <span className="pf-info-icon"><FontAwesomeIcon icon={faEnvelope} /></span>
-              <span className="pf-info-text">
-                <span className="pf-info-label">Email</span>
-                <span className="pf-info-value">{contact.email}</span>
-              </span>
-            </div>
-          )}
-          {contact.gender && (
-            <div className="pf-info-row">
-              <span className="pf-info-icon"><FontAwesomeIcon icon={faUser} /></span>
-              <span className="pf-info-text">
-                <span className="pf-info-label">Gender</span>
-                <span className="pf-info-value">{contact.gender === "M" ? "Male" : contact.gender === "F" ? "Female" : contact.gender}</span>
-              </span>
-            </div>
-          )}
-          {contact.birthDate && (
-            <div className="pf-info-row">
-              <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
-              <span className="pf-info-text">
-                <span className="pf-info-label">Birth Date</span>
-                <span className="pf-info-value">{formatBirthDateWithAge(contact.birthDate)}</span>
-              </span>
-            </div>
-          )}
+          ))}
         </div>
       </div>
         </div>

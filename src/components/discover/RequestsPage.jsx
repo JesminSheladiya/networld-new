@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Spin, Button, Tooltip, message } from "antd";
+import { Spin, Button, Tooltip, message, Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBell } from "@fortawesome/free-regular-svg-icons";
 import { faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
@@ -52,6 +52,27 @@ function RequestsPage() {
   useEffect(() => {
     fetchPending();
   }, [refreshKey, fetchPending]);
+
+  // Instagram-style: open anyone's profile from a result row.
+  const openProfile = (p) => {
+    const contact = {
+      key: p.suggestedUserEmail,
+      name: p.suggestedUserName || "",
+      username: p.suggestedUserUsername || "",
+      email: p.suggestedUserEmail || "",
+      phone: p.suggestedUserPhone || "",
+      profilePicture: p.suggestedUserProfilePic || null,
+      relation: p.inferredRelation || "",
+      relationId: null,
+      gender: p.suggestedUserGender || null,
+      birthDate: p.suggestedUserBirthDate || null,
+      bio: p.suggestedUserBio || "",
+    };
+    navigate(
+      `/contacts/${encodeURIComponent(p.suggestedUserUsername || p.suggestedUserEmail)}`,
+      { state: { contact } }
+    );
+  };
 
   const accept = async (id) => {
     const item = pending.find((x) => x.pendingRelationId === id);
@@ -110,20 +131,36 @@ function RequestsPage() {
               const rel = getInverseRelation(p.inferredRelation, p.suggestedUserGender)?.toLowerCase() || "";
               const avColor = avatarColorFor(p.suggestedUserName);
               return (
-                <div className="nw-req-row" key={i}>
+                <div
+                  className="nw-req-row"
+                  key={i}
+                  onClick={() => openProfile(p)}
+                  title="View profile"
+                  style={{ cursor: "pointer" }}
+                >
                   <div className="nw-req-left">
-                    <div className="nw-find-avatar" style={{ background: avColor }}>
-                      {(p.suggestedUserName || "?").charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar
+                      size={40}
+                      src={p.suggestedUserProfilePic || null}
+                      style={{
+                        backgroundColor: p.suggestedUserProfilePic ? "transparent" : avColor,
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: "#fff",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {!(p.suggestedUserProfilePic) && (p.suggestedUserName || "?").charAt(0).toUpperCase()}
+                    </Avatar>
                     <div className="nw-find-info">
                       <div className="nw-find-name">{p.suggestedUserName}</div>
-                      <div className="nw-find-email">{p.suggestedUserEmail}</div>
+                      <div className="nw-find-email">{p.suggestedUserUsername ? `@${p.suggestedUserUsername}` : p.suggestedUserEmail}</div>
                       <div className="nw-find-reason">{formatReason(p.reason)}</div>
                     </div>
                   </div>
                   <div className="nw-req-right">
                     <RelationChip relation={rel} style={{ fontSize: 11 }} />
-                    <div className="nw-req-actions">
+                    <div className="nw-req-actions" onClick={(e) => e.stopPropagation()}>
                       <Tooltip title="Accept">
                         <button className="nw-act-btn nw-act-accept" onClick={() => accept(p.pendingRelationId)}>
                           <FontAwesomeIcon icon={faCheck} />

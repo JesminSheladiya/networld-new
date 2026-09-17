@@ -1,16 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import { Input, Spin, Empty, Tooltip, message } from "antd";
+import { useNavigate } from "react-router-dom";
+import { Input, Spin, Empty, Tooltip, message, Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass, faUsers, faXmark, faPaperPlane, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
+import { useAuth } from "../../context/AuthContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
-import { SEARCH_DEBOUNCE_MS } from "../../constants";
+import { SEARCH_DEBOUNCE_MS, avatarColorFor } from "../../constants";
 import RelationPickerModal from "../shared/RelationPickerModal";
 
+// Survives unmounts (profile visits) within the session so going back
+// restores the query + results instantly; keyed per account.
+const findCache = { key: "", query: "", results: [] };
+
 function FindPeoplePage() {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  if (findCache.key !== (user?.email || "")) {
+    findCache.key = user?.email || "";
+    findCache.query = "";
+    findCache.results = [];
+  }
+  const [query, setQuery] = useState(findCache.query);
+  const [results, setResults] = useState(findCache.results);
   const [searching, setSearching] = useState(false);
   const [relations, setRelations] = useState([]);
   const [relMap, setRelMap] = useState({});
@@ -20,6 +33,14 @@ function FindPeoplePage() {
   const [searchSeq, setSearchSeq] = useState(0);
   const { bump } = useRefresh();
   const { relName } = useRelationDisplay();
+
+  // Persist across unmounts (back from a profile restores instantly).
+  useEffect(() => {
+    findCache.query = query;
+  }, [query]);
+  useEffect(() => {
+    findCache.results = results;
+  }, [results]);
 
   const pickerUser = pickerEmail
     ? results.find((x) => x.email === pickerEmail)
@@ -66,8 +87,27 @@ function FindPeoplePage() {
     return () => clearTimeout(handler);
   }, [query, searchSeq]);
 
-  const sendRequest = async (email) => {
-    if (!relMap[email]) return;
+  // Instagram-style: open anyone's profile from a result row.
+  const openProfile = (u) => {
+    const contact = {
+      key: u.email,
+      name: u.name || "",
+      username: u.username || "",
+      email: u.email || "",
+      phone: u.phone || "",
+      profilePicture: u.profilePic || null,
+      relation: u.relationName || "",
+      relationId: null,
+      gender: u.gender || null,
+      birthDate: u.birthDate || null,
+      bio: u.bio || "",
+    };
+    navigate(`/contacts/${encodeURIComponent(u.username || u.email)}`, {
+      state: { contact },
+    });
+  };
+
+  const sendRequest = async (email) => {    if (!relMap[email]) return;
     setSendingMap((p) => ({ ...p, [email]: true }));
     try {
       await api.send(email, relMap[email]);
@@ -97,7 +137,7 @@ function FindPeoplePage() {
       <Input
         className="nw-search nw-search-full"
         prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
-        placeholder="Search by name, phone or email..."
+        placeholder="Search by name, username, phone or email..."
         allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
         size="large"
         value={query}
@@ -105,29 +145,47 @@ function FindPeoplePage() {
       />
 
       <div className="nw-discover-panel">
-        {searching ? (
-          <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Searching...</span></div>
-        ) : !query.trim() ? (
+        {!query.trim() ? (
           <div className="nw-state-box">
             <FontAwesomeIcon icon={faUsers} style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">Search for someone to connect with</span>
-            <span className="nw-state-sub">Search works with names, phone numbers and email addresses</span>
+            <span className="nw-state-sub">Search works with names, usernames, phone numbers and email addresses</span>
           </div>
+        ) : searching && results.length === 0 ? (
+          <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Searching...</span></div>
         ) : results.length === 0 ? (
           <div className="nw-state-box"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No users found" /></div>
         ) : (
           <div className="nw-discover-list">
             <div className="nw-discover-label">Results · {results.length}</div>
             {results.map((u) => (
-              <div className="nw-find-row" key={u.email}>
-                <div className="nw-find-avatar">
-                  {(u.name || "?").charAt(0).toUpperCase()}
-                </div>
+              <div
+                className="nw-find-row"
+                key={u.email}
+                onClick={() => openProfile(u)}
+                title="View profile"
+                style={{ cursor: "pointer" }}
+              >
+                <Avatar
+                  size={40}
+                  src={u.profilePic || null}
+                  style={{
+                    backgroundColor: u.profilePic ? "transparent" : avatarColorFor(u.name),
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: "#fff",
+                    flexShrink: 0,
+                  }}
+                >
+                  {!(u.profilePic) && (u.name || "?").charAt(0).toUpperCase()}
+                </Avatar>
                 <div className="nw-find-info">
-                  <div className="nw-find-name">{u.name}</div>
-                  <div className="nw-find-email">{u.phone || "—"}</div>
+                  <div className="nw-find-name">
+                    {u.name}
+                  </div>
+                  <div className="nw-find-email">{u.username ? `@${u.username}` : (u.phone || "—")}</div>
                 </div>
-                <div className="nw-find-actions">
+                <div className="nw-find-actions" onClick={(e) => e.stopPropagation()}>
                   {u.relationName ? (
                     <span className="nw-find-chip-connected">{relName(u.relationName)}</span>
                   ) : u.pending === "received" ? (
