@@ -859,6 +859,77 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   overflow-wrap: anywhere;
 }
 
+/* Profile section tabs (contact profile) — Instagram-style underline */
+.pf-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  margin-top: -6px;
+}
+
+.pf-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+  background: none;
+  border: none;
+  padding: 10px 4px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.pf-tab:hover {
+  color: #cbd5e1;
+}
+
+.pf-tab.active {
+  color: #fff;
+}
+
+.pf-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -1px;
+  width: 56px;
+  max-width: 70%;
+  height: 2px;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, #3b82f6, #38bdf8);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+}
+
+/* Count pill in card heads (e.g. connections list) */
+.pf-count-pill {
+  color: #8b98ad;
+  font-size: 12.5px;
+  font-weight: 700;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Clickable info rows (e.g. connections list entries) */
+.pf-clickable-row {
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+
+.pf-clickable-row:hover {
+  background: rgba(59, 130, 246, 0.07);
+}
+
 /* ── Forms + actions ── */
 .pf-form {
   padding: 8px 24px 22px;

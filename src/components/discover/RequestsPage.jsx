@@ -11,6 +11,7 @@ import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";
 import { avatarColorFor } from "../../constants";
+import { toDataUrl } from "../../utils/imageUtils";
 
 function RequestsPage() {
   const navigate = useNavigate();
@@ -141,7 +142,7 @@ function RequestsPage() {
                   <div className="nw-req-left">
                     <Avatar
                       size={40}
-                      src={p.suggestedUserProfilePic || null}
+                      src={toDataUrl(p.suggestedUserProfilePic)}
                       style={{
                         backgroundColor: p.suggestedUserProfilePic ? "transparent" : avColor,
                         fontSize: 15,

@@ -8,6 +8,7 @@ import { useRefresh } from "../shared/RefreshContext";
 import { useAuth } from "../../context/AuthContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import { SEARCH_DEBOUNCE_MS, avatarColorFor } from "../../constants";
+import { toDataUrl } from "../../utils/imageUtils";
 import RelationPickerModal from "../shared/RelationPickerModal";
 
 // Survives unmounts (profile visits) within the session so going back
@@ -168,7 +169,7 @@ function FindPeoplePage() {
               >
                 <Avatar
                   size={40}
-                  src={u.profilePic || null}
+                  src={toDataUrl(u.profilePic)}
                   style={{
                     backgroundColor: u.profilePic ? "transparent" : avatarColorFor(u.name),
                     fontSize: 15,

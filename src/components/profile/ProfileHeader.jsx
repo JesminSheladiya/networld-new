@@ -1,6 +1,7 @@
 import { Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
+import { toDataUrl } from "../../utils/imageUtils";
 
 // Shared profile header — sketch layout:
 // cover on top, full-width divider line, avatar overlapping the line
@@ -41,7 +42,7 @@ function ProfileHeader({
     <div className="pf-card pf-head-card pf-sk-card">
       <div
         className={`pf-cover pf-sk-cover${coverImage ? " pf-cover-has-image" : ""}`}
-        style={coverImage ? { backgroundImage: `url(${coverImage})` } : undefined}
+        style={coverImage ? { backgroundImage: `url(${toDataUrl(coverImage)})` } : undefined}
         onClick={
           coverClickable
             ? (e) => {

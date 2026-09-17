@@ -6,6 +6,10 @@ export const api = {
     http.get(`${BASE}/user-relations/connections`, {
       params: search && search.trim() ? { query: search.trim() } : {},
     }),
+  connectionsOf: (email) =>
+    http.get(`${BASE}/user-relations/connections/of`, {
+      params: { email },
+    }),
   connectionsPaged: (page, size, search, category, relations, sort, skipEmail) =>
     http.get(`${BASE}/user-relations/connections/paged`, {
       params: {

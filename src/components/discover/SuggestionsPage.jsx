@@ -11,6 +11,7 @@ import RelationPickerModal from "../shared/RelationPickerModal";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";
 import { avatarColorFor } from "../../constants";
+import { toDataUrl } from "../../utils/imageUtils";
 
 function SuggestionsPage() {
   const navigate = useNavigate();
@@ -151,7 +152,7 @@ function SuggestionsPage() {
                   <div className="nw-req-left">
                     <Avatar
                       size={40}
-                      src={s.suggestedUserProfilePic || null}
+                      src={toDataUrl(s.suggestedUserProfilePic)}
                       style={{
                         backgroundColor: s.suggestedUserProfilePic ? "transparent" : avColor,
                         fontSize: 15,

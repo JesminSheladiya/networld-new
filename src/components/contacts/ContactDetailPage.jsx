@@ -4,24 +4,10 @@ import { Spin } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
 import { api } from "../../Services/networld";
-import { mapConnectionToContact } from "../../utils/contactMapper";
+import { mapConnectionToContact, matchesContactSlug, seedMatchesSlug } from "../../utils/contactMapper";
+import { toDataUrl } from "../../utils/imageUtils";
 import { useRefresh } from "../shared/RefreshContext";
 import ContactProfile from "../shared/ContactProfile";
-
-// Profile URLs are username slugs (/contacts/:username, Instagram-style).
-// Legacy email links still resolve via the email fallback below.
-function matchesSlug(item, slug) {
-  const username = (item.suggestedUserUsername || "").toLowerCase();
-  if (username && username === slug.toLowerCase()) return true;
-  return item.suggestedUserEmail === slug;
-}
-
-function seedMatchesSlug(seed, slug) {
-  if (!seed) return false;
-  const username = (seed.username || "").toLowerCase();
-  if (username && username === slug.toLowerCase()) return true;
-  return seed.email === slug;
-}
 
 function ContactDetailPage() {
   const navigate = useNavigate();
@@ -52,7 +38,7 @@ function ContactDetailPage() {
       try {
         const res = await api.connections();
         if (cancelled) return;
-        const found = (res.data || []).find((c) => matchesSlug(c, slug));
+        const found = (res.data || []).find((c) => matchesContactSlug(c, slug));
         if (found) {
           setContact(mapConnectionToContact(found, 0));
           return;
@@ -65,20 +51,21 @@ function ContactDetailPage() {
         const exact =
           list.find((u) => (u.username || "").toLowerCase() === slug.toLowerCase()) ||
           list.find((u) => u.email === slug);
-        if (exact) {
-          setContact({
-            key: 0,
-            name: exact.name || "",
-            username: exact.username || "",
-            email: exact.email || "",
-            phone: exact.phone || "",
-            profilePicture: exact.profilePic || null,
-            relation: exact.relationName || "",
-            relationId: null,
-            gender: exact.gender || null,
-            birthDate: exact.birthDate || null,
-            bio: exact.bio || "",
-          });
+if (exact) {
+            setContact({
+              key: 0,
+              name: exact.name || "",
+              username: exact.username || "",
+              email: exact.email || "",
+              phone: exact.phone || "",
+              profilePicture: toDataUrl(exact.profilePic || null),
+              coverImage: toDataUrl(exact.coverImage || null),
+              relation: exact.relationName || "",
+              relationId: null,
+              gender: exact.gender || null,
+              birthDate: exact.birthDate || null,
+              bio: exact.bio || "",
+            });
         } else if (!seedMatchesSlug(urlSeed, slug)) {
           setContact(null);
         }
