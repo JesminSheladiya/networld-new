@@ -1129,7 +1129,7 @@
 
 /* Mobile filter modal — theme glass */
 .nw-mfilter-modal .ant-modal-content {
-  background: rgba(13, 20, 36, 0.98) !important;
+  background: linear-gradient(160deg, rgb(37 99 235 / 25%) 0%, rgb(15 26 49 / 83%) 52%, rgba(9, 14, 26, 0.88) 100%) !important;
   border: 1px solid rgba(37, 99, 235, 0.32) !important;
   border-radius: 14px !important;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), 0 4px 18px rgba(37, 99, 235, 0.22) !important;
@@ -1273,23 +1273,31 @@
   background: rgba(9, 14, 26, 0.5);
 }
 
-/* ── Contacts toolbar (search + sort + filter, all screens) ── */
+/* ── Contacts searchbar: full-width row above everything (tabs included) ── */
+.nw-contact-search-top {
+  width: 100%;
+}
+
+.nw-contact-search-top .nw-contact-search.ant-input-affix-wrapper {
+  width: 100%;
+}
+
+/* ── Sort + filter row below the tabs ── */
 .nw-contact-toolbar {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.nw-contact-toolbar-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
-  min-width: 0;
 }
 
-.nw-contact-toolbar .nw-contact-search.ant-input-affix-wrapper {
+.nw-contact-toolbar-row .nw-sort-select.ant-select {
   flex: 1;
   min-width: 0;
-}
-
-.nw-sort-select.ant-select {
-  width: 150px;
-  flex-shrink: 0;
 }
 
 .nw-sort-select.ant-select .ant-select-selector {
@@ -1435,7 +1443,7 @@
   }
 
   .nw-sort-select.ant-select {
-    width: 128px;
+    width: auto;
   }
 
   .nw-contact-meta {

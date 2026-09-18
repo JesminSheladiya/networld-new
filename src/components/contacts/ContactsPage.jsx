@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Input, Spin, Avatar, Empty, Tooltip, Pagination, Modal, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
-import { faMagnifyingGlass, faXmark, faFilter, faCheck, faRotateLeft, faEye, faChevronRight, faArrowDownWideShort } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faXmark, faFilter, faCheck, faRotateLeft, faChevronRight, faArrowDownWideShort } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { mapConnectionToContact as mapContact } from "../../utils/contactMapper";
 import { useRefresh } from "../shared/RefreshContext";
@@ -233,6 +233,16 @@ function ContactsPage() {
               : "People connected with you"}
           </p>
         </div>
+        <div className="nw-contact-search-top">
+          <Input
+            className="nw-search nw-contact-search"
+            prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
+            placeholder="Search name, username, phone..."
+            allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+        </div>
         <div className="nw-tools">
           {isNarrow ? (
             <Select
@@ -264,34 +274,28 @@ function ContactsPage() {
             </div>
           )}
           <div className="nw-contact-toolbar">
-            <Input
-              className="nw-search nw-contact-search"
-              prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
-              placeholder="Search name, username, phone..."
-              allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
-            <Select
-              className="nw-sort-select"
-              placeholder="Sort"
-              allowClear
-              value={sortParam || undefined}
-              onChange={(v) => setSortParam(v || null)}
-              options={SORT_OPTIONS}
-              suffixIcon={<FontAwesomeIcon icon={faArrowDownWideShort} style={{ color: "#64748b", fontSize: 12 }} />}
-            />
-            <button
-              className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
-              onClick={() => { setMobileQ(""); setFilterOpen(true); }}
-              aria-label="Filter by relation"
-              title="Filter by relation"
-            >
-              <FontAwesomeIcon icon={faFilter} />
-              {selectedRelations.length > 0 && (
-                <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
-              )}
-            </button>
+            <div className="nw-contact-toolbar-row">
+              <Select
+                className="nw-sort-select"
+                placeholder="Sort"
+                allowClear
+                value={sortParam || undefined}
+                onChange={(v) => setSortParam(v || null)}
+                options={SORT_OPTIONS}
+                suffixIcon={<FontAwesomeIcon icon={faArrowDownWideShort} style={{ color: "#64748b", fontSize: 12 }} />}
+              />
+              <button
+                className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
+                onClick={() => { setMobileQ(""); setFilterOpen(true); }}
+                aria-label="Filter by relation"
+                title="Filter by relation"
+              >
+                <FontAwesomeIcon icon={faFilter} />
+                {selectedRelations.length > 0 && (
+                  <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
         {selectedRelations.length > 0 && (
@@ -373,24 +377,15 @@ function ContactsPage() {
                 <span className="nw-contact-info">
                   <span className="nw-contact-name">{rec.name}</span>
                   <span className="nw-contact-sub">
-                    {rec.username ? `@${rec.username}` : (rec.phone || rec.email || "—")}
+                    {rec.username ? `@${rec.username}` : (rec.phone || "—")}
                   </span>
-                  {(rec.phone || rec.email) && rec.username && (
-                    <span className="nw-contact-meta">{[rec.phone, rec.email].filter(Boolean).join(" · ")}</span>
+                  {rec.phone && rec.username && (
+                    <span className="nw-contact-meta">{rec.phone}</span>
                   )}
                 </span>
                 <span className="nw-contact-right">
                   <RelationChip relation={rec.relation} style={{ flexShrink: 0, fontSize: 11 }} />
                   <span className="nw-contact-actions" onClick={(e) => e.stopPropagation()}>
-                    <Tooltip title="View profile">
-                      <button
-                        className="nw-icon-btn"
-                        aria-label={`View ${rec.name}'s profile`}
-                        onClick={() => openContact(rec)}
-                      >
-                        <FontAwesomeIcon icon={faEye} />
-                      </button>
-                    </Tooltip>
                     <Tooltip title="Edit relation">
                       <button
                         className="nw-icon-btn"
