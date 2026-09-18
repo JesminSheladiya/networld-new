@@ -96,8 +96,10 @@ function ContactsPage() {
     const id = ++reqIdRef.current;
     if (!append) setLoading(true);
     try {
+      // Desktop searches name/username/mobile, mobile only name/username
+      // (server-side via includePhone — keeps paging + counts consistent).
       const res = await api.connectionsPaged(
-        pageNum, pageSize, searchText, category, selectedRelations, sortParam, isCompact
+        pageNum, pageSize, searchText, category, selectedRelations, sortParam, !isCompact
       );
       if (id !== reqIdRef.current) return; // stale — a newer request is in flight
       const mapped = res.data.content.map(mapContact);
@@ -163,8 +165,8 @@ function ContactsPage() {
     const handler = setTimeout(async () => {
       try {
         const [cRes, rRes] = await Promise.all([
-          api.connectionCounts(searchText, isCompact),
-          api.connectionRelations(searchText, isCompact),
+          api.connectionCounts(searchText, !isCompact),
+          api.connectionRelations(searchText, !isCompact),
         ]);
         setCounts({
           all: cRes.data?.all ?? 0,
@@ -211,16 +213,31 @@ function ContactsPage() {
     navigate(`/contacts/${encodeURIComponent(rec.username || rec.email)}`, { state: { contact: rec } });
   };
 
-  const SORT_OPTIONS = [
+  // Desktop sorts by name/username/mobile; mobile only name/username.
+  const DESKTOP_SORT_OPTIONS = [
     { value: "name,asc", label: "Name A–Z" },
     { value: "name,desc", label: "Name Z–A" },
-    { value: "relation,asc", label: "Relation A–Z" },
-    { value: "relation,desc", label: "Relation Z–A" },
-    { value: "email,asc", label: "Email A–Z" },
-    { value: "email,desc", label: "Email Z–A" },
-    { value: "phone,asc", label: "Phone A–Z" },
-    { value: "phone,desc", label: "Phone Z–A" },
+    { value: "username,asc", label: "Username A–Z" },
+    { value: "username,desc", label: "Username Z–A" },
+    { value: "phone,asc", label: "Mobile A–Z" },
+    { value: "phone,desc", label: "Mobile Z–A" },
   ];
+  const MOBILE_SORT_OPTIONS = [
+    { value: "name,asc", label: "Name A–Z" },
+    { value: "name,desc", label: "Name Z–A" },
+    { value: "username,asc", label: "Username A–Z" },
+    { value: "username,desc", label: "Username Z–A" },
+  ];
+  const sortOptions = isCompact ? MOBILE_SORT_OPTIONS : DESKTOP_SORT_OPTIONS;
+
+  // Switching desktop ↔ mobile drops a sort the new mode doesn't offer
+  // (e.g. Mobile sort active while resizing to desktop is fine, but a
+  // desktop-only Mobile sort must not stick on mobile).
+  useEffect(() => {
+    const allowed = (isCompact ? MOBILE_SORT_OPTIONS : DESKTOP_SORT_OPTIONS).map((o) => o.value);
+    setSortParam((prev) => (prev && !allowed.includes(prev) ? null : prev));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCompact]);
 
   return (
     <div className="nw-page">
@@ -237,7 +254,7 @@ function ContactsPage() {
           <Input
             className="nw-search nw-contact-search"
             prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
-            placeholder="Search name, username, phone..."
+            placeholder={isCompact ? "Search name or username..." : "Search name, username, mobile..."}
             allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
@@ -281,7 +298,7 @@ function ContactsPage() {
                 allowClear
                 value={sortParam || undefined}
                 onChange={(v) => setSortParam(v || null)}
-                options={SORT_OPTIONS}
+                options={sortOptions}
                 suffixIcon={<FontAwesomeIcon icon={faArrowDownWideShort} style={{ color: "#64748b", fontSize: 12 }} />}
               />
               <button

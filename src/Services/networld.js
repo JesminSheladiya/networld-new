@@ -10,7 +10,9 @@ export const api = {
     http.get(`${BASE}/user-relations/connections/of`, {
       params: { email },
     }),
-  connectionsPaged: (page, size, search, category, relations, sort, skipEmail) =>
+  // includePhone: desktop (name/username/mobile search) vs mobile
+  // (name/username only). undefined → server default (true = desktop).
+  connectionsPaged: (page, size, search, category, relations, sort, includePhone) =>
     http.get(`${BASE}/user-relations/connections/paged`, {
       params: {
         page, size,
@@ -18,21 +20,21 @@ export const api = {
         ...(category && category !== "all" ? { category } : {}),
         ...(relations && relations.length ? { relations: relations.join(",") } : {}),
         ...(sort ? { sort } : {}),
-        ...(skipEmail ? { skipEmail: true } : {}),
+        ...(includePhone !== undefined ? { includePhone } : {}),
       },
     }),
-  connectionCounts: (search, skipEmail) =>
+  connectionCounts: (search, includePhone) =>
     http.get(`${BASE}/user-relations/connections/counts`, {
       params: {
         ...(search && search.trim() ? { query: search.trim() } : {}),
-        ...(skipEmail ? { skipEmail: true } : {}),
+        ...(includePhone !== undefined ? { includePhone } : {}),
       },
     }),
-  connectionRelations: (search, skipEmail) =>
+  connectionRelations: (search, includePhone) =>
     http.get(`${BASE}/user-relations/connections/relations`, {
       params: {
         ...(search && search.trim() ? { query: search.trim() } : {}),
-        ...(skipEmail ? { skipEmail: true } : {}),
+        ...(includePhone !== undefined ? { includePhone } : {}),
       },
     }),
   relations: () => http.get(`${API_URL}/relations`),
