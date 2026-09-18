@@ -1282,10 +1282,11 @@
   width: 100%;
 }
 
-/* ── Sort + filter row below the tabs ── */
+/* ── Sort + filter sit at the tabs' right side (space-between via .nw-tools) ── */
 .nw-contact-toolbar {
   display: flex;
-  flex: 1;
+  flex: 0 0 auto;
+  margin-left: auto;
   min-width: 0;
 }
 
@@ -1296,8 +1297,10 @@
 }
 
 .nw-contact-toolbar-row .nw-sort-select.ant-select {
-  flex: 1;
-  min-width: 0;
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: 150px;
+  max-width: 240px;
 }
 
 .nw-sort-select.ant-select .ant-select-selector {
@@ -1440,10 +1443,18 @@
 @media (max-width: 640px) {
   .nw-contact-toolbar {
     width: 100%;
+    margin-left: 0;
   }
 
-  .nw-sort-select.ant-select {
+  .nw-contact-toolbar-row {
+    width: 100%;
+  }
+
+  .nw-contact-toolbar-row .nw-sort-select.ant-select {
+    flex: 1;
     width: auto;
+    min-width: 0;
+    max-width: none;
   }
 
   .nw-contact-meta {
