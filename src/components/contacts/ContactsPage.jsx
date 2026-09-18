@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Input, Spin, Avatar, Empty, Table, Button, Tooltip, Pagination, Modal, Select } from "antd";
+import { Input, Spin, Avatar, Empty, Tooltip, Pagination, Modal, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
-import { faMagnifyingGlass, faXmark, faFilter, faCheck, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faXmark, faFilter, faCheck, faRotateLeft, faEye, faChevronRight, faArrowDownWideShort } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { mapConnectionToContact as mapContact } from "../../utils/contactMapper";
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
-import { DEFAULT_PAGE_SIZE, MQ_COMPACT, MQ_NARROW, PAGE_SIZE_OPTIONS, SEARCH_DEBOUNCE_MS } from "../../constants";
+import { DEFAULT_PAGE_SIZE, MQ_COMPACT, MQ_NARROW, PAGE_SIZE_OPTIONS, SEARCH_DEBOUNCE_MS, avatarColorFor } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 
 const CATEGORIES = [
@@ -211,205 +211,16 @@ function ContactsPage() {
     navigate(`/contacts/${encodeURIComponent(rec.username || rec.email)}`, { state: { contact: rec } });
   };
 
-  const sortOrderFor = (key) => {
-    if (!sortParam) return null;
-    const [f, d] = sortParam.split(",");
-    return f === key ? (d === "asc" ? "ascend" : "descend") : null;
-  };
-
-  function RelationFilterDropdown({ setSelectedKeys, selectedKeys, confirm, clearFilters, options }) {
-    const [q, setQ] = useState("");
-    const opts = options || [];
-    const list = opts.filter((o) =>
-      o.value.toLowerCase().includes(q.trim().toLowerCase())
-    );
-    const toggle = (v) => {
-      const next = selectedKeys.includes(v)
-        ? selectedKeys.filter((k) => k !== v)
-        : [...selectedKeys, v];
-      setSelectedKeys(next);
-    };
-    return (
-      <div className="nw-relation-filter" onClick={(e) => e.stopPropagation()}>
-        <div className="nw-relation-filter-head">
-          <span className="nw-relation-filter-title">
-            <FontAwesomeIcon icon={faFilter} className="nw-relation-filter-title-icon" />
-            Filter by Relation
-          </span>
-          {selectedKeys.length > 0 && (
-            <span className="nw-relation-filter-badge">{selectedKeys.length} selected</span>
-          )}
-        </div>
-        <div className="nw-relation-filter-search">
-          <FontAwesomeIcon icon={faMagnifyingGlass} className="nw-relation-filter-search-icon" />
-          <input
-            autoFocus
-            placeholder="Search relations..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          {q && (
-            <button className="nw-relation-filter-clear-q" onClick={() => setQ("")}>
-              <FontAwesomeIcon icon={faXmark} />
-            </button>
-          )}
-        </div>
-        <div className="nw-relation-filter-list">
-          {list.length === 0 ? (
-            <div className="nw-relation-filter-empty">
-              {opts.length === 0 ? "No relations found" : "No match for search"}
-            </div>
-          ) : (
-            list.map((o) => {
-              const checked = selectedKeys.includes(o.value);
-              return (
-                <button
-                  key={o.value}
-                  className={`nw-relation-filter-item${checked ? " checked" : ""}`}
-                  onClick={() => toggle(o.value)}
-                >
-                  <span className={`nw-relation-check${checked ? " checked" : ""}`}>
-                    {checked && <FontAwesomeIcon icon={faCheck} />}
-                  </span>
-                  <span className="nw-relation-filter-item-label">
-                    <RelationChip relation={o.value} style={{ fontSize: 11 }} />
-                  </span>
-                  <span className="nw-relation-filter-count">{o.count}</span>
-                </button>
-              );
-            })
-          )}
-        </div>
-        <div className="nw-relation-filter-footer">
-          <button
-            className="nw-relation-filter-btn reset"
-            onClick={() => {
-              setQ("");
-              if (clearFilters) clearFilters();
-              confirm();
-            }}
-          >
-            <FontAwesomeIcon icon={faRotateLeft} /> Reset
-          </button>
-          <button
-            className="nw-relation-filter-btn apply"
-            onClick={() => confirm()}
-          >
-            Apply{selectedKeys.length > 0 ? ` (${selectedKeys.length})` : ""}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const tableColumns = [
-    {
-      title: "Photo",
-      className: "col-photo",
-      dataIndex: "profilePicture",
-      key: "profilePicture",
-      width: 70,
-render: (pic, record) => (
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <Avatar
-              size={42}
-              src={toDataUrl(pic)}
-              style={{
-                backgroundColor: pic ? "transparent" : "#3b82f6",
-                fontSize: 17,
-                cursor: pic ? "pointer" : "default",
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (pic) setViewer({ pic: toDataUrl(pic), name: record.name });
-              }}
-            >
-              {!pic && record.name?.charAt(0).toUpperCase()}
-            </Avatar>
-          </div>
-        ),
-    },
-    {
-      title: "Name",
-      className: "col-name",
-      dataIndex: "name",
-      key: "name",
-      sorter: true,
-      sortOrder: sortOrderFor("name"),
-      render: (name, rec) => (
-        <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.35 }}>
-          <span style={{ color: "#f1f5f9", fontWeight: 600 }}>{name}</span>
-          {rec.username && (
-            <span style={{ color: "#64748b", fontSize: 12 }}>@{rec.username}</span>
-          )}
-        </span>
-      ),
-    },
-    {
-      title: "Phone Number",
-      className: "col-phone",
-      dataIndex: "phone",
-      key: "phone",
-      sorter: true,
-      sortOrder: sortOrderFor("phone"),
-      render: (phone) => <span style={{ color: "#94a3b8" }}>{phone || "—"}</span>,
-    },
-    {
-      title: "Email",
-      className: "col-email",
-      dataIndex: "email",
-      key: "email",
-      sorter: true,
-      sortOrder: sortOrderFor("email"),
-      render: (email) => <span style={{ color: "#94a3b8" }}>{email || "—"}</span>,
-    },
-    {
-      title: "Relation",
-      className: "col-relation",
-      dataIndex: "relation",
-      key: "relation",
-      sorter: true,
-      sortOrder: sortOrderFor("relation"),
-      filteredValue: selectedRelations,
-      filterDropdown: (props) => <RelationFilterDropdown {...props} options={relationOptions} />,
-      filterIcon: (filtered) => (
-        <span className={`nw-filter-icon${filtered ? " active" : ""}`}>
-          <FontAwesomeIcon icon={faFilter} />
-          {filtered && <span className="nw-filter-dot" />}
-        </span>
-      ),
-      filterMultiple: true,
-      filterDropdownProps: { overlayClassName: "nw-relation-filter-overlay" },
-      render: (relation) => <RelationChip relation={relation} style={{ fontSize: 12 }} />,
-    },
-    {
-      title: "Actions",
-      className: "col-actions",
-      key: "actions",
-      width: 70,
-      render: (_, record) => (
-        <Tooltip title="Edit Relation">
-          <Button
-            size="small"
-            type="text"
-            icon={<FontAwesomeIcon icon={faPenToSquare} style={{ color: "#94a3b8", fontSize: 14 }} />}
-            onClick={() => setEditingContact(record)}
-          />
-        </Tooltip>
-      ),
-    },
+  const SORT_OPTIONS = [
+    { value: "name,asc", label: "Name A–Z" },
+    { value: "name,desc", label: "Name Z–A" },
+    { value: "relation,asc", label: "Relation A–Z" },
+    { value: "relation,desc", label: "Relation Z–A" },
+    { value: "email,asc", label: "Email A–Z" },
+    { value: "email,desc", label: "Email Z–A" },
+    { value: "phone,asc", label: "Phone A–Z" },
+    { value: "phone,desc", label: "Phone Z–A" },
   ];
-
-  const tableData = useMemo(
-    () => filtered.map((rec, i) => ({ ...rec, _rowKey: `${page}-${i}` })),
-    [filtered, page]
-  );
-
-  const handleTableChange = (pag, filters, sorter) => {
-    setSelectedRelations(filters.relation || []);
-    const s = Array.isArray(sorter) ? sorter[0] : sorter;
-    setSortParam(s && s.order ? `${s.columnKey},${s.order === "ascend" ? "asc" : "desc"}` : null);
-  };
 
   return (
     <div className="nw-page">
@@ -452,30 +263,38 @@ render: (pic, record) => (
               ))}
             </div>
           )}
-          <div className="nw-search-row">
+          <div className="nw-contact-toolbar">
             <Input
-              className="nw-search"
+              className="nw-search nw-contact-search"
               prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
               placeholder="Search name, username, phone..."
               allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
             />
-            {isCompact && (
-              <button
-                className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
-                onClick={() => { setMobileQ(""); setFilterOpen(true); }}
-                aria-label="Filter by relation"
-              >
-                <FontAwesomeIcon icon={faFilter} />
-                {selectedRelations.length > 0 && (
-                  <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
-                )}
-              </button>
-            )}
+            <Select
+              className="nw-sort-select"
+              placeholder="Sort"
+              allowClear
+              value={sortParam || undefined}
+              onChange={(v) => setSortParam(v || null)}
+              options={SORT_OPTIONS}
+              suffixIcon={<FontAwesomeIcon icon={faArrowDownWideShort} style={{ color: "#64748b", fontSize: 12 }} />}
+            />
+            <button
+              className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
+              onClick={() => { setMobileQ(""); setFilterOpen(true); }}
+              aria-label="Filter by relation"
+              title="Filter by relation"
+            >
+              <FontAwesomeIcon icon={faFilter} />
+              {selectedRelations.length > 0 && (
+                <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
+              )}
+            </button>
           </div>
         </div>
-        {isCompact && selectedRelations.length > 0 && (
+        {selectedRelations.length > 0 && (
           <div className="nw-mfilter-active">
             {selectedRelations.map((r) => (
               <button
@@ -497,7 +316,7 @@ render: (pic, record) => (
       {loading ? (
         <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading contacts...</span></div>
       ) : filtered.length === 0 ? (
-        <div className="nw-table-panel nw-table-empty">
+        <div className="nw-discover-panel nw-table-empty">
           <div className="nw-table-empty-inner">
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -512,61 +331,90 @@ render: (pic, record) => (
             />
           </div>
         </div>
-      ) : isCompact ? (
-        <div className="nw-list-pane nw-list-pane-full">
-          <div className="nw-list">
+      ) : (
+        <div className="nw-discover-panel">
+          <div className="nw-discover-label">Contacts · {totalItems}</div>
+          <div className="nw-contact-list">
             {filtered.map((rec) => (
-              <button
-                className="nw-list-row"
+              <div
+                className="nw-contact-row"
                 key={rec.email || rec.key}
                 onClick={() => openContact(rec)}
+                title={`View ${rec.name}'s profile`}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter") openContact(rec); }}
               >
                 <span
+                  className="nw-contact-avatar"
                   onClick={(e) => {
                     if (rec.profilePicture) {
                       e.stopPropagation();
                       setViewer({ pic: toDataUrl(rec.profilePicture), name: rec.name });
                     }
                   }}
-                  style={{ display: "inline-flex", flexShrink: 0, cursor: rec.profilePicture ? "pointer" : "default" }}
+                  style={{ cursor: rec.profilePicture ? "pointer" : "default" }}
+                  title={rec.profilePicture ? "View photo" : undefined}
                 >
-                <Avatar
-                  size={44}
-                  src={toDataUrl(rec.profilePicture)}
-                  style={{ backgroundColor: rec.profilePicture ? "transparent" : "#3b82f6", fontSize: 17, flexShrink: 0 }}
-                >
-                  {!(rec.profilePicture) && rec.name?.charAt(0).toUpperCase()}
-                </Avatar>
+                  <Avatar
+                    size={44}
+                    src={toDataUrl(rec.profilePicture)}
+                    style={{
+                      backgroundColor: rec.profilePicture ? "transparent" : avatarColorFor(rec.name),
+                      fontSize: 17,
+                      fontWeight: 700,
+                      color: "#fff",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {!(rec.profilePicture) && (rec.name || "?")?.charAt(0).toUpperCase()}
+                  </Avatar>
                 </span>
-                <span className="nw-list-info">
-                  <span className="nw-list-name">{rec.name}</span>
-                  <span className="nw-list-sub">{rec.username ? `@${rec.username}` : (rec.phone || rec.email)}</span>
+                <span className="nw-contact-info">
+                  <span className="nw-contact-name">{rec.name}</span>
+                  <span className="nw-contact-sub">
+                    {rec.username ? `@${rec.username}` : (rec.phone || rec.email || "—")}
+                  </span>
+                  {(rec.phone || rec.email) && rec.username && (
+                    <span className="nw-contact-meta">{[rec.phone, rec.email].filter(Boolean).join(" · ")}</span>
+                  )}
                 </span>
-                <RelationChip relation={rec.relation} style={{ flexShrink: 0, fontSize: 11 }} />
-              </button>
+                <span className="nw-contact-right">
+                  <RelationChip relation={rec.relation} style={{ flexShrink: 0, fontSize: 11 }} />
+                  <span className="nw-contact-actions" onClick={(e) => e.stopPropagation()}>
+                    <Tooltip title="View profile">
+                      <button
+                        className="nw-icon-btn"
+                        aria-label={`View ${rec.name}'s profile`}
+                        onClick={() => openContact(rec)}
+                      >
+                        <FontAwesomeIcon icon={faEye} />
+                      </button>
+                    </Tooltip>
+                    <Tooltip title="Edit relation">
+                      <button
+                        className="nw-icon-btn"
+                        aria-label={`Edit relation with ${rec.name}`}
+                        onClick={() => setEditingContact(rec)}
+                      >
+                        <FontAwesomeIcon icon={faPenToSquare} />
+                      </button>
+                    </Tooltip>
+                  </span>
+                </span>
+                <FontAwesomeIcon icon={faChevronRight} className="nw-contact-chevron" />
+              </div>
             ))}
           </div>
-          {hasMore && <div ref={loaderRef} className="nw-list-sentinel" aria-hidden="true" />}
-          {loadingMore ? (
+          {isCompact && hasMore && <div ref={loaderRef} className="nw-list-sentinel" aria-hidden="true" />}
+          {isCompact && (loadingMore ? (
             <div className="nw-list-loader">
               <Spin size="small" />
               <span>Loading more contacts...</span>
             </div>
           ) : (
             !hasMore && <div className="nw-list-end">No more contacts</div>
-          )}
-        </div>
-      ) : (
-        <div className="nw-table-panel">
-          <Table
-            columns={tableColumns}
-            dataSource={tableData}
-            rowKey="_rowKey"
-            pagination={false}
-            className="nw-table"
-            size="middle"
-            onChange={handleTableChange}
-          />
+          ))}
         </div>
       )}
       {!loading && !isCompact && totalItems > pageSize && (
