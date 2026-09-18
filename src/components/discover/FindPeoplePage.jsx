@@ -67,7 +67,14 @@ function FindPeoplePage() {
       try {
         const res = await api.searchUsers(q);
         if (reqIdRef.current !== id) return; // stale — a newer search is in flight
-        const data = res.data || [];
+        // Find tab: match ONLY against name / username (ignore email/phone
+        // matches that the API may still return).
+        const qLower = q.toLowerCase();
+        const data = (res.data || []).filter(
+          (u) =>
+            (u.name || "").toLowerCase().includes(qLower) ||
+            (u.username || "").toLowerCase().includes(qLower)
+        );
         setResults(data);
         // Reconcile with server: a declined request is no longer pending,
         // so drop its local "Sent" mark and bring back the selection UI
@@ -138,7 +145,7 @@ function FindPeoplePage() {
       <Input
         className="nw-search nw-search-full"
         prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
-        placeholder="Search by name, username, phone or email..."
+        placeholder="Search by name or username..."
         allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
         size="large"
         value={query}
@@ -150,7 +157,7 @@ function FindPeoplePage() {
           <div className="nw-state-box">
             <FontAwesomeIcon icon={faUsers} style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">Search for someone to connect with</span>
-            <span className="nw-state-sub">Search works with names, usernames, phone numbers and email addresses</span>
+            <span className="nw-state-sub">Search works with names and usernames</span>
           </div>
         ) : searching && results.length === 0 ? (
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Searching...</span></div>
