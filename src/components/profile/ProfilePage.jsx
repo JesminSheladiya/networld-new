@@ -19,7 +19,7 @@ import "../css/profile-page.css";
 
 const GENDER_LABEL = { M: "Male", F: "Female" };
 
-function ProfilePage() {
+function ProfilePage({ hidePassword = false }) {
   const { user, patchUser } = useAuth();
   const navigate = useNavigate();
   const [pwdForm] = Form.useForm();
@@ -399,15 +399,17 @@ function ProfilePage() {
         onCoverClick={openCoverViewer}
       />
 
-      <div className="pf-grid">
+      <div className={`pf-grid${hidePassword ? " pf-grid-single" : ""}`}>
         <div className="pf-main">
-          {/* ── About / bio card ── display-only, edits on /profile/edit */}
-          <div className="pf-card pf-about-card">
-            <div className="pf-card-head">
-              <h2 className="pf-card-title">About</h2>
-            </div>
-            <p className="pf-bio-text">{user?.bio || <span className="pf-placeholder">Add a short bio so people know you better.</span>}</p>
-          </div>
+      {/* ── About / bio card ── only when a bio exists */}
+      {user?.bio && (
+      <div className="pf-card pf-about-card">
+        <div className="pf-card-head">
+          <h2 className="pf-card-title">About</h2>
+        </div>
+        <p className="pf-bio-text">{user.bio}</p>
+      </div>
+      )}
 
           {/* ── Contact info card ── display-only */}
           <div className="pf-card pf-contact-card">
@@ -427,6 +429,7 @@ function ProfilePage() {
             </div>
           </div>
         </div>
+        {!hidePassword && (
         <div className="pf-side">
           {/* ── Security card ── */}
           <div className="pf-card pf-password-card">
@@ -501,6 +504,7 @@ function ProfilePage() {
             </Form>
           </div>
         </div>
+        )}
       </div>
 
       <ProfilePictureViewer

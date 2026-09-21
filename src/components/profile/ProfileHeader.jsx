@@ -31,6 +31,7 @@ function ProfileHeader({
   onEditClick,  // NEW: edit profile click handler
   coverControl = null, // owner-only cover upload/edit button (bottom-right)
   onCoverClick, // cover fullscreen viewer
+  className = "",
 }) {
   const clickable = !!avatarSrc && !!onAvatarClick;
   const coverClickable = !!coverImage && !!onCoverClick;
@@ -39,7 +40,7 @@ function ProfileHeader({
     suggestionsCount !== null ||
     stat !== null;
   return (
-    <div className="pf-card pf-head-card pf-sk-card">
+    <div className={`pf-card pf-head-card pf-sk-card${className ? ` ${className}` : ""}`}>
       <div
         className={`pf-cover pf-sk-cover${coverImage ? " pf-cover-has-image" : ""}`}
         style={coverImage ? { backgroundImage: `url(${toDataUrl(coverImage)})` } : undefined}

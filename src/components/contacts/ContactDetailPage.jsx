@@ -7,15 +7,24 @@ import { api } from "../../Services/networld";
 import { mapConnectionToContact, matchesContactSlug, seedMatchesSlug } from "../../utils/contactMapper";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useRefresh } from "../shared/RefreshContext";
+import { useAuth } from "../../context/AuthContext";
 import ContactProfile from "../shared/ContactProfile";
+import ProfilePage from "../profile/ProfilePage";
 
 function ContactDetailPage() {
   const navigate = useNavigate();
   const { username } = useParams();
   const location = useLocation();
   const { bump } = useRefresh();
+  const { user: me } = useAuth();
 
   const slug = username ? decodeURIComponent(username) : "";
+  // Own account opened from anywhere (e.g. someone's connections list) —
+  // show the own profile with its Edit button, Instagram-style.
+  const isOwnProfile =
+    !!me &&
+    (slug.toLowerCase() === (me.username || "").toLowerCase() ||
+      (!!me.email && slug === me.email));
   const seed = location.state?.contact;
   const hasSeed = seedMatchesSlug(seed, slug);
 
@@ -25,6 +34,10 @@ function ContactDetailPage() {
   const [loading, setLoading] = useState(() => !hasSeed);
 
   useEffect(() => {
+    if (isOwnProfile) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     const urlSeed = location.state?.contact;
     if (seedMatchesSlug(urlSeed, slug)) {
@@ -81,7 +94,11 @@ if (exact) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
+  }, [slug, isOwnProfile]);
+
+  if (isOwnProfile) {
+    return <ProfilePage hidePassword />;
+  }
 
   if (loading) {
     return (

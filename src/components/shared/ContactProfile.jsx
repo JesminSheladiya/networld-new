@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Avatar, Spin } from "antd";
+import { Avatar, Spin, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faPenToSquare, faUser, faAddressCard } from "@fortawesome/free-regular-svg-icons";
 import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
@@ -23,11 +23,13 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
   const [coverViewerOpen, setCoverViewerOpen] = useState(false);
   const [relation, setRelation] = useState(contact.relation || "");
   const [connections, setConnections] = useState(null);
-  const connectionsRef = useRef(null);
 
-  // Header "Connections" stat jumps straight to the connections section.
-  const scrollToConnections = () => {
-    connectionsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Header stat opens the connections list as its own page (mobile).
+  const openConnections = () => {
+    navigate(
+      `/contacts/${encodeURIComponent(contact.username || contact.email)}/connections`,
+      { state: { contact } }
+    );
   };
 
   // Fresh server data (detail refetch) replaces the snapshot — keep the
@@ -37,15 +39,26 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
   }, [contact.email, contact.relation]);
 
   // This user's connections — count in the header, full list in its tab.
+  // Guarded + cleared on contact switch — otherwise a slow response for the
+  // previous profile overwrites the new one (stale list glitch).
   useEffect(() => {
+    let cancelled = false;
     if (!contact.email) {
       setConnections(null);
       return;
     }
+    setConnections(null);
     api
       .connectionsOf(contact.email)
-      .then((res) => setConnections(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setConnections(null));
+      .then((res) => {
+        if (!cancelled) setConnections(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setConnections(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [contact.email]);
 
   const openProfile = (c) => {
@@ -67,6 +80,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
 
       {/* Same header as own profile — viewer-only slots here. */}
       <ProfileHeader
+        className="pf-contact-head"
         coverImage={contact?.coverImage}
         avatarSrc={toDataUrl(contact.profilePicture)}
         avatarBg={avatarColorFor(name)}
@@ -77,25 +91,14 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
         username={contact.username}
         email={contact.email}
         phone={contact.phone}
-        belowAvatarAction={
-          <>
-            {relation && (
-              <RelationChip relation={relation} style={{ fontSize: 12 }} />
-            )}
-            {contact.relationId != null && (
-              <button className="pf-ghost-btn" onClick={() => setEditing(true)}>
-                <FontAwesomeIcon icon={faPenToSquare} /> Edit Relation
-              </button>
-            )}
-          </>
-        }
         connectionsCount={connections ? connections.length : null}
-        onConnectionsClick={scrollToConnections}
+        onConnectionsClick={openConnections}
       />
 
       {/* Stacked sections (same language as own profile) — no tabs. */}
       <div className="pf-grid">
         <div className="pf-main">
+          {contact.bio && (
           <div className="pf-card pf-about-card">
             <div className="pf-card-head">
               <h2 className="pf-card-title">
@@ -104,9 +107,10 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
               </h2>
             </div>
             <p className="pf-bio-text">
-              {contact.bio || <span className="pf-placeholder">No bio added yet.</span>}
+              {contact.bio}
             </p>
           </div>
+          )}
 
           <div className="pf-card pf-contact-card">
             <div className="pf-card-head">
@@ -114,11 +118,6 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
                 <span className="pf-card-ico"><FontAwesomeIcon icon={faAddressCard} /></span>
                 Contact info
               </h2>
-              {contact.relationId != null && (
-                <button className="pf-edit-btn" onClick={() => setEditing(true)}>
-                  <FontAwesomeIcon icon={faPenToSquare} /> Edit Relation
-                </button>
-              )}
             </div>
             <div className="pf-info-rows">
               {relation && (
@@ -128,6 +127,17 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
                     <span className="pf-info-label">Relation</span>
                     <RelationChip relation={relation} style={{ fontSize: 12 }} />
                   </span>
+                  {contact.relationId != null && (
+                    <Tooltip title="Edit relation">
+                      <button
+                        className="pf-info-edit"
+                        aria-label="Edit relation"
+                        onClick={() => setEditing(true)}
+                      >
+                        <FontAwesomeIcon icon={faPenToSquare} />
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
               )}
               {[
@@ -138,11 +148,6 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
                   value: contact.gender === "M" ? "Male" : contact.gender === "F" ? "Female" : (contact.gender || "—"),
                   icon: <FontAwesomeIcon icon={faUser} />,
                 },
-                {
-                  label: "Birth Date",
-                  value: contact.birthDate ? formatBirthDateWithAge(contact.birthDate) : "—",
-                  icon: <FontAwesomeIcon icon={faCakeCandles} />,
-                },
               ].map(({ label, value, icon }) => (
                 <div className="pf-info-row" key={label}>
                   <span className="pf-info-icon">{icon}</span>
@@ -152,12 +157,21 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
                   </span>
                 </div>
               ))}
+              {contact.birthDate && (
+                <div className="pf-info-row">
+                  <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
+                  <span className="pf-info-text">
+                    <span className="pf-info-label">Birth Date</span>
+                    <span className="pf-info-value">{formatBirthDateWithAge(contact.birthDate)}</span>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         <div className="pf-side">
-          <div className="pf-card pf-connections-card" ref={connectionsRef}>
+          <div className="pf-card pf-connections-card">
             <div className="pf-card-head">
               <h2 className="pf-card-title">
                 <span className="pf-card-ico"><FontAwesomeIcon icon={faUsers} /></span>

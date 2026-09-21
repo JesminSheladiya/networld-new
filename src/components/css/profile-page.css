@@ -18,6 +18,12 @@
   gap: 14px;
 }
 
+/* Single-column profile grid (own profile viewed via contact route —
+   no password rail, so About + Contact info go full width) */
+.pf-grid.pf-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* Two-column app layout: main content + side rail */
 .pf-grid {
   display: grid;
@@ -164,7 +170,7 @@
 /* Full-width divider line — avatar overlaps its center (see sketch) */
 .pf-sk-divider {
   border-top: 1px solid rgba(148, 163, 184, 0.28);
-  padding: 0 40px 20px 40px;
+  padding: 20px 40px 30px 40px;
 }
 
 .pf-sk-row {
@@ -286,9 +292,10 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 }
 
 .pf-sk-stat {
-  background: none;
-  border: none;
-  padding: 0;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 5px 10px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -382,7 +389,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   position: relative;
   display: inline-block;
   /* Half the avatar size → avatar centered on the cover/body seam */
-  margin-top: -70px;
+  margin-top: -100px;
 }
 
 .pf-avatar-wrap .ant-avatar {
@@ -883,13 +890,13 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 /* Profile page contact card: single column by default, 2 columns
    between 650–860px, back to single below 650px */
-@media (max-width: 860px) {
+/* @media (max-width: 860px) {
   .pf-contact-card .pf-info-rows {
     display: grid;
     grid-template-columns: 1fr 350px;
     column-gap: 24px;
   }
-}
+} */
 
 @media (max-width: 650px) {
   .pf-contact-card .pf-info-rows {
@@ -986,6 +993,30 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   transform: translateX(-50%);
   background: linear-gradient(90deg, #3b82f6, #38bdf8);
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+}
+
+/* Icon-only edit button at the right end of an info row */
+.pf-info-edit {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #7fb4ff;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pf-info-edit:hover {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(96, 165, 250, 0.45);
+  color: #fff;
 }
 
 /* Count pill in card heads (e.g. connections list) */
@@ -1160,11 +1191,11 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   }
 
   .pf-avatar-wrap {
-    margin-top: -60px;
+    margin-top: -80px;
   }
 
   .pf-sk-divider {
-    padding: 0 20px 18px;
+    padding: 10px 20px 28px;
   }
 
   .pf-sk-row {
@@ -1181,39 +1212,72 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   }
 }
 
+/* Contact header stat opens the connections list as a new page —
+   tablet + mobile (up to 860px). Desktop uses the inline side card. */
+@media (min-width: 861px) {
+  .pf-contact-head .pf-sk-stats {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .pf-side .pf-connections-card {
+    display: none;
+  }
+}
+
+/* Tablet (601–860px): identity + stats stay in one row, no wrap */
+@media (min-width: 601px) and (max-width: 860px) {
+  .pf-sk-row {
+    flex-wrap: nowrap;
+    gap: 20px;
+  }
+
+  .pf-sk-stats {
+    width: auto;
+    margin-left: auto;
+    padding-left: 0;
+    justify-content: flex-end;
+    gap: 32px;
+  }
+}
+
 /* ── Profile header stacks to a left-aligned column at 600px ── */
 @media (max-width: 600px) {
   .pf-sk-row {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px 16px;
   }
 
   .pf-sk-left {
     margin-left: 0;
     width: auto;
+    order: 1;
     align-items: center;
-    flex-wrap: wrap;
-    flex-direction: row;
-    gap: 20px;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .pf-sk-under {
-    align-items: flex-start;
+    align-items: center;
   }
 
   .pf-sk-identity {
     padding-top: 0;
     width: 100%;
+    order: 3;
   }
 
   .pf-sk-stats {
     margin-left: 0;
     padding-top: 0;
     padding-left: 0;
-    width: 100%;
-    justify-content: flex-start;
-    gap: 32px;
+    width: auto;
+    flex: 1 1 auto;
+    order: 2;
+    gap: 24px;
   }
 }
 
@@ -1261,7 +1325,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   }
 
   .pf-sk-divider {
-    padding: 0 16px 18px;
+    padding: 10px 16px 18px;
   }
 
   .pf-sk-row {
