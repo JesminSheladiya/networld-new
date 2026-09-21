@@ -490,6 +490,87 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   font-weight: 700;
   margin: 0;
   letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Small tinted tile in section heads — same language as .pf-info-icon */
+.pf-card-ico {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.12);
+  color: #7fb4ff;
+  font-size: 14px;
+}
+
+/* ── Connections list (contact profile) — matches contacts rows ── */
+.pf-conn-list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 12px 12px;
+}
+
+.pf-conn-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.07);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pf-conn-row:last-child {
+  border-bottom: none;
+}
+
+.pf-conn-row:hover {
+  background: rgba(59, 130, 246, 0.07);
+}
+
+.pf-conn-row:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.6);
+  outline-offset: 2px;
+}
+
+.pf-conn-row .pf-info-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.pf-conn-row .pf-info-value,
+.pf-conn-row .pf-info-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-conn-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.pf-conn-chevron {
+  color: #334155;
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.pf-conn-row:hover .pf-conn-chevron {
+  color: #38bdf8;
+  transform: translateX(2px);
 }
 
 /* Labeled edit pill — reads clearly as a button */
@@ -1068,6 +1149,11 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
     order: 3;
   }
 
+  /* Contact profile stacks About → Contact info → Connections */
+  .pf-connections-card {
+    order: 3;
+  }
+
   .pf-head-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
@@ -1222,5 +1308,16 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   .pf-info-rows {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .pf-conn-list {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .pf-conn-right .nw-rel-chip {
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
