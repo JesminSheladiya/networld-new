@@ -15,6 +15,7 @@ import RelationFormatPopup from './components/shared/RelationFormatPopup';
 const AppShell = lazy(() => import('./components/shared/AppShell'));
 const ContactsPage = lazy(() => import('./components/contacts/ContactsPage'));
 const ContactDetailPage = lazy(() => import('./components/contacts/ContactDetailPage'));
+const UserConnectionsPage = lazy(() => import('./components/contacts/UserConnectionsPage'));
 const ProfilePage = lazy(() => import('./components/profile/ProfilePage'));
 const EditProfilePage = lazy(() => import('./components/profile/EditProfilePage'));
 const FindPeoplePage = lazy(() => import('./components/discover/FindPeoplePage'));
@@ -65,6 +66,7 @@ function AppRoutes() {
         <Route element={<AppShell />}>
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/contacts/:username" element={<ContactDetailPage />} />
+          <Route path="/contacts/:username/connections" element={<UserConnectionsPage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/discover/find" element={<FindPeoplePage />} />
