@@ -46,6 +46,8 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
             @Param("me") User me
     );
 
+    // Contacts search scope: name + username always, phone only on
+    // desktop (includePhone). Email / relation names never match here.
     @Query("""
         SELECT ur FROM UserRelation ur
         JOIN ur.relation r
@@ -53,14 +55,12 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
           AND ur.status = 'ACCEPTED'
           AND (LOWER(ur.toUser.fullName)  LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
-            OR (:skipEmail = FALSE AND LOWER(ur.toUser.email) LIKE LOWER(CONCAT('%', :query, '%')))
-            OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
-            OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%')))
+            OR (:includePhone = TRUE AND LOWER(ur.toUser.phone) LIKE LOWER(CONCAT('%', :query, '%'))))
     """)
     List<UserRelation> searchAcceptedConnections(
             @Param("fromUser") User fromUser,
             @Param("query") String query,
-            @Param("skipEmail") boolean skipEmail
+            @Param("includePhone") boolean includePhone
     );
 
     @Query("""
@@ -91,9 +91,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
           AND (:query IS NULL OR :query = '' OR (
                LOWER(ur.toUser.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
-            OR (:skipEmail = FALSE AND LOWER(ur.toUser.email) LIKE LOWER(CONCAT('%', :query, '%')))
-            OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
-            OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
+            OR (:includePhone = TRUE AND LOWER(ur.toUser.phone) LIKE LOWER(CONCAT('%', :query, '%')))))
           AND (:category IS NULL OR :category = '' OR :category = 'all'
             OR (:category = 'inlaws' AND r.relationCategory = 'INLAW')
             OR (:category = 'family' AND r.relationCategory <> 'INLAW' AND r.relationCategory <> 'OTHER')
@@ -103,7 +101,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
             @Param("fromUser") User fromUser,
             @Param("query") String query,
             @Param("category") String category,
-            @Param("skipEmail") boolean skipEmail,
+            @Param("includePhone") boolean includePhone,
             Pageable pageable
     );
 
@@ -115,9 +113,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
           AND (:query IS NULL OR :query = '' OR (
                LOWER(ur.toUser.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
-            OR (:skipEmail = FALSE AND LOWER(ur.toUser.email) LIKE LOWER(CONCAT('%', :query, '%')))
-            OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
-            OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
+            OR (:includePhone = TRUE AND LOWER(ur.toUser.phone) LIKE LOWER(CONCAT('%', :query, '%')))))
           AND (:category IS NULL OR :category = '' OR :category = 'all'
             OR (:category = 'inlaws' AND r.relationCategory = 'INLAW')
             OR (:category = 'family' AND r.relationCategory <> 'INLAW' AND r.relationCategory <> 'OTHER')
@@ -129,7 +125,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
             @Param("query") String query,
             @Param("category") String category,
             @Param("relations") List<String> relations,
-            @Param("skipEmail") boolean skipEmail,
+            @Param("includePhone") boolean includePhone,
             Pageable pageable
     );
 
@@ -141,15 +137,13 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
           AND (:query IS NULL OR :query = '' OR (
                LOWER(ur.toUser.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
             OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
-            OR (:skipEmail = FALSE AND LOWER(ur.toUser.email) LIKE LOWER(CONCAT('%', :query, '%')))
-            OR LOWER(ur.toUser.phone)     LIKE LOWER(CONCAT('%', :query, '%'))
-            OR LOWER(r.relationName)      LIKE LOWER(CONCAT('%', :query, '%'))))
+            OR (:includePhone = TRUE AND LOWER(ur.toUser.phone) LIKE LOWER(CONCAT('%', :query, '%')))))
         GROUP BY r.relationName
         ORDER BY COUNT(ur) DESC, r.relationName ASC
     """)
     List<Object[]> countConnectionsByRelation(
             @Param("fromUser") User fromUser,
             @Param("query") String query,
-            @Param("skipEmail") boolean skipEmail
+            @Param("includePhone") boolean includePhone
     );
 }

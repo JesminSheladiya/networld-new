@@ -162,29 +162,29 @@ public class UserRelationController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) List<String> relations,
             @RequestParam(required = false) String sort,
-            @RequestParam(defaultValue = "false") boolean skipEmail,
+            @RequestParam(defaultValue = "true") boolean includePhone,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserDetails ud) {
         Pageable pageable = PageRequest.of(page, size, toSort(sort));
         return ResponseEntity.ok(userRelationService.getMyConnectionsPaged(
-                getCurrentUser(ud), query, category, relations, skipEmail, pageable));
+                getCurrentUser(ud), query, category, relations, includePhone, pageable));
     }
 
     @GetMapping("/connections/counts")
     public ResponseEntity<Map<String, Long>> getConnectionCounts(
             @RequestParam(required = false) String query,
-            @RequestParam(defaultValue = "false") boolean skipEmail,
+            @RequestParam(defaultValue = "true") boolean includePhone,
             @AuthenticationPrincipal UserDetails ud) {
-        return ResponseEntity.ok(userRelationService.getConnectionCounts(getCurrentUser(ud), query, skipEmail));
+        return ResponseEntity.ok(userRelationService.getConnectionCounts(getCurrentUser(ud), query, includePhone));
     }
 
     @GetMapping("/connections/relations")
     public ResponseEntity<List<Map<String, Object>>> getConnectionRelations(
             @RequestParam(required = false) String query,
-            @RequestParam(defaultValue = "false") boolean skipEmail,
+            @RequestParam(defaultValue = "true") boolean includePhone,
             @AuthenticationPrincipal UserDetails ud) {
-        return ResponseEntity.ok(userRelationService.getConnectionRelationCounts(getCurrentUser(ud), query, skipEmail));
+        return ResponseEntity.ok(userRelationService.getConnectionRelationCounts(getCurrentUser(ud), query, includePhone));
     }
 
     private static org.springframework.data.domain.Sort toSort(String sort) {
@@ -195,6 +195,7 @@ public class UserRelationController {
         String property;
         switch (field) {
             case "phone":    property = "toUser.phone"; break;
+            case "username": property = "toUser.username"; break;
             case "email":    property = "toUser.email"; break;
             case "relation": property = "r.relationName"; break;
             case "name":
