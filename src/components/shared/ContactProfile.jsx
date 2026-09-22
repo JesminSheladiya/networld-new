@@ -195,48 +195,65 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
               </div>
             ) : (
               <div className="pf-conn-list">
-                {connections.map((item, i) => {
-                  const c = mapConnectionToContact(item, i);
+                {(() => {
+                  const displayConnections = connections.slice(0, 6);
+                  const hasMore = connections.length > 6;
                   return (
-                    <div
-                      className="pf-conn-row"
-                      key={c.email || c.username || i}
-                      onClick={() => openProfile(c)}
-                      title={`View ${c.name || "profile"}`}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === "Enter") openProfile(c); }}
-                    >
-                      <Avatar
-                        size={44}
-                        src={toDataUrl(c.profilePicture)}
-                        style={{
-                          backgroundColor: c.profilePicture
-                            ? "transparent"
-                            : avatarColorFor(c.name || "?"),
-                          fontSize: 17,
-                          fontWeight: 700,
-                          color: "#fff",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {!c.profilePicture && (c.name || "?").charAt(0).toUpperCase()}
-                      </Avatar>
-                      <span className="pf-info-text">
-                        <span className="pf-info-value">{c.name || "Unknown"}</span>
-                        <span className="pf-info-label">
-                          {c.username ? `@${c.username}` : c.email}
-                        </span>
-                      </span>
-                      <span className="pf-conn-right">
-                        {c.relation && (
-                          <RelationChip relation={c.relation} style={{ fontSize: 11 }} />
-                        )}
-                        <FontAwesomeIcon icon={faChevronRight} className="pf-conn-chevron" />
-                      </span>
-                    </div>
+                    <>
+                      {displayConnections.map((item, i) => {
+                        const c = mapConnectionToContact(item, i);
+                        return (
+                          <div
+                            className="pf-conn-row"
+                            key={c.email || c.username || i}
+                            onClick={() => openProfile(c)}
+                            title={`View ${c.name || "profile"}`}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === "Enter") openProfile(c); }}
+                          >
+                            <Avatar
+                              size={44}
+                              src={toDataUrl(c.profilePicture)}
+                              style={{
+                                backgroundColor: c.profilePicture
+                                  ? "transparent"
+                                  : avatarColorFor(c.name || "?"),
+                                fontSize: 17,
+                                fontWeight: 700,
+                                color: "#fff",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {!c.profilePicture && (c.name || "?").charAt(0).toUpperCase()}
+                            </Avatar>
+                            <span className="pf-info-text">
+                              <span className="pf-info-value">{c.name || "Unknown"}</span>
+                              <span className="pf-info-label">
+                                {c.username ? `@${c.username.toLowerCase()}` : c.email}
+                              </span>
+                            </span>
+                            <span className="pf-conn-right">
+                              <FontAwesomeIcon icon={faChevronRight} className="pf-conn-chevron" />
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {hasMore && (
+                        <button
+                          className="pf-conn-view-all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openConnections();
+                          }}
+                          title="View all connections"
+                        >
+                          View all connections
+                        </button>
+                      )}
+                    </>
                   );
-                })}
+                })()}
               </div>
             )}
           </div>

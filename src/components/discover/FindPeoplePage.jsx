@@ -191,7 +191,7 @@ function FindPeoplePage() {
                   <div className="nw-find-name">
                     {u.name}
                   </div>
-                  <div className="nw-find-email">{u.username ? `@${u.username}` : (u.phone || "—")}</div>
+                  <div className="nw-find-email">{u.username ? `@${u.username.toLowerCase()}` : (u.phone || "—")}</div>
                 </div>
                 <div className="nw-find-actions" onClick={(e) => e.stopPropagation()}>
                   {u.relationName ? (

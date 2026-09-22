@@ -1382,6 +1382,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: none;
 }
 
 .nw-contact-meta {
@@ -1390,6 +1391,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: none;
 }
 
 .nw-contact-right {
