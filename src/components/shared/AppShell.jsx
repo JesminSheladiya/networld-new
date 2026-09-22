@@ -136,7 +136,7 @@ function ProfileMenu() {
                   <div className="nw-profile-actions">
                     <button className="nw-profile-action" onClick={goProfile}>
                       <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faCircleUser} /></span>
-                      <span>Profile Settings</span>
+                      <span>Account setting</span>
                     </button>
                     <button className="nw-profile-action" onClick={() => { openPicker(); closeDropdown(); }}>
                       <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faLanguage} /></span>

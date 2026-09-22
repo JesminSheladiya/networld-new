@@ -35,6 +35,11 @@ export const fetchUser = async () => {
   return data;
 };
 
+export const deleteAccount = async () => {
+  const { data } = await http.delete(`${API_BASE}/auth/me`);
+  return data;
+};
+
 export const checkUsernameAvailable = async (username) => {
   const { data } = await http.get(`${API_BASE}/auth/username-available`, {
     params: { username },

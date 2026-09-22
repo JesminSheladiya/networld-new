@@ -507,6 +507,25 @@ function ProfilePage({ hidePassword = false }) {
         )}
       </div>
 
+      {/* ── Danger zone entry ── */}
+      <div className="pf-card pf-danger-card">
+        <div className="pf-danger-strip">
+          <div className="pf-danger-strip-info">
+            <h2 className="pf-card-title pf-danger-title">Danger Zone</h2>
+            <p className="pf-danger-strip-sub">
+              Permanently delete your account and all its data.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="pf-danger-btn"
+            onClick={() => navigate("/profile/delete")}
+          >
+            Delete account
+          </button>
+        </div>
+      </div>
+
       <ProfilePictureViewer
         open={viewerOpen}
         onClose={() => setViewerOpen(false)}

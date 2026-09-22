@@ -18,6 +18,7 @@ const ContactDetailPage = lazy(() => import('./components/contacts/ContactDetail
 const UserConnectionsPage = lazy(() => import('./components/contacts/UserConnectionsPage'));
 const ProfilePage = lazy(() => import('./components/profile/ProfilePage'));
 const EditProfilePage = lazy(() => import('./components/profile/EditProfilePage'));
+const DeleteAccountPage = lazy(() => import('./components/profile/DeleteAccountPage'));
 const FindPeoplePage = lazy(() => import('./components/discover/FindPeoplePage'));
 const RequestsPage = lazy(() => import('./components/discover/RequestsPage'));
 const SuggestionsPage = lazy(() => import('./components/discover/SuggestionsPage'));
@@ -68,6 +69,7 @@ function AppRoutes() {
           <Route path="/contacts/:username" element={<ContactDetailPage />} />
           <Route path="/contacts/:username/connections" element={<UserConnectionsPage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
+          <Route path="/profile/delete" element={<DeleteAccountPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/discover/find" element={<FindPeoplePage />} />
           <Route path="/discover/requests" element={<RequestsPage />} />
