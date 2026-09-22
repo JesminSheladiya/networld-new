@@ -1071,6 +1071,177 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   color: #38bdf8;
 }
 
+/* ── Danger zone (delete account) ── */
+.pf-danger-card {
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.pf-danger-title {
+  color: #fca5a5;
+}
+
+.pf-danger-text {
+  color: #8b98ad;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0 24px 4px;
+}
+
+.pf-danger-text.pf-danger-strip-text {
+  padding-bottom: 20px;
+}
+
+/* Entry strip on the profile page: heading + text left,
+   delete button vertically centered on the right */
+.pf-danger-strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+}
+
+.pf-danger-strip-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pf-danger-strip-info .pf-card-title {
+  margin: 0;
+}
+
+.pf-danger-strip-sub {
+  color: #8b98ad;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.pf-danger-strip .pf-danger-btn {
+  flex-shrink: 0;
+}
+
+.pf-danger-btn {
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pf-danger-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fff;
+}
+
+.pf-danger-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dedicated delete-account page */
+.pf-narrow-page {
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.pf-danger-body {
+  padding: 10px 0 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pf-danger-body .pf-danger-text {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.pf-danger-list {
+  margin: 0 24px 0 40px;
+  padding: 0;
+  color: #8b98ad;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.pf-danger-list ::marker {
+  color: #f87171;
+}
+
+.pf-danger-code {
+  color: #fff;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 6px;
+  padding: 0 8px;
+  font-weight: 700;
+  white-space: nowrap;
+  height: auto;
+  display: inline-block;
+}
+
+.pf-danger-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0px 24px;
+}
+
+/* Cancel (left) + Delete (right) row */
+.pf-danger-actions-row {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.pf-danger-actions-row .pf-ghost-btn {
+  height: 36px;
+  flex-shrink: 0;
+}
+
+/* Acknowledge checkbox on the delete page */
+.pf-danger-check {
+  margin: 0 24px;
+  display: block;
+}
+
+.pf-danger-check .ant-checkbox-wrapper {
+  color: #e2e8f0;
+  font-size: 13px;
+  line-height: 1.6;
+  align-items: flex-start;
+}
+
+.pf-danger-check .ant-checkbox-inner {
+  background: #0d1424;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.pf-danger-check .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+
+.pf-danger-check .ant-checkbox-checked:hover .ant-checkbox-inner {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.pf-danger-check .ant-checkbox-wrapper:hover .ant-checkbox-inner {
+  border-color: #f87171 !important;
+}
+
 /* Count pill in card heads (e.g. connections list) */
 .pf-count-pill {
   color: #8b98ad;
