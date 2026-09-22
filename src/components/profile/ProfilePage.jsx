@@ -401,15 +401,13 @@ function ProfilePage({ hidePassword = false }) {
 
       <div className={`pf-grid${hidePassword ? " pf-grid-single" : ""}`}>
         <div className="pf-main">
-      {/* ── About / bio card ── only when a bio exists */}
-      {user?.bio && (
+      {/* ── About / bio card ── display-only, edits on /profile/edit */}
       <div className="pf-card pf-about-card">
         <div className="pf-card-head">
           <h2 className="pf-card-title">About</h2>
         </div>
-        <p className="pf-bio-text">{user.bio}</p>
+        <p className="pf-bio-text">{user?.bio || <span className="pf-placeholder">Add a short bio so people know you better.</span>}</p>
       </div>
-      )}
 
           {/* ── Contact info card ── display-only */}
           <div className="pf-card pf-contact-card">
@@ -507,7 +505,8 @@ function ProfilePage({ hidePassword = false }) {
         )}
       </div>
 
-      {/* ── Danger zone entry ── */}
+      {/* ── Danger zone entry — only on the real profile page ── */}
+      {!hidePassword && (
       <div className="pf-card pf-danger-card">
         <div className="pf-danger-strip">
           <div className="pf-danger-strip-info">
@@ -525,6 +524,7 @@ function ProfilePage({ hidePassword = false }) {
           </button>
         </div>
       </div>
+      )}
 
       <ProfilePictureViewer
         open={viewerOpen}

@@ -294,7 +294,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 .pf-sk-stat {
   background: rgba(59, 130, 246, 0.1);
-  padding: 5px 10px;
+  padding: 8px;
   border: 1px solid rgba(96, 165, 250, 0.22);
   border-radius: 8px;
   display: flex;
@@ -317,7 +317,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 .pf-sk-stat-label {
   color: #8b98ad;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -910,7 +910,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 10px 0;
+  padding: 12px 0;
 }
 
 /* Tinted tiles instead of bordered tiles — color, not outlines */
@@ -1326,7 +1326,6 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   color: #64748b;
   font-size: 12px;
   line-height: 1.45;
-  max-width: 280px;
 }
 
 /* Primary action button: compact auto-width blue accent */
@@ -1460,13 +1459,12 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
     width: auto;
     margin-left: auto;
     padding-left: 0;
-    justify-content: flex-end;
     gap: 15px;
   }
 }
 
 /* ── Profile header stacks to a left-aligned column at 600px ── */
-@media (max-width: 600px) {
+@media (max-width: 700px) {
   .pf-sk-row {
     align-items: center;
     flex-direction: row;
@@ -1560,7 +1558,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   }
 
   .pf-sk-stats {
-    gap: 28px;
+    gap: 10px;
     padding-top: 0;
   }
 
