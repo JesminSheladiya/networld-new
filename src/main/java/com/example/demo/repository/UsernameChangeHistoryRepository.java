@@ -12,4 +12,6 @@ public interface UsernameChangeHistoryRepository extends JpaRepository<UsernameC
 
     Optional<UsernameChangeHistory> findFirstByUserAndChangedAtAfterOrderByChangedAtAsc(
             User user, Instant after);
+
+    void deleteByUser(User user);
 }

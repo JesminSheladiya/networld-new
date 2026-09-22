@@ -31,6 +31,12 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
     @Query("DELETE FROM UserRelation ur WHERE ur.status = 'SUGGESTED' AND ur.fromUser = :user")
     void deleteAllSuggestionsFor(@Param("user") User user);
 
+    // Account deletion: every relation row touching the user, either side,
+    // any status (pending/suggested/accepted/declined).
+    @Modifying
+    @Query("DELETE FROM UserRelation ur WHERE ur.fromUser = :user OR ur.toUser = :user")
+    void deleteAllInvolving(@Param("user") User user);
+
     @Query(value = "SELECT pg_advisory_xact_lock(:lockKey)", nativeQuery = true)
     void lockSuggestionRegeneration(@Param("lockKey") long lockKey);
 

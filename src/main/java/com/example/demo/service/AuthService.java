@@ -2,6 +2,8 @@ package com.example.demo.service;
 
 import com.example.demo.dto.*;
 import com.example.demo.model.User;
+import com.example.demo.repository.ContactRepository;
+import com.example.demo.repository.UserRelationRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.UsernameChangeHistoryRepository;
 import com.example.demo.security.JwtUtil;
@@ -18,18 +20,24 @@ public class AuthService {
     private final JwtUtil jwt;
     private final CustomUserDetailsService uds;
     private final UsernameChangeHistoryRepository history;
+    private final UserRelationRepository relations;
+    private final ContactRepository contacts;
 
     // Max username changes in any rolling 7-day window.
     private static final int MAX_USERNAME_CHANGES_PER_WEEK = 2;
 
     public AuthService(UserRepository users, PasswordEncoder encoder,
                        JwtUtil jwt, CustomUserDetailsService uds,
-                       UsernameChangeHistoryRepository history) {
+                       UsernameChangeHistoryRepository history,
+                       UserRelationRepository relations,
+                       ContactRepository contacts) {
         this.users   = users;
         this.encoder = encoder;
         this.jwt     = jwt;
         this.uds     = uds;
         this.history = history;
+        this.relations = relations;
+        this.contacts  = contacts;
     }
 
     public AuthResponse register(RegisterRequest req) {
@@ -131,6 +139,19 @@ public class AuthService {
         return buildResponse(u);
     }
 
+    // Full account wipe: every relation row touching the user (either side,
+    // any status), their address-book contacts and username history, then
+    // the user row itself. Other users' address-book snapshots stay untouched.
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteAccount(String email) {
+        User u = users.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        relations.deleteAllInvolving(u);
+        contacts.deleteByUser(u);
+        history.deleteByUser(u);
+        users.delete(u);
+    }
+
     // Username rules: max 30 chars, lowercase a-z / 0-9 / _ / . only,
     // cannot start or end with a period.
     private static final java.util.regex.Pattern USERNAME_PATTERN =
@@ -138,7 +159,7 @@ public class AuthService {
 
     static String validateUsername(String username) {
         if (username == null) return null;
-        String v = username.trim();
+        String v = username.trim().toLowerCase();
         if (v.length() > 30)
             throw new RuntimeException("Username must be 30 characters or less");
         if (!USERNAME_PATTERN.matcher(v).matches())

@@ -42,6 +42,13 @@ public class AuthController {
         return ResponseEntity.ok(auth.updateProfile(userDetails.getUsername(), req));
     }
 
+    @DeleteMapping("/me")
+    public ResponseEntity<?> deleteAccount(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        auth.deleteAccount(userDetails.getUsername());
+        return ResponseEntity.ok(java.util.Map.of("message", "Account deleted"));
+    }
+
     // Public (register page is anonymous) — email null means every match counts.
     @GetMapping("/username-available")
     public ResponseEntity<?> usernameAvailable(
