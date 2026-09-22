@@ -115,6 +115,27 @@ function FindPeoplePage() {
     });
   };
 
+  // Instagram-style: your own account appears in your search too, rendered
+  // like any other connection row (no request actions on your own row).
+  const qLower = query.trim().toLowerCase();
+  const selfRow =
+    qLower !== "" &&
+    ((user?.username || "").toLowerCase().includes(qLower) ||
+      (user?.fullName || "").toLowerCase().includes(qLower))
+      ? {
+          email: user.email,
+          name: user.fullName || user.username || "",
+          username: user.username || "",
+          phone: user.phone || "",
+          profilePic: user.profilePicture || null,
+          gender: user.gender || null,
+          birthDate: user.birthDate || null,
+          bio: user.bio || "",
+          _self: true,
+        }
+      : null;
+  const displayResults = selfRow ? [selfRow, ...results] : results;
+
   const sendRequest = async (email) => {    if (!relMap[email]) return;
     setSendingMap((p) => ({ ...p, [email]: true }));
     try {
@@ -159,14 +180,14 @@ function FindPeoplePage() {
             <span className="nw-state-text">Search for someone to connect with</span>
             <span className="nw-state-sub">Search works with names and usernames</span>
           </div>
-        ) : searching && results.length === 0 ? (
+        ) : searching && displayResults.length === 0 ? (
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Searching...</span></div>
-        ) : results.length === 0 ? (
+        ) : displayResults.length === 0 ? (
           <div className="nw-state-box"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No users found" /></div>
         ) : (
           <div className="nw-discover-list">
-            <div className="nw-discover-label">Results · {results.length}</div>
-            {results.map((u) => (
+            <div className="nw-discover-label">Results · {displayResults.length}</div>
+            {displayResults.map((u) => (
               <div
                 className="nw-find-row"
                 key={u.email}
@@ -194,7 +215,9 @@ function FindPeoplePage() {
                   <div className="nw-find-email">{u.username ? `@${u.username.toLowerCase()}` : (u.phone || "—")}</div>
                 </div>
                 <div className="nw-find-actions" onClick={(e) => e.stopPropagation()}>
-                  {u.relationName ? (
+                  {u._self ? (
+                    <span className="nw-find-chip-connected">You</span>
+                  ) : u.relationName ? (
                     <span className="nw-find-chip-connected">{relName(u.relationName)}</span>
                   ) : u.pending === "received" ? (
                     <span className="nw-find-chip-received">Request Received</span>

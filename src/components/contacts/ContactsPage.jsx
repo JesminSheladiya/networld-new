@@ -301,17 +301,18 @@ function ContactsPage() {
                 options={sortOptions}
                 suffixIcon={<FontAwesomeIcon icon={faArrowDownWideShort} style={{ color: "#64748b", fontSize: 12 }} />}
               />
-              <button
-                className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
-                onClick={() => { setMobileQ(""); setFilterOpen(true); }}
-                aria-label="Filter by relation"
-                title="Filter by relation"
-              >
-                <FontAwesomeIcon icon={faFilter} />
-                {selectedRelations.length > 0 && (
-                  <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
-                )}
-              </button>
+              <Tooltip title="Filter by relation">
+                <button
+                  className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
+                  onClick={() => { setMobileQ(""); setFilterOpen(true); }}
+                  aria-label="Filter by relation"
+                >
+                  <FontAwesomeIcon icon={faFilter} />
+                  {selectedRelations.length > 0 && (
+                    <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
+                  )}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>
