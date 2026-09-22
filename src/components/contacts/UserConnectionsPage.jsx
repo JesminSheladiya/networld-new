@@ -7,7 +7,6 @@ import { api } from "../../Services/networld";
 import { avatarColorFor } from "../../constants";
 import { mapConnectionToContact, matchesContactSlug, seedMatchesSlug } from "../../utils/contactMapper";
 import { toDataUrl } from "../../utils/imageUtils";
-import RelationChip from "../shared/RelationChip";
 import "../css/profile-page.css";
 
 // Standalone connections list — opened from the header stat on mobile
@@ -133,13 +132,10 @@ function UserConnectionsPage() {
                   <span className="pf-info-text">
                     <span className="pf-info-value">{c.name || "Unknown"}</span>
                     <span className="pf-info-label">
-                      {c.username ? `@${c.username}` : c.email}
+                      {c.username ? `@${c.username.toLowerCase()}` : c.email}
                     </span>
                   </span>
                   <span className="pf-conn-right">
-                    {c.relation && (
-                      <RelationChip relation={c.relation} style={{ fontSize: 11 }} />
-                    )}
                     <FontAwesomeIcon icon={faChevronRight} className="pf-conn-chevron" />
                   </span>
                 </div>

@@ -155,7 +155,7 @@ function RequestsPage() {
                     </Avatar>
                     <div className="nw-find-info">
                       <div className="nw-find-name">{p.suggestedUserName}</div>
-                      <div className="nw-find-email">{p.suggestedUserUsername ? `@${p.suggestedUserUsername}` : p.suggestedUserEmail}</div>
+                      <div className="nw-find-email">{p.suggestedUserUsername ? `@${p.suggestedUserUsername.toLowerCase()}` : p.suggestedUserEmail}</div>
                       <div className="nw-find-reason">{formatReason(p.reason)}</div>
                     </div>
                   </div>

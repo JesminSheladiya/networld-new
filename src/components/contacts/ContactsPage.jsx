@@ -394,7 +394,7 @@ function ContactsPage() {
                 <span className="nw-contact-info">
                   <span className="nw-contact-name">{rec.name}</span>
                   <span className="nw-contact-sub">
-                    {rec.username ? `@${rec.username}` : (rec.phone || "—")}
+                    {rec.username ? `@${rec.username.toLowerCase()}` : (rec.phone || "—")}
                   </span>
                   {rec.phone && rec.username && (
                     <span className="nw-contact-meta">{rec.phone}</span>

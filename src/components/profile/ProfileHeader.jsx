@@ -108,7 +108,7 @@ function ProfileHeader({
           </div>
           <div className="pf-sk-identity">
             <h1 className="pf-name">{name}</h1>
-            {username && <div className="pf-sk-username">@{username}</div>}
+            {username && <div className="pf-sk-username">@{username.toLowerCase()}</div>}
             {meta && <div className="pf-meta">{meta}</div>}
             {onEditClick && (
               <button

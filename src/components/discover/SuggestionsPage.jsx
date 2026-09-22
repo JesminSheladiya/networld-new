@@ -165,7 +165,7 @@ function SuggestionsPage() {
                     </Avatar>
                     <div className="nw-find-info">
                       <div className="nw-find-name">{s.suggestedUserName}</div>
-                      <div className="nw-find-email">{s.suggestedUserUsername ? `@${s.suggestedUserUsername}` : s.suggestedUserEmail}</div>
+                      <div className="nw-find-email">{s.suggestedUserUsername ? `@${s.suggestedUserUsername.toLowerCase()}` : s.suggestedUserEmail}</div>
                       <div className="nw-find-reason">
                         <span className="nw-auto-badge">AUTO</span> {s.reason}
                       </div>
