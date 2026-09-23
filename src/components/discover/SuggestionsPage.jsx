@@ -54,11 +54,14 @@ function SuggestionsPage() {
       email: s.suggestedUserEmail || "",
       phone: s.suggestedUserPhone || "",
       profilePicture: s.suggestedUserProfilePic || null,
+      coverImage: s.suggestedUserCoverImage || null,
+      coverHidden: !!s.coverHidden,
       relation: s.inferredRelation || "",
       relationId: null,
       gender: s.suggestedUserGender || null,
       birthDate: s.suggestedUserBirthDate || null,
       bio: s.suggestedUserBio || "",
+      contactInfoHidden: !!s.contactInfoHidden,
     };
     navigate(
       `/contacts/${encodeURIComponent(s.suggestedUserUsername || s.suggestedUserEmail)}`,
@@ -165,7 +168,7 @@ function SuggestionsPage() {
                     </Avatar>
                     <div className="nw-find-info">
                       <div className="nw-find-name">{s.suggestedUserName}</div>
-                      <div className="nw-find-email">{s.suggestedUserUsername ? `@${s.suggestedUserUsername.toLowerCase()}` : s.suggestedUserEmail}</div>
+                      <div className="nw-find-email">{s.suggestedUserUsername ? `@${s.suggestedUserUsername.toLowerCase()}` : (!s.contactInfoHidden ? s.suggestedUserEmail : "—")}</div>
                       <div className="nw-find-reason">
                         <span className="nw-auto-badge">AUTO</span> {s.reason}
                       </div>

@@ -24,10 +24,12 @@ export function mapConnectionToContact(item, idx = 0) {
     phone: item.suggestedUserPhone || "",
     profilePicture: item.suggestedUserProfilePic || null,
     coverImage: item.suggestedUserCoverImage || null,
+    coverHidden: !!item.coverHidden,
     relation: item.inferredRelation || "",
     relationId: item.pendingRelationId ?? null,
     gender: item.suggestedUserGender || null,
     birthDate: item.suggestedUserBirthDate || null,
     bio: item.suggestedUserBio || "",
+    contactInfoHidden: !!item.contactInfoHidden,
   };
 }

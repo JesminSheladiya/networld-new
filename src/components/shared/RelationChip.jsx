@@ -25,6 +25,7 @@ export default function RelationChip({ relation, style }) {
         display: "inline-flex",
         alignItems: "center",
         gap: 5,
+        width: "max-content",
         color: tone.color,
         background: tone.bg,
         border: `1px solid ${tone.border}`,

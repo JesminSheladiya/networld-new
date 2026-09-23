@@ -4,7 +4,7 @@ import { Avatar, Spin, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faPenToSquare, faUser, faAddressCard } from "@fortawesome/free-regular-svg-icons";
 import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { PhoneOutlined } from "@ant-design/icons";
+import { PhoneOutlined, LockOutlined } from "@ant-design/icons";
 import { avatarColorFor } from "../../constants";
 import { api } from "../../Services/networld";
 import { mapConnectionToContact } from "../../utils/contactMapper";
@@ -16,7 +16,7 @@ import { formatBirthDateWithAge } from "../../utils/dateUtils";
 import { toDataUrl } from "../../utils/imageUtils";
 import "../css/profile-page.css";
 
-function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) {
+function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, fresh = true }) {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -32,13 +32,19 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
     );
   };
 
+  const connTotal = connections ? connections.total : null;
+  const connItems = connections ? connections.items : [];
+  const connLocked = connTotal > 0 && connItems.length === 0;
+
   // Fresh server data (detail refetch) replaces the snapshot — keep the
   // chip in sync instead of sticking with the first snapshot.
   useEffect(() => {
     setRelation(contact.relation || "");
   }, [contact.email, contact.relation]);
 
-  // This user's connections — count in the header, full list in its tab.
+  // This user's connections — { total, items }. Total always shows;
+  // items come back empty when the owner hides them (count still visible,
+  // list locked — never clickable into).
   // Guarded + cleared on contact switch — otherwise a slow response for the
   // previous profile overwrites the new one (stale list glitch).
   useEffect(() => {
@@ -51,7 +57,12 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
     api
       .connectionsOf(contact.email)
       .then((res) => {
-        if (!cancelled) setConnections(Array.isArray(res.data) ? res.data : []);
+        if (cancelled) return;
+        const data = res.data || {};
+        setConnections({
+          total: data.total ?? 0,
+          items: Array.isArray(data.items) ? data.items : [],
+        });
       })
       .catch(() => {
         if (!cancelled) setConnections(null);
@@ -81,18 +92,19 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
       {/* Same header as own profile — viewer-only slots here. */}
       <ProfileHeader
         className="pf-contact-head"
-        coverImage={contact?.coverImage}
+        coverImage={fresh ? contact?.coverImage : null}
         avatarSrc={toDataUrl(contact.profilePicture)}
         avatarBg={avatarColorFor(name)}
         avatarText={initial}
         onAvatarClick={() => setViewerOpen(true)}
         onCoverClick={() => setCoverViewerOpen(true)}
+        coverLocked={!!contact.coverHidden}
         name={name}
         username={contact.username}
         email={contact.email}
         phone={contact.phone}
-        connectionsCount={connections ? connections.length : null}
-        onConnectionsClick={openConnections}
+        connectionsCount={connTotal}
+        onConnectionsClick={connLocked ? undefined : openConnections}
       />
 
       {/* Stacked sections (same language as own profile) — no tabs. */}
@@ -119,6 +131,18 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
                 Contact info
               </h2>
             </div>
+            {contact.contactInfoHidden ? (
+              <div className="nw-state-box">
+                <LockOutlined style={{ fontSize: 32, color: "#475569" }} />
+                <span className="nw-state-text">Contact info is private</span>
+                <span className="nw-state-sub">{name} has chosen to keep contact details hidden</span>
+              </div>
+            ) : !fresh ? (
+              <div className="nw-state-box">
+                <Spin size="large" />
+                <span className="nw-state-text">Loading contact info...</span>
+              </div>
+            ) : (
             <div className="pf-info-rows">
               {relation && (
                 <div className="pf-info-row">
@@ -157,16 +181,15 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
                   </span>
                 </div>
               ))}
-              {contact.birthDate && (
-                <div className="pf-info-row">
-                  <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
-                  <span className="pf-info-text">
-                    <span className="pf-info-label">Birth Date</span>
-                    <span className="pf-info-value">{formatBirthDateWithAge(contact.birthDate)}</span>
-                  </span>
-                </div>
-              )}
+              <div className="pf-info-row">
+                <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
+                <span className="pf-info-text">
+                  <span className="pf-info-label">Birth Date</span>
+                  <span className="pf-info-value">{contact.birthDate ? formatBirthDateWithAge(contact.birthDate) : "—"}</span>
+                </span>
+              </div>
             </div>
+            )}
           </div>
         </div>
 
@@ -179,7 +202,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
               </h2>
               {connections && (
                 <span className="pf-count-pill">
-                  {connections.length} {connections.length === 1 ? "connection" : "connections"}
+                  {connTotal} {connTotal === 1 ? "connection" : "connections"}
                 </span>
               )}
             </div>
@@ -188,7 +211,13 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
                 <Spin size="large" />
                 <span className="nw-state-text">Loading connections...</span>
               </div>
-            ) : connections.length === 0 ? (
+            ) : connLocked ? (
+              <div className="nw-state-box">
+                <LockOutlined style={{ fontSize: 32, color: "#475569" }} />
+                <span className="nw-state-text">Connections are private</span>
+                <span className="nw-state-sub">{name} has chosen to keep connections hidden</span>
+              </div>
+            ) : connItems.length === 0 ? (
               <div className="nw-state-box">
                 <FontAwesomeIcon icon={faUsers} style={{ fontSize: 40, color: "#475569" }} />
                 <span className="nw-state-text">No connections yet</span>
@@ -196,8 +225,8 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved }) 
             ) : (
               <div className="pf-conn-list">
                 {(() => {
-                  const displayConnections = connections.slice(0, 6);
-                  const hasMore = connections.length > 6;
+                  const displayConnections = connItems.slice(0, 6);
+                  const hasMore = connTotal > 6;
                   return (
                     <>
                       {displayConnections.map((item, i) => {

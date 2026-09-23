@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Form, Input, Select, message } from "antd";
+import { Form, Input, Select, Switch, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faAt } from "@fortawesome/free-solid-svg-icons";
 import { faEnvelope, faUser } from "@fortawesome/free-regular-svg-icons";
@@ -365,6 +365,90 @@ function EditProfilePage() {
           </Form.Item>
         </Form>
       </div>
+
+      <PrivacyCard />
+    </div>
+  );
+}
+
+function PrivacyCard() {
+  const { user, patchUser } = useAuth();
+  const [privacy, setPrivacy] = useState({
+    privateAccount: !!user?.privateAccount,
+    hideCover: !!user?.hideCover,
+    hideConnections: !!user?.hideConnections,
+    hideContactInfo: !!user?.hideContactInfo,
+  });
+  const [savingKey, setSavingKey] = useState(null);
+
+  const togglePrivacy = async (key) => {
+    if (savingKey) return;
+    const next = { ...privacy, [key]: !privacy[key] };
+    setPrivacy(next);
+    setSavingKey(key);
+    try {
+      await updateProfile({ [key]: next[key] });
+      patchUser({ [key]: next[key] });
+      message.success("Privacy updated");
+    } catch (e) {
+      setPrivacy(privacy);
+      message.error(e.response?.data?.message || "Could not update privacy, try again");
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const rows = [
+    {
+      key: "privateAccount",
+      title: "Private account",
+      sub: "Hide the details you select below from other users",
+      disabled: false,
+    },
+    {
+      key: "hideCover",
+      title: "Cover photo",
+      sub: "Hide my cover photo from other users",
+      disabled: !privacy.privateAccount,
+    },
+    {
+      key: "hideConnections",
+      title: "Connections",
+      sub: "Others see the count, but not who you're connected with",
+      disabled: !privacy.privateAccount,
+    },
+    {
+      key: "hideContactInfo",
+      title: "Contact info",
+      sub: "Hide phone, email, gender and birth date from other users",
+      disabled: !privacy.privateAccount,
+    },
+  ];
+
+  return (
+    <div className="pf-card">
+      <div className="pf-card-head">
+        <h2 className="pf-card-title">Privacy</h2>
+      </div>
+      <div className="pf-privacy-rows">
+        {rows.map(({ key, title, sub, disabled }) => (
+          <div className={`pf-privacy-row${disabled ? " pf-privacy-off" : ""}`} key={key}>
+            <span className="pf-privacy-text">
+              <span className="pf-privacy-name">{title}</span>
+              <span className="pf-privacy-sub">{sub}</span>
+            </span>
+            <Switch
+              checked={!!privacy[key]}
+              disabled={disabled || savingKey !== null}
+              loading={savingKey === key}
+              onChange={() => togglePrivacy(key)}
+            />
+          </div>
+        ))}
+      </div>
+      <p className="pf-privacy-note">
+        Your photo, name, username and bio are always public.
+      </p>
     </div>
   );
 }

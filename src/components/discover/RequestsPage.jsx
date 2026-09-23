@@ -63,11 +63,14 @@ function RequestsPage() {
       email: p.suggestedUserEmail || "",
       phone: p.suggestedUserPhone || "",
       profilePicture: p.suggestedUserProfilePic || null,
+      coverImage: p.suggestedUserCoverImage || null,
+      coverHidden: !!p.coverHidden,
       relation: p.inferredRelation || "",
       relationId: null,
       gender: p.suggestedUserGender || null,
       birthDate: p.suggestedUserBirthDate || null,
       bio: p.suggestedUserBio || "",
+      contactInfoHidden: !!p.contactInfoHidden,
     };
     navigate(
       `/contacts/${encodeURIComponent(p.suggestedUserUsername || p.suggestedUserEmail)}`,
@@ -155,7 +158,7 @@ function RequestsPage() {
                     </Avatar>
                     <div className="nw-find-info">
                       <div className="nw-find-name">{p.suggestedUserName}</div>
-                      <div className="nw-find-email">{p.suggestedUserUsername ? `@${p.suggestedUserUsername.toLowerCase()}` : p.suggestedUserEmail}</div>
+                      <div className="nw-find-email">{p.suggestedUserUsername ? `@${p.suggestedUserUsername.toLowerCase()}` : (!p.contactInfoHidden ? p.suggestedUserEmail : "—")}</div>
                       <div className="nw-find-reason">{formatReason(p.reason)}</div>
                     </div>
                   </div>

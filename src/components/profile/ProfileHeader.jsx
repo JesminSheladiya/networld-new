@@ -1,6 +1,7 @@
 import { Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
+import { LockOutlined } from "@ant-design/icons";
 import { toDataUrl } from "../../utils/imageUtils";
 
 // Shared profile header — sketch layout:
@@ -30,11 +31,12 @@ function ProfileHeader({
   belowAvatarAction = null,
   onEditClick,  // NEW: edit profile click handler
   coverControl = null, // owner-only cover upload/edit button (bottom-right)
-  onCoverClick, // cover fullscreen viewer
+  onCoverClick, // cover fullscreen viewer (disabled when coverLocked)
+  coverLocked = false, // private blurred preview: lock overlay, no viewer
   className = "",
 }) {
   const clickable = !!avatarSrc && !!onAvatarClick;
-  const coverClickable = !!coverImage && !!onCoverClick;
+  const coverClickable = !!coverImage && !!onCoverClick && !coverLocked;
   const showStats =
     connectionsCount !== null ||
     suggestionsCount !== null ||
@@ -65,6 +67,12 @@ function ProfileHeader({
         }
       >
         {coverControl}
+        {coverLocked && coverImage && (
+          <div className="pf-cover-lock" aria-hidden="true">
+            <LockOutlined className="pf-cover-lock-icon" />
+            <span>Cover photo is private</span>
+          </div>
+        )}
       </div>
       {/* Divider line — avatar sits centered on it */}
       <div className="pf-sk-divider">
