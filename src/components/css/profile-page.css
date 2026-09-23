@@ -1145,6 +1145,22 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   flex-shrink: 0;
 }
 
+/* Mobile: danger strip wraps — text on top, button full-width below */
+@media (max-width: 600px) {
+  .pf-danger-strip {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .pf-danger-strip .pf-danger-btn {
+    width: max-content;
+    max-width: 100%;
+    justify-content: center;
+    align-self: flex-start;
+  }
+}
+
 .pf-danger-btn {
   height: 36px;
   padding: 0 20px;
@@ -1290,7 +1306,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 .pf-privacy-rows {
   display: flex;
   flex-direction: column;
-  padding: 6px 24px 4px;
+  padding: 6px 24px 8px;
 }
 
 .pf-privacy-row {
@@ -1327,13 +1343,6 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 .pf-privacy-row.pf-privacy-off {
   opacity: 0.5;
-}
-
-.pf-privacy-note {
-  color: #475569;
-  font-size: 12px;
-  margin: 0;
-  padding: 0 24px 20px;
 }
 
 /* ── Forms + actions ── */

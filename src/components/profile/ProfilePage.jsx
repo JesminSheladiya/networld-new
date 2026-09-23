@@ -12,6 +12,7 @@ import { avatarColorFor } from "../../constants";
 import ProfilePictureViewer from "../ProfilePictureViewer";
 import ProfilePictureEditor from "../ProfilePictureEditor";
 import ProfileHeader from "./ProfileHeader";
+import PrivacyCard from "./PrivacyCard";
 import ConfirmPopup from "../shared/ConfirmPopup";
 import { formatBirthDateWithAge } from "../../utils/dateUtils";
 import { toDataUrl } from "../../utils/imageUtils";
@@ -505,9 +506,11 @@ function ProfilePage({ hidePassword = false }) {
         )}
       </div>
 
-      {/* ── Danger zone entry — only on the real profile page ── */}
+      {/* ── Privacy + Danger zone — only on the real profile page ── */}
       {!hidePassword && (
-      <div className="pf-card pf-danger-card">
+        <>
+          <PrivacyCard />
+          <div className="pf-card pf-danger-card">
         <div className="pf-danger-strip">
           <div className="pf-danger-strip-info">
             <h2 className="pf-card-title pf-danger-title">Danger Zone</h2>
@@ -524,6 +527,7 @@ function ProfilePage({ hidePassword = false }) {
           </button>
         </div>
       </div>
+        </>
       )}
 
       <ProfilePictureViewer
