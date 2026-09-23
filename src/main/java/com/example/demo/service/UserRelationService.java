@@ -204,7 +204,6 @@ public class UserRelationService {
                             rel.getRelationName(),
                             rel.getEnglishRelation(),
                             rel.getIndianRelation(),
-                            rel.getGenericRelation(),
                             name + " wants to add you as their " + rel.getRelationName(),
                             "PENDING");
                     return applyProfilePrivacy(currentUser.getEmail(), s, false, dto);
@@ -234,7 +233,6 @@ public class UserRelationService {
                     rel.getRelationName(),
                     rel.getEnglishRelation(),
                     rel.getIndianRelation(),
-                    rel.getGenericRelation(),
                     null, "ACCEPTED");
         boolean visibleToViewer = viewerConnEmailsOrNull == null
                 || (o.getEmail() != null && viewerConnEmailsOrNull.contains(o.getEmail().toLowerCase()));
@@ -324,7 +322,6 @@ public class UserRelationService {
                     rel.getRelationName(),
                     rel.getEnglishRelation(),
                     rel.getIndianRelation(),
-                    rel.getGenericRelation(),
                     null, "ACCEPTED");
         return applyProfilePrivacy(currentUser.getEmail(), o, true, dto);
         });
@@ -376,7 +373,6 @@ public class UserRelationService {
                             rel.getRelationName(),
                             rel.getEnglishRelation(),
                             rel.getIndianRelation(),
-                            rel.getGenericRelation(),
                             "Discovered through your network connections",
                             "SUGGESTED");
                     return applyProfilePrivacy(currentUser.getEmail(), o, false, dto);
@@ -586,9 +582,9 @@ public class UserRelationService {
             Relation tailRow = relationCache.computeIfAbsent(tailKey.toLowerCase(),
                     k -> relationRepository.findByRelationNameIgnoreCase(tailKey).orElse(null));
             if (tailRow == null) continue;
-            String tailGeneric = tailRow.getGenericRelation() != null
-                    && !tailRow.getGenericRelation().isBlank()
-                    ? tailRow.getGenericRelation().trim() : tailName;
+            // Chain tail uses the relation's own name (e.g. "Son's
+            // Father-in-law"); the old generic display label is gone.
+            String tailGeneric = tailName;
 
             String candidate = headName + "'s " + tailGeneric;
             Optional<Relation> hit = relationRepository.findByRelationNameIgnoreCase(candidate);
@@ -750,7 +746,11 @@ public class UserRelationService {
             case "sister-in-law":
                 return f ? "Sister-in-law" : "Brother-in-law";
             case "brother-in-law (husband's brother)":
-                return f ? "Sister-in-law" : "Brother-in-law";
+                return f ? "Sister-in-law (Brother's Wife)" : "Brother-in-law";
+            case "sister-in-law (husband's sister)":
+                return f ? "Sister-in-law (Brother's Wife)" : "Brother-in-law";
+            case "sister-in-law (brother's wife)":
+                return f ? "Sister-in-law" : "Brother-in-law (Husband's Brother)";
             case "sister-in-law (wife's sister)":
                 return f ? "Sister-in-law" : "Brother-in-law";
             case "brother-in-law (wife's brother)":
@@ -760,11 +760,11 @@ public class UserRelationService {
             case "sister-in-law (wife's brother's wife)":
                 return f ? "Sister-in-law" : "Brother-in-law";
             case "husband's elder brother":
-                return f ? "Sister-in-law" : "Brother-in-law";
+                return f ? "Sister-in-law (Brother's Wife)" : "Brother-in-law";
             case "husband's elder brother's wife":
-                return f ? "Sister-in-law" : "Brother-in-law";
+                return f ? "Husband's Brother's Wife" : "Brother-in-law";
             case "husband's sister's husband":
-                return f ? "Sister-in-law" : "Brother-in-law";
+                return f ? "Sister-in-law (Wife's Brother's Wife)" : "Brother-in-law";
             case "husband's brother's wife":
                 return f ? "Husband's Brother's Wife" : "Brother-in-law";
             case "child's father-in-law":

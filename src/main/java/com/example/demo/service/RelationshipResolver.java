@@ -168,6 +168,16 @@ public class RelationshipResolver {
                 int nextS = curr.s;
                 int nextLine = curr.line;
                 String nextPrevCat = cat.toUpperCase();
+                String nextPrevG = middleGender;
+                // SIBLING hop: same parents, so same side-context — inherit
+                // (a brother's maternal/paternal kin are my maternal/paternal
+                // kin). Without this every nibling-side guess collapses to a
+                // bogus-low-degree blood label that beats the truth. Root ego
+                // has no context to inherit (keep own).
+                if ("SIBLING".equals(nextPrevCat) && curr.prevCat != null) {
+                    nextPrevCat = curr.prevCat;
+                    if (!"N".equals(curr.prevG)) nextPrevG = curr.prevG;
+                }
                 boolean nextVia = curr.viaSide;
 
                 switch (cat.toUpperCase()) {
@@ -380,7 +390,7 @@ public class RelationshipResolver {
                 }
                 
                 String[] sidePair = sideSpecificPair(cat.toUpperCase(), curr, nextS,
-                        middleGender, egoGender, targetGender, gender);
+                        middleGender, egoGender, targetGender, gender, kinSideOf(rel));
                 String otherToMeStr;
                 String meToOtherStr;
                 if (sidePair != null) {
@@ -417,7 +427,7 @@ public class RelationshipResolver {
                     results.put(nextId, new RelResult(otherToMeStr, meToOtherStr, nextVia));
                 }
                 queue.add(new State(nextId, nextV, nextMaxV, nextS, nextLine, nextPrevCat,
-                        middleGender, nextVia, curr.depth + 1, seq++));
+                        nextPrevG, nextVia, curr.depth + 1, seq++));
             }
         }
         
@@ -485,7 +495,8 @@ public class RelationshipResolver {
     // (s == 1, son-/daughter-in-law) with flipped lineage. Known genders only.
     private static String[] sideSpecificPair(String cat, State curr, int nextS,
                                              String middleGender, String egoGender,
-                                             String targetGender, String otherGender) {
+                                             String targetGender, String otherGender,
+                                             int kinSide) {
         if (curr.s != 0 && curr.s != 1) return null;
         boolean mMale = "M".equals(middleGender);
         boolean mFemale = "F".equals(middleGender);
@@ -523,10 +534,61 @@ public class RelationshipResolver {
                     + (oMale ? "Grandfather" : "Grandmother");
             return new String[]{myView, theirView};
         }
+        // My grandchild's/nibling's sibling shares their line: a
+        // daughter-line grandchild's brother is my Daughter's Son, a
+        // brother-line nibling's brother is my Brother Son. Only for a
+        // directly-reached curr (depth 1: the line was set by my own edge,
+        // so line-relative == ego-relative); deeper lines belong to someone
+        // else's family and stay generic.
+        if ("SIBLING".equals(cat) && curr.depth == 1 && curr.s == 0 && nextS == 0) {
+            if (curr.v == -2 && curr.maxV == 0 && curr.line != 0) {
+                boolean sonLine = curr.line == 2;
+                String myView = sonLine
+                        ? (tMale ? "Grandson" : "Granddaughter")
+                        : (tMale ? "Daughter's Son" : "Daughter's Daughter");
+                String theirView = (sonLine ? "Paternal " : "Maternal ")
+                        + (oMale ? "Grandfather" : "Grandmother");
+                return new String[]{myView, theirView};
+            }
+            if (curr.v == -1 && curr.maxV == 1 && curr.line != 0) {
+                boolean broLine = curr.line == 2;
+                String myView = broLine
+                        ? (tMale ? "Brother Son" : "Brother Daughter")
+                        : (tMale ? "Sister Son" : "Sister Daughter");
+                String theirView = oMale ? "Uncle" : "Aunt";
+                return new String[]{myView, theirView};
+            }
+        }
+        // My root-sibling's side-marked kin shares my sides (same parents):
+        // naming stays generic above, but here the side is certain, so name
+        // it exactly (Paternal/Maternal Aunt/Uncle/GF/GM). SIBLING-prevCat
+        // with s == 0 means a same-parents chain from ego's own sibling
+        // link (inherited contexts preserve it); anything else stays generic.
+        if (("GRANDPARENT".equals(cat) || "PIBLING".equals(cat))
+                && curr.s == 0 && nextS == 0 && "SIBLING".equals(curr.prevCat)
+                && kinSide > 0) {
+            String sideName;
+            String backName;
+            if ("GRANDPARENT".equals(cat)) {
+                sideName = (kinSide == 2 ? "Maternal " : "Paternal ")
+                        + (tMale ? "Grandfather" : "Grandmother");
+                backName = (kinSide == 2)
+                        ? (eMale ? "Daughter's Son" : "Daughter's Daughter")
+                        : (eMale ? "Grandson" : "Granddaughter");
+            } else {
+                sideName = (kinSide == 2 ? "Maternal " : "Paternal ")
+                        + (tMale ? "Uncle" : "Aunt");
+                backName = (kinSide == 2)
+                        ? (eMale ? "Sister Son" : "Sister Daughter")
+                        : (eMale ? "Brother Son" : "Brother Daughter");
+            }
+            return new String[]{sideName, backName};
+        }
         return null;
     }
 
-    private String resolveStateName(int v, int maxV, int s, String gender) {        boolean m = "M".equals(gender);
+    private String resolveStateName(int v, int maxV, int s, String gender) {
+        boolean m = "M".equals(gender);
         if (s == 2) {
             return m ? "Husband" : "Wife";
         }

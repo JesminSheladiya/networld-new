@@ -16,7 +16,6 @@ public class UserRelationSuggestionDTO {
     private String inferredRelation;
     private String englishRelation;
     private String indianRelation;
-    private String genericRelation;
     private String reason;
     private String status;
     private boolean contactInfoHidden;
@@ -37,7 +36,6 @@ public class UserRelationSuggestionDTO {
                                      String inferredRelation,
                                      String englishRelation,
                                      String indianRelation,
-                                     String genericRelation,
                                      String reason,
                                      String status) {
         this.pendingRelationId      = pendingRelationId;
@@ -53,7 +51,6 @@ public class UserRelationSuggestionDTO {
         this.inferredRelation       = inferredRelation;
         this.englishRelation        = englishRelation;
         this.indianRelation         = indianRelation;
-        this.genericRelation        = genericRelation;
         this.reason                 = reason;
         this.status                 = status;
     }
@@ -71,7 +68,6 @@ public class UserRelationSuggestionDTO {
     public String getInferredRelation()        { return inferredRelation; }
     public String getEnglishRelation()         { return englishRelation; }
     public String getIndianRelation()          { return indianRelation; }
-    public String getGenericRelation()         { return genericRelation; }
     public String getReason()                  { return reason; }
     public String getStatus()                  { return status; }
     public boolean isContactInfoHidden()       { return contactInfoHidden; }

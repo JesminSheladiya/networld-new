@@ -37,7 +37,11 @@ public class RelationService {
     // because the suggestion engine outputs these exact generic names.
     private static final java.util.Set<String> HIDDEN_FROM_SELECTION = java.util.Set.of(
             "cousin", "grandfather", "grandmother", "brother", "sister",
-            "uncle", "aunt", "nephew", "niece");
+            "uncle", "aunt", "nephew", "niece",
+            // generic Sister-in-law: its Indian name (Nanad) duplicates the
+            // specific Husband's Sister row in pickers — engine fallbacks
+            // still resolve it, it just isn't directly selectable.
+            "sister-in-law");
 
     public List<Relation> getAll() {
         return relationRepository.findAll().stream()
@@ -90,8 +94,9 @@ public class RelationService {
             "brother-in-law (wife's brother)", "sister-in-law (wife's brother's wife)",
             "brother-in-law (wife's sister's husband)", "sister-in-law (wife's sister)",
             "brother-in-law (husband's brother)", "husband's brother's wife",
+            "sister-in-law (brother's wife)",
             "husband's elder brother", "husband's elder brother's wife",
-            "husband's sister's husband",
+            "husband's sister's husband", "sister-in-law (husband's sister)",
             "sister-in-law",
             "child's spouse's father", "child's spouse's mother",
             "father-in-law", "mother-in-law",
@@ -127,17 +132,17 @@ public class RelationService {
     }
 
     private static String baseForm(Relation r) {
-        String g = r.getGenericRelation();
-        return (g == null || g.isBlank() ? r.getRelationName() : g).toLowerCase();
+        String e = r.getEnglishRelation();
+        return (e == null || e.isBlank() ? r.getRelationName() : e).toLowerCase();
     }
 
     private static boolean isPlainForm(Relation r) {
         return r.getRelationName() != null
-                && r.getRelationName().equalsIgnoreCase(r.getGenericRelation());
+                && r.getRelationName().equalsIgnoreCase(r.getEnglishRelation());
     }
 
     // Complete display map (no filter): hidden engine-only rows (Brother,
-    // Grandfather, ...) also carry indian/generic names, and every chip /
+    // Grandfather, ...) also carry indian names, and every chip /
     // label in the app resolves through this — otherwise those fall back
     // to English regardless of the chosen format.
     public List<Relation> getAllForDisplay() {

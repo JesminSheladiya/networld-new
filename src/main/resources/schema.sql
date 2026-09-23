@@ -13,13 +13,12 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT uk_users_phone  UNIQUE (phone)
 );
 
--- RELATIONS TABLE (lookup: english / indian / generic display names)
+-- RELATIONS TABLE (lookup: english / indian display names)
 CREATE TABLE IF NOT EXISTS relations (
     id                BIGSERIAL PRIMARY KEY,
     relation_name     VARCHAR(255) NOT NULL UNIQUE,
     english_relation  VARCHAR(255),
     indian_relation   VARCHAR(255),
-    generic_relation  VARCHAR(255),
     generation_level  INTEGER NOT NULL DEFAULT 0,
     gender            VARCHAR(1) DEFAULT 'N',
     relation_category VARCHAR(20) DEFAULT 'OTHER',

@@ -19,9 +19,6 @@ public class Relation {
     @Column(name = "indian_relation", length = 255)
     private String indianRelation;
 
-    @Column(name = "generic_relation", length = 255)
-    private String genericRelation;
-
     @Column(name = "generation_level", nullable = false)
     private Integer generationLevel = 0;
 
@@ -59,9 +56,6 @@ public class Relation {
 
     public String getIndianRelation() { return indianRelation; }
     public void setIndianRelation(String indianRelation) { this.indianRelation = indianRelation; }
-
-    public String getGenericRelation() { return genericRelation; }
-    public void setGenericRelation(String genericRelation) { this.genericRelation = genericRelation; }
 
     public Integer getGenerationLevel() { return generationLevel; }
     public void setGenerationLevel(Integer generationLevel) {
