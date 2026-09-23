@@ -32,6 +32,9 @@ function ContactDetailPage() {
   // the screen is never stuck showing a stale contact.
   const [contact, setContact] = useState(() => (hasSeed ? seed : null));
   const [loading, setLoading] = useState(() => !hasSeed);
+  // True once server data lands — sensitive sections stay gated until then
+  // so a stale seed can never flash private details (backend is the truth).
+  const [fresh, setFresh] = useState(false);
 
   useEffect(() => {
     if (isOwnProfile) {
@@ -39,6 +42,7 @@ function ContactDetailPage() {
       return;
     }
     let cancelled = false;
+    setFresh(false);
     const urlSeed = location.state?.contact;
     if (seedMatchesSlug(urlSeed, slug)) {
       setContact(urlSeed);
@@ -54,6 +58,7 @@ function ContactDetailPage() {
         const found = (res.data || []).find((c) => matchesContactSlug(c, slug));
         if (found) {
           setContact(mapConnectionToContact(found, 0));
+          setFresh(true);
           return;
         }
         // Not a connection — resolve any app user so profiles open from
@@ -73,12 +78,15 @@ if (exact) {
               phone: exact.phone || "",
               profilePicture: toDataUrl(exact.profilePic || null),
               coverImage: toDataUrl(exact.coverImage || null),
+              coverHidden: !!exact.coverHidden,
               relation: exact.relationName || "",
               relationId: null,
               gender: exact.gender || null,
               birthDate: exact.birthDate || null,
               bio: exact.bio || "",
+              contactInfoHidden: !!exact.contactInfoHidden,
             });
+            setFresh(true);
         } else if (!seedMatchesSlug(urlSeed, slug)) {
           setContact(null);
         }
@@ -121,6 +129,7 @@ if (exact) {
     <div className="nw-page nw-detail-page">
       <ContactProfile
         contact={contact}
+        fresh={fresh}
         showBack
         onBack={() => {
           if (window.history.length > 1) navigate(-1);

@@ -84,7 +84,6 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, person
               r.relationName,
               r.englishRelation,
               r.indianRelation,
-              r.genericRelation,
             ]
               .filter(Boolean)
               .join(" ")

@@ -83,7 +83,9 @@ export function getInverseRelation(rel, gender = "M") {
         "brother-in-law (wifes brother)": F ? "Sister-in-law" : "Brother-in-law",
         "sister-in-law (wifes brothers wife)": F ? "Sister-in-law" : "Brother-in-law",
         "brother-in-law (wifes sisters husband)": F ? "Sister-in-law" : "Brother-in-law (Wife's Sister's Husband)",
-        "brother-in-law (husbands brother)": bilSil,
+        "brother-in-law (husbands brother)": F ? "Sister-in-law (Brother's Wife)" : "Brother-in-law",
+        "sister-in-law (husbands sister)": F ? "Sister-in-law (Brother's Wife)" : "Brother-in-law",
+        "sister-in-law (brothers wife)": F ? "Sister-in-law" : "Brother-in-law (Husband's Brother)",
         "sister-in-law (wifes sister)": F ? "Sister-in-law" : "Brother-in-law",
         // neutral
         "friend": "friend",
@@ -114,10 +116,10 @@ export function getInverseRelation(rel, gender = "M") {
         "daughters father-in-law": F ? "Son's Mother-in-law" : "Son's Father-in-law",
         "sons mother-in-law": F ? "Daughter's Mother-in-law" : "Daughter's Father-in-law",
         "daughters mother-in-law": F ? "Son's Mother-in-law" : "Son's Father-in-law",
-        "husbands sisters husband": F ? "Sister-in-law" : "Brother-in-law",
+        "husbands sisters husband": F ? "Sister-in-law (Wife's Brother's Wife)" : "Brother-in-law",
         "husbands brothers wife": F ? "Husband's Brother's Wife" : "Brother-in-law",
-        "husbands elder brother": F ? "Sister-in-law" : "Brother-in-law",
-        "husbands elder brothers wife": F ? "Sister-in-law" : "Brother-in-law",
+        "husbands elder brother": F ? "Sister-in-law (Brother's Wife)" : "Brother-in-law",
+        "husbands elder brothers wife": F ? "Husband's Brother's Wife" : "Brother-in-law",
     };
     // match ignoring case + apostrophes ("Father's Sister" -> "father sister")
     const key = rel.toLowerCase().replace(/'/g, "");

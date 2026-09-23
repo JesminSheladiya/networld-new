@@ -84,7 +84,6 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
               r.relationName,
               r.englishRelation,
               r.indianRelation,
-              r.genericRelation,
             ]
               .filter(Boolean)
               .join(" ")

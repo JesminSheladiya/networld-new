@@ -149,14 +149,19 @@ function EditProfilePage() {
     }
     setSaving(true);
     try {
+      // Removed via the picker's "Remove birthday" (had one, now empty).
+      const birthDateCleared = !!user?.birthDate && !values.birthDate;
       const birthDate = values.birthDate
         ? toBirthDateParam(values.birthDate)
-        : user?.birthDate;
+        : birthDateCleared
+          ? null
+          : user?.birthDate;
       await updateProfile({
         ...(usernameChanged ? { username } : {}),
         fullName: values.fullName,
         gender: values.gender,
         ...(values.birthDate ? { birthDate } : {}),
+        ...(birthDateCleared ? { clearBirthDate: true } : {}),
         bio,
       });
       patchUser({

@@ -8,14 +8,16 @@ const STORAGE_KEY = STORAGE_KEYS.RELATION_FORMAT;
 const FIELD_BY_FORMAT = {
   english: 'englishRelation',
   indian: 'indianRelation',
-  generic: 'genericRelation',
 };
+
+// Stored 'generic' choices from before the format was removed map to English.
+const normalizeFormat = (f) => (f === 'generic' ? 'english' : f);
 
 const RelationDisplayContext = createContext(null);
 
 export function RelationDisplayProvider({ children }) {
   const { isAuthenticated } = useAuth();
-  const [format, setFormatState] = useState(() => localStorage.getItem(STORAGE_KEY));
+  const [format, setFormatState] = useState(() => normalizeFormat(localStorage.getItem(STORAGE_KEY)));
   const [master, setMaster] = useState({});
   const [masterLower, setMasterLower] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -31,7 +33,7 @@ export function RelationDisplayProvider({ children }) {
   useEffect(() => {
     if (!isAuthenticated) return;
     // Full map (hidden engine rows like Brother/Grandfather carry their own
-    // indian/generic names) so chips never fall back to English. Pickers
+    // indian names) so chips never fall back to English. Pickers
     // keep using the filtered list — this is display-only.
     api.relationsAll()
       .catch(() => api.relations())
@@ -49,8 +51,9 @@ export function RelationDisplayProvider({ children }) {
   }, [isAuthenticated]);
 
   const setFormat = useCallback((f) => {
-    localStorage.setItem(STORAGE_KEY, f);
-    setFormatState(f);
+    const norm = normalizeFormat(f);
+    localStorage.setItem(STORAGE_KEY, norm);
+    setFormatState(norm);
   }, []);
 
   const relName = useCallback((name) => {
@@ -61,12 +64,10 @@ export function RelationDisplayProvider({ children }) {
   }, [master, masterLower, format]);
 
   // Unique, always-understandable picker labels. Several rows share one
-  // display name in Indian/Generic format (Indian "Jija (Samanya)" vs
-  // "Jija (Behen ke Pati)"; Generic "Brother-in-law" x7). A colliding row
-  // gets its precise English name appended — English is unique across
-  // every row, so the result is collision-free in all three languages.
-  // If English already contains the display name (e.g. Generic
-  // "Brother-in-law" vs English "Brother-in-law (General)"), use English
+  // display name in Indian format (e.g. "Bhatija" on Nephew and Brother
+  // Son). A colliding row gets its precise English name appended — English
+  // is unique across every row, so the result is collision-free in both
+  // languages. If English already contains the display name, use English
   // alone instead of nesting brackets. Future rows are covered
   // automatically (no per-name list to maintain).
   const relOptionLabel = useCallback((row, rows) => {

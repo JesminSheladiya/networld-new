@@ -94,6 +94,27 @@
   cursor: pointer;
 }
 
+/* Locked (private blurred) cover overlay */
+.pf-cover-lock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(2, 6, 17, 0.25);
+  color: rgba(226, 232, 240, 0.92);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.pf-cover-lock-icon {
+  font-size: 22px;
+  color: #cbd5e1;
+}
+
 /* Cover options — small icon button, actions in a dropdown menu */
 .pf-cover-actions {
   position: static;
@@ -1124,6 +1145,22 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   flex-shrink: 0;
 }
 
+/* Mobile: danger strip wraps — text on top, button full-width below */
+@media (max-width: 600px) {
+  .pf-danger-strip {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .pf-danger-strip .pf-danger-btn {
+    width: max-content;
+    max-width: 100%;
+    justify-content: center;
+    align-self: flex-start;
+  }
+}
+
 .pf-danger-btn {
   height: 36px;
   padding: 0 20px;
@@ -1265,6 +1302,49 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   background: rgba(59, 130, 246, 0.07);
 }
 
+/* ── Privacy toggles (edit profile) ── */
+.pf-privacy-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 24px 8px;
+}
+
+.pf-privacy-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.07);
+}
+
+.pf-privacy-row:last-child {
+  border-bottom: none;
+}
+
+.pf-privacy-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pf-privacy-name {
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pf-privacy-sub {
+  color: #8b98ad;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pf-privacy-row.pf-privacy-off {
+  opacity: 0.5;
+}
+
 /* ── Forms + actions ── */
 .pf-form {
   padding: 8px 24px 22px;
@@ -1272,6 +1352,10 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 .pf-form .ant-form-item {
   margin-bottom: 12px;
+}
+
+.pf-form .ant-form-item-explain-error {
+  font-size: 12px;
 }
 
 /* Micro-labels above inputs — clearer hierarchy than icons alone */

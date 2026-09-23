@@ -183,8 +183,11 @@ function AppShellNav() {
     return NAV_ITEMS.findIndex((it) => p === it.to);
   })();
   // No bottom nav on profile pages (mobile) — they have their own
-  // Back button and full-width content.
-  const hideBottomNav = location.pathname.startsWith("/profile");
+  // Back button and full-width content. Own (/profile) + other users'
+  // (/contacts/:username...) profiles; the contacts list keeps it.
+  const hideBottomNav =
+    location.pathname.startsWith("/profile") ||
+    location.pathname.startsWith("/contacts/");
   const lastTabRef = useRef(0);
   if (activeIndex >= 0) lastTabRef.current = activeIndex;
   const notchIndex = activeIndex >= 0 ? activeIndex : lastTabRef.current;

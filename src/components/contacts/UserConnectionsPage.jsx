@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Avatar, Spin } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faUsers, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { LockOutlined } from "@ant-design/icons";
 import { api } from "../../Services/networld";
 import { avatarColorFor } from "../../constants";
 import { mapConnectionToContact, matchesContactSlug, seedMatchesSlug } from "../../utils/contactMapper";
@@ -47,7 +48,11 @@ function UserConnectionsPage() {
         if (!email) return;
         const res = await api.connectionsOf(email);
         if (cancelled) return;
-        setConnections(Array.isArray(res.data) ? res.data : []);
+        const data = res.data || {};
+        setConnections({
+          total: data.total ?? 0,
+          items: Array.isArray(data.items) ? data.items : [],
+        });
       } catch {
         // Keep whatever is on screen — never blank a loaded view.
       } finally {
@@ -75,6 +80,10 @@ function UserConnectionsPage() {
     ? seedContact.name || "User"
     : "User";
 
+  const connTotal = connections ? connections.total : null;
+  const connItems = connections ? connections.items : [];
+  const connLocked = connTotal > 0 && connItems.length === 0;
+
   return (
     <div className="nw-page pf-page">
       <button className="nw-back-btn" onClick={goBack}>
@@ -86,7 +95,7 @@ function UserConnectionsPage() {
           <h2 className="pf-card-title">{ownerName}&rsquo;s connections</h2>
           {connections && (
             <span className="pf-count-pill">
-              {connections.length} {connections.length === 1 ? "connection" : "connections"}
+              {connTotal} {connTotal === 1 ? "connection" : "connections"}
             </span>
           )}
         </div>
@@ -95,14 +104,20 @@ function UserConnectionsPage() {
             <Spin size="large" />
             <span className="nw-state-text">Loading connections...</span>
           </div>
-        ) : !connections || connections.length === 0 ? (
+        ) : connLocked ? (
+          <div className="nw-state-box">
+            <LockOutlined style={{ fontSize: 32, color: "#475569" }} />
+            <span className="nw-state-text">Connections are private</span>
+            <span className="nw-state-sub">{ownerName} has chosen to keep connections hidden</span>
+          </div>
+        ) : !connections || connItems.length === 0 ? (
           <div className="nw-state-box">
             <FontAwesomeIcon icon={faUsers} style={{ fontSize: 40, color: "#475569" }} />
             <span className="nw-state-text">No connections yet</span>
           </div>
         ) : (
           <div className="pf-conn-list">
-            {connections.map((item, i) => {
+            {connItems.map((item, i) => {
               const c = mapConnectionToContact(item, i);
               return (
                 <div

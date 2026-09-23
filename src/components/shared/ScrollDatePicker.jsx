@@ -260,18 +260,34 @@ export default function ScrollDatePicker({ value, onChange, placeholder = "Birth
 
         {/* Footer Actions */}
         <div style={{ display: 'flex', gap: 10, padding: '16px 4px 4px', marginTop: 10 }}>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-            }}
-            style={{
-              flex: 1, padding: '12px 0', borderRadius: 12, fontWeight: 700, fontSize: 14,
-              color: '#f87171', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer', transition: 'all 0.2s'
-            }}
-          >
-            Cancel
-          </button>
+          {validValue ? (
+            <button
+              type="button"
+              onClick={() => {
+                onChange?.(null);
+                setOpen(false);
+              }}
+              style={{
+                flex: 1, padding: '12px 0', borderRadius: 12, fontWeight: 700, fontSize: 14,
+                color: '#f87171', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer', transition: 'all 0.2s'
+              }}
+            >
+              Remove Date
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+              }}
+              style={{
+                flex: 1, padding: '12px 0', borderRadius: 12, fontWeight: 700, fontSize: 14,
+                color: '#f87171', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer', transition: 'all 0.2s'
+              }}
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {

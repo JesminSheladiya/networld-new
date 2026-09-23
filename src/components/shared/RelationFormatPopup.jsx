@@ -15,11 +15,6 @@ const OPTIONS = [
     title: "Indian Relation",
     example: "Dada",
   },
-  {
-    key: "generic",
-    title: "Generic Relation",
-    example: "Paternal Grandfather",
-  },
 ];
 
 function RelationFormatPopup() {
@@ -39,7 +34,7 @@ function RelationFormatPopup() {
   const handleSave = () => {
     setFormat(picked);
     closePicker();
-    const labels = { english: "English", indian: "Indian", generic: "Generic" };
+    const labels = { english: "English", indian: "Indian" };
     message.success(`Relation display set to ${labels[picked]}`);
   };
 

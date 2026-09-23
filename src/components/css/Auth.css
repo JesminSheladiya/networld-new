@@ -113,6 +113,10 @@
   margin-bottom: 16px;
 }
 
+.auth-form .ant-form-item-explain-error {
+  font-size: 12px;
+}
+
 .auth-form .ant-form-item-label>label {
   color: #94a3b8 !important;
   font-weight: 500;

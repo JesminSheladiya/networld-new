@@ -104,11 +104,14 @@ function FindPeoplePage() {
       email: u.email || "",
       phone: u.phone || "",
       profilePicture: u.profilePic || null,
+      coverImage: u.coverImage || null,
+      coverHidden: !!u.coverHidden,
       relation: u.relationName || "",
       relationId: null,
       gender: u.gender || null,
       birthDate: u.birthDate || null,
       bio: u.bio || "",
+      contactInfoHidden: !!u.contactInfoHidden,
     };
     navigate(`/contacts/${encodeURIComponent(u.username || u.email)}`, {
       state: { contact },
@@ -212,7 +215,7 @@ function FindPeoplePage() {
                   <div className="nw-find-name">
                     {u.name}
                   </div>
-                  <div className="nw-find-email">{u.username ? `@${u.username.toLowerCase()}` : (u.phone || "—")}</div>
+                  <div className="nw-find-email">{u.username ? `@${u.username.toLowerCase()}` : (!u.contactInfoHidden ? (u.phone || "—") : "—")}</div>
                 </div>
                 <div className="nw-find-actions" onClick={(e) => e.stopPropagation()}>
                   {u._self ? (

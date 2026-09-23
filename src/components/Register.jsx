@@ -265,9 +265,14 @@ function Register() {
           <Form.Item
             className="auth-field"
             name="password"
+            validateFirst
             rules={[
               { required: true, message: "Please enter password!" },
-              { min: 8, message: "Password must be at least 8 characters!" },
+              {
+                pattern: /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/,
+                message: "Password must include at least one letter, one number and one symbol.",
+              },
+              { min: 8, message: "Password must be at least 8 characters long." },
             ]}
           >
             <Input.Password
