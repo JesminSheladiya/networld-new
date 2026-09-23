@@ -158,14 +158,46 @@ public class UserRelationService {
         userRelationRepo.save(ur);
     }
 
-    public List<UserRelationSuggestionDTO> getPendingRequests(User currentUser) {
-        return userRelationRepo.findByToUserAndStatus(currentUser, "PENDING")
+    // Privacy: strip what the target hides from this viewer. Avatar, name,
+    // username, gender and bio always stay visible (relation pickers and
+    // lists need gender everywhere — privacy applies on profile pages only).
+    // Email stays in transport (it keys navigation/actions) — display layers
+    // hide it when contact info is private.
+    // Connected viewers (and self) are exempt — they see everything.
+    private static UserRelationSuggestionDTO applyProfilePrivacy(
+            String viewerEmail, User target, boolean connected,
+            UserRelationSuggestionDTO dto) {
+        if (target.hidesCoverFrom(viewerEmail, connected)) {
+            // Frosted server-side preview (never the original bytes).
+            dto.setSuggestedUserCoverImage(
+                    com.example.demo.util.ImagePrivacy.blurredCoverOrNull(
+                            dto.getSuggestedUserCoverImage()));
+            dto.setCoverHidden(true);
+        }
+        if (target.hidesContactInfoFrom(viewerEmail, connected)) {
+            dto.setSuggestedUserPhone(null);
+            dto.setSuggestedUserBirthDate(null);
+            dto.setContactInfoHidden(true);
+        }
+        return dto;
+    }
+
+    // Accepted relation in either direction (accept writes both rows).
+    private boolean areConnected(User a, User b) {
+        if (a == null || b == null) return false;
+        return userRelationRepo.findByFromUserAndToUser(a, b)
+                        .map(ur -> "ACCEPTED".equals(ur.getStatus())).orElse(false)
+                || userRelationRepo.findByFromUserAndToUser(b, a)
+                        .map(ur -> "ACCEPTED".equals(ur.getStatus())).orElse(false);
+    }
+
+    public List<UserRelationSuggestionDTO> getPendingRequests(User currentUser) {        return userRelationRepo.findByToUserAndStatus(currentUser, "PENDING")
                 .stream()
                 .map(ur -> {
                     User s = ur.getFromUser();
                     String name = s.getFullName() != null ? s.getFullName() : s.getDisplayName();
                     Relation rel = ur.getRelation();
-                    return new UserRelationSuggestionDTO(
+                    UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
                             ur.getId(), name, s.getDisplayName(), s.getEmail(), s.getPhone(), s.getProfilePicture(),
                             s.getCoverImage(),
                             s.getGender(), s.getBirthDate(), s.getBio(),
@@ -175,10 +207,19 @@ public class UserRelationService {
                             rel.getGenericRelation(),
                             name + " wants to add you as their " + rel.getRelationName(),
                             "PENDING");
+                    return applyProfilePrivacy(currentUser.getEmail(), s, false, dto);
                 }).collect(Collectors.toList());
     }
 
-    public List<UserRelationSuggestionDTO> getMyConnections(User currentUser, String query) {        List<UserRelation> relations = (query == null || query.isBlank())
+    public List<UserRelationSuggestionDTO> getMyConnections(User currentUser, String query) {
+        return getMyConnections(currentUser, query, currentUser.getEmail(), null);
+    }
+
+    // viewerConnEmailsOrNull: viewer's accepted-connection emails (both
+    // directions, lowercased). Null = viewer owns this list → no stripping.
+    private List<UserRelationSuggestionDTO> getMyConnections(
+            User currentUser, String query, String viewerEmail,
+            java.util.Set<String> viewerConnEmailsOrNull) {        List<UserRelation> relations = (query == null || query.isBlank())
                 ? userRelationRepo.findByFromUserAndStatus(currentUser, "ACCEPTED")
                 : userRelationRepo.searchAcceptedConnections(currentUser, query.trim(), true);
 
@@ -186,7 +227,7 @@ public class UserRelationService {
             User o = ur.getToUser();
             String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
             Relation rel = ur.getRelation();
-            return new UserRelationSuggestionDTO(
+            UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
                     ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
                     o.getCoverImage(),
                     o.getGender(), o.getBirthDate(), o.getBio(),
@@ -195,15 +236,51 @@ public class UserRelationService {
                     rel.getIndianRelation(),
                     rel.getGenericRelation(),
                     null, "ACCEPTED");
+        boolean visibleToViewer = viewerConnEmailsOrNull == null
+                || (o.getEmail() != null && viewerConnEmailsOrNull.contains(o.getEmail().toLowerCase()));
+        return applyProfilePrivacy(viewerEmail, o, visibleToViewer, dto);
         }).collect(Collectors.toList());
     }
 
     // Any user's accepted connections (accept creates reverse rows, so this
     // is complete for every user — no private filtering by design).
-    public List<UserRelationSuggestionDTO> getConnectionsOf(String email) {
+    // Shape: { total, items }. Items the viewer may not see come back empty
+    // (connections hidden); total always shows. Viewer sees their own all.
+    public java.util.Map<String, Object> getConnectionsOf(String viewerEmail, String email) {
         User target = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return getMyConnections(target, null);
+        boolean self = target.getEmail() != null && viewerEmail != null
+                && target.getEmail().equalsIgnoreCase(viewerEmail);
+        java.util.Set<String> viewerConns = null;
+        if (!self) {
+            User viewer = viewerEmail == null
+                    ? null
+                    : userRepository.findByEmail(viewerEmail).orElse(null);
+            viewerConns = new java.util.HashSet<>();
+            if (viewer != null) {
+                for (UserRelation ur : userRelationRepo.findByFromUserAndStatus(viewer, "ACCEPTED")) {
+                    if (ur.getToUser().getEmail() != null)
+                        viewerConns.add(ur.getToUser().getEmail().toLowerCase());
+                }
+                for (UserRelation ur : userRelationRepo.findByToUserAndStatus(viewer, "ACCEPTED")) {
+                    if (ur.getFromUser().getEmail() != null)
+                        viewerConns.add(ur.getFromUser().getEmail().toLowerCase());
+                }
+            }
+        }
+        List<UserRelationSuggestionDTO> all =
+                getMyConnections(target, null, viewerEmail, viewerConns);
+        boolean connectedToOwner = self || (viewerConns != null
+                && target.getEmail() != null
+                && viewerConns.contains(target.getEmail().toLowerCase()));
+        List<UserRelationSuggestionDTO> visible =
+                target.hidesConnectionsFrom(viewerEmail, connectedToOwner)
+                        ? java.util.List.of()
+                        : all;
+        java.util.Map<String, Object> out = new java.util.HashMap<>();
+        out.put("total", all.size());
+        out.put("items", visible);
+        return out;
     }
 
     // Category grouping shared with the app tabs, driven by the master
@@ -240,7 +317,7 @@ public class UserRelationService {
             User o = ur.getToUser();
             String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
             Relation rel = ur.getRelation();
-            return new UserRelationSuggestionDTO(
+            UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
                     ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
                     o.getCoverImage(),
                     o.getGender(), o.getBirthDate(), o.getBio(),
@@ -249,6 +326,7 @@ public class UserRelationService {
                     rel.getIndianRelation(),
                     rel.getGenericRelation(),
                     null, "ACCEPTED");
+        return applyProfilePrivacy(currentUser.getEmail(), o, true, dto);
         });
     }
 
@@ -291,7 +369,7 @@ public class UserRelationService {
                     User o = ur.getToUser();
                     String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
                     Relation rel = ur.getRelation();
-            return new UserRelationSuggestionDTO(
+            UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
                     ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
                     o.getCoverImage(),
                     o.getGender(), o.getBirthDate(), o.getBio(),
@@ -301,6 +379,7 @@ public class UserRelationService {
                             rel.getGenericRelation(),
                             "Discovered through your network connections",
                             "SUGGESTED");
+                    return applyProfilePrivacy(currentUser.getEmail(), o, false, dto);
                 }).collect(Collectors.toList());
     }
 

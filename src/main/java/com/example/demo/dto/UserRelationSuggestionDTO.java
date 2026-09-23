@@ -19,6 +19,8 @@ public class UserRelationSuggestionDTO {
     private String genericRelation;
     private String reason;
     private String status;
+    private boolean contactInfoHidden;
+    private boolean coverHidden;
 
     public UserRelationSuggestionDTO() {}
 
@@ -72,4 +74,14 @@ public class UserRelationSuggestionDTO {
     public String getGenericRelation()         { return genericRelation; }
     public String getReason()                  { return reason; }
     public String getStatus()                  { return status; }
+    public boolean isContactInfoHidden()       { return contactInfoHidden; }
+    public void setContactInfoHidden(boolean v){ this.contactInfoHidden = v; }
+    public boolean isCoverHidden()             { return coverHidden; }
+    public void setCoverHidden(boolean v)      { this.coverHidden = v; }
+
+    // Privacy stripping (setters used by the service, never at construction).
+    // Bio + avatar + name + gender stay public by design — no setters for those.
+    public void setSuggestedUserCoverImage(String v) { this.suggestedUserCoverImage = v; }
+    public void setSuggestedUserPhone(String v)      { this.suggestedUserPhone = v; }
+    public void setSuggestedUserBirthDate(java.time.LocalDate v) { this.suggestedUserBirthDate = v; }
 }

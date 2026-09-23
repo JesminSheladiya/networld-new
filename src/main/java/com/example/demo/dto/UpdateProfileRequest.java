@@ -12,6 +12,10 @@ public class UpdateProfileRequest {
     private String gender;
     private java.time.LocalDate birthDate;
     private String bio;
+    private Boolean privateAccount;
+    private Boolean hideCover;
+    private Boolean hideConnections;
+    private Boolean hideContactInfo;
 
 
     public String getUsername()        { return username; }
@@ -46,4 +50,16 @@ public class UpdateProfileRequest {
 
     public String getBio()       { return bio; }
     public void setBio(String v) { this.bio = v; }
+
+    public Boolean getPrivateAccount()       { return privateAccount; }
+    public void setPrivateAccount(Boolean v) { this.privateAccount = v; }
+
+    public Boolean getHideCover()       { return hideCover; }
+    public void setHideCover(Boolean v) { this.hideCover = v; }
+
+    public Boolean getHideConnections()       { return hideConnections; }
+    public void setHideConnections(Boolean v) { this.hideConnections = v; }
+
+    public Boolean getHideContactInfo()       { return hideContactInfo; }
+    public void setHideContactInfo(Boolean v) { this.hideContactInfo = v; }
 }

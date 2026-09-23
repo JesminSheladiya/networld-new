@@ -13,11 +13,17 @@ public class AuthResponse {
     private String gender;
     private java.time.LocalDate birthDate;
     private String bio;
+    private Boolean privateAccount;
+    private Boolean hideCover;
+    private Boolean hideConnections;
+    private Boolean hideContactInfo;
 
     public AuthResponse(String token, String username, String email,
                         String phone, String fullName, Long id, String profilePicture,
                         String coverImage,
-                        String gender, java.time.LocalDate birthDate, String bio) {
+                        String gender, java.time.LocalDate birthDate, String bio,
+                        Boolean privateAccount, Boolean hideCover,
+                        Boolean hideConnections, Boolean hideContactInfo) {
         this.token    = token;
         this.username = username;
         this.email    = email;
@@ -29,6 +35,10 @@ public class AuthResponse {
         this.gender   = gender;
         this.birthDate = birthDate;
         this.bio      = bio;
+        this.privateAccount = privateAccount;
+        this.hideCover = hideCover;
+        this.hideConnections = hideConnections;
+        this.hideContactInfo = hideContactInfo;
     }
 
     public String getToken()    { return token; }
@@ -42,4 +52,8 @@ public class AuthResponse {
     public String getGender()   { return gender; }
     public java.time.LocalDate getBirthDate() { return birthDate; }
     public String getBio() { return bio; }
+    public Boolean getPrivateAccount() { return privateAccount; }
+    public Boolean getHideCover() { return hideCover; }
+    public Boolean getHideConnections() { return hideConnections; }
+    public Boolean getHideContactInfo() { return hideContactInfo; }
 }

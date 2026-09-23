@@ -50,19 +50,26 @@ public class UserRelationController {
         List<Map<String, Object>> result = new ArrayList<>();
         for (User u : users) {
             Map<String, Object> item = new HashMap<>();
+            Optional<UserRelation> fwd = userRelationRepository.findByFromUserAndToUser(me, u);
+            Optional<UserRelation> rev = userRelationRepository.findByFromUserAndToUser(u, me);
+            boolean connected =
+                    (fwd.isPresent() && "ACCEPTED".equals(fwd.get().getStatus())) ||
+                    (rev.isPresent() && "ACCEPTED".equals(rev.get().getStatus()));
             item.put("id",         u.getId());
             item.put("name",       u.getFullName() != null ? u.getFullName() : u.getDisplayName());
             item.put("username",   u.getDisplayName());
             item.put("email",      u.getEmail());
-            item.put("phone",      u.getPhone());
             item.put("profilePic", u.getProfilePicture() != null ? u.getProfilePicture() : "");
-            item.put("coverImage", u.getCoverImage() != null ? u.getCoverImage() : "");
+            item.put("coverImage", u.hidesCoverFrom(me.getEmail(), connected)
+                    ? com.example.demo.util.ImagePrivacy.blurredCoverOrNull(u.getCoverImage())
+                    : (u.getCoverImage() != null ? u.getCoverImage() : ""));
+            item.put("coverHidden", u.hidesCoverFrom(me.getEmail(), connected));
+            item.put("contactInfoHidden", u.hidesContactInfoFrom(me.getEmail(), connected));
+            item.put("phone",      u.hidesContactInfoFrom(me.getEmail(), connected) ? null : u.getPhone());
             item.put("gender",     u.getGender());
-            item.put("birthDate",  u.getBirthDate());
+            item.put("birthDate",  u.hidesContactInfoFrom(me.getEmail(), connected) ? null : u.getBirthDate());
             item.put("bio",        u.getBio());
 
-            Optional<UserRelation> fwd = userRelationRepository.findByFromUserAndToUser(me, u);
-            Optional<UserRelation> rev = userRelationRepository.findByFromUserAndToUser(u, me);
             // Only PENDING counts as sent/received — DECLINED resets to fresh state
             if (fwd.isPresent()) {
                 if ("ACCEPTED".equals(fwd.get().getStatus())) {
@@ -149,11 +156,11 @@ public class UserRelationController {
     }
 
     @GetMapping("/connections/of")
-    public ResponseEntity<List<UserRelationSuggestionDTO>> getConnectionsOf(
+    public ResponseEntity<java.util.Map<String, Object>> getConnectionsOf(
             @RequestParam String email,
             @AuthenticationPrincipal UserDetails ud) {
         getCurrentUser(ud); // authenticated only; no private filtering by design
-        return ResponseEntity.ok(userRelationService.getConnectionsOf(email));
+        return ResponseEntity.ok(userRelationService.getConnectionsOf(ud.getUsername(), email));
     }
 
     @GetMapping("/connections/paged")

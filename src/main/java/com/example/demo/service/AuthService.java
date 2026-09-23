@@ -123,6 +123,15 @@ public class AuthService {
         if (req.getCoverImage() != null)
             u.setCoverImage(req.getCoverImage());
 
+        if (req.getPrivateAccount() != null)
+            u.setPrivateAccount(req.getPrivateAccount());
+        if (req.getHideCover() != null)
+            u.setHideCover(req.getHideCover());
+        if (req.getHideConnections() != null)
+            u.setHideConnections(req.getHideConnections());
+        if (req.getHideContactInfo() != null)
+            u.setHideContactInfo(req.getHideContactInfo());
+
         if (req.getNewPassword() != null && !req.getNewPassword().isBlank()) {
             if (req.getCurrentPassword() == null || req.getCurrentPassword().isBlank())
                 throw new RuntimeException("Current password is required");
@@ -260,7 +269,11 @@ public class AuthService {
                 u.getCoverImage(),
                 u.getGender(),
                 u.getBirthDate(),
-                u.getBio()
+                u.getBio(),
+                u.getPrivateAccount(),
+                u.getHideCover(),
+                u.getHideConnections(),
+                u.getHideContactInfo()
         );
     }
 
