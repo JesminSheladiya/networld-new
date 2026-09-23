@@ -107,7 +107,9 @@ public class AuthService {
         if (req.getGender() != null && !req.getGender().isBlank())
             u.setGender(req.getGender());
 
-        if (req.getBirthDate() != null)
+        if (Boolean.TRUE.equals(req.getClearBirthDate()))
+            u.setBirthDate(null);
+        else if (req.getBirthDate() != null)
             u.setBirthDate(validateBirthDate(req.getBirthDate()));
 
         if (req.getBio() != null) {
@@ -123,8 +125,6 @@ public class AuthService {
         if (req.getCoverImage() != null)
             u.setCoverImage(req.getCoverImage());
 
-        if (req.getPrivateAccount() != null)
-            u.setPrivateAccount(req.getPrivateAccount());
         if (req.getHideCover() != null)
             u.setHideCover(req.getHideCover());
         if (req.getHideConnections() != null)
@@ -270,7 +270,6 @@ public class AuthService {
                 u.getGender(),
                 u.getBirthDate(),
                 u.getBio(),
-                u.getPrivateAccount(),
                 u.getHideCover(),
                 u.getHideConnections(),
                 u.getHideContactInfo()

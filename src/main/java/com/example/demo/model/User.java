@@ -48,11 +48,8 @@ public class User implements UserDetails {
     @Column(name = "bio", length = 200)
     private String bio;
 
-    // Privacy: master switch + granular hides. Nullable for old rows —
+    // Privacy: granular hides. Nullable for old rows —
     // null counts as false everywhere (see helpers below).
-    @Column(name = "is_private")
-    private Boolean privateAccount;
-
     @Column(name = "hide_cover")
     private Boolean hideCover;
 
@@ -103,9 +100,6 @@ public class User implements UserDetails {
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }
 
-    public Boolean getPrivateAccount() { return privateAccount; }
-    public void setPrivateAccount(Boolean privateAccount) { this.privateAccount = privateAccount; }
-
     public Boolean getHideCover() { return hideCover; }
     public void setHideCover(Boolean hideCover) { this.hideCover = hideCover; }
 
@@ -122,7 +116,7 @@ public class User implements UserDetails {
     }
 
     private boolean privacyActiveFor(String viewerEmail, boolean connected) {
-        return Boolean.TRUE.equals(privateAccount) && !isSameUser(viewerEmail) && !connected;
+        return !isSameUser(viewerEmail) && !connected;
     }
 
     public boolean hidesCoverFrom(String viewerEmail, boolean connected) {
