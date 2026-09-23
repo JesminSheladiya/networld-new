@@ -1354,6 +1354,10 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   margin-bottom: 12px;
 }
 
+.pf-form .ant-form-item-explain-error {
+  font-size: 12px;
+}
+
 /* Micro-labels above inputs — clearer hierarchy than icons alone */
 .pf-form .ant-form-item-label {
   padding-bottom: 6px;

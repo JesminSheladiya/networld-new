@@ -451,7 +451,18 @@ function ProfilePage({ hidePassword = false }) {
                   )}
                 />
               </Form.Item>
-              <Form.Item name="newPassword" label="New password" rules={[{ min: 8, message: "At least 8 characters!" }]}>
+              <Form.Item
+              name="newPassword"
+              label="New password"
+              validateFirst
+              rules={[
+                {
+                  pattern: /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/,
+                  message: "Password must include at least one letter, one number and one symbol.",
+                },
+                { min: 8, message: "Password must be at least 8 characters long." },
+              ]}
+            >
                 <Input.Password
                   className="auth-input"
                   prefix={<LockOutlined className="auth-input-icon" />}
@@ -495,7 +506,7 @@ function ProfilePage({ hidePassword = false }) {
                 />
               </Form.Item>
               <div className="pf-actions">
-                <span className="pf-hint">Use at least 8 characters — mix letters, numbers &amp; symbols.</span>
+                <span className="pf-hint">At least 8 characters with a letter, a number &amp; a symbol.</span>
                 <button type="submit" className="pf-primary-btn" disabled={!pwdReady || savingPwd}>
                   {savingPwd ? "Updating..." : "Update password"}
                 </button>
