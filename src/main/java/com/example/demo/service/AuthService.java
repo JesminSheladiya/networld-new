@@ -51,7 +51,7 @@ public class AuthService {
 
         User u = new User();
         u.setUsername(username);
-        u.setPassword(encoder.encode(req.getPassword()));
+        u.setPassword(encoder.encode(validateNewPassword(req.getPassword())));
         u.setEmail(req.getEmail());
         u.setPhone(req.getPhone());
         u.setFullName(req.getFullName());
@@ -137,8 +137,7 @@ public class AuthService {
                 throw new RuntimeException("Current password is required");
             if (!encoder.matches(req.getCurrentPassword(), u.getPassword()))
                 throw new RuntimeException("Current password is incorrect");
-            if (req.getNewPassword().length() < 8)
-                throw new RuntimeException("New password must be at least 8 characters");
+            validateNewPassword(req.getNewPassword());
             if (req.getConfirmPassword() == null || !req.getConfirmPassword().equals(req.getNewPassword()))
                 throw new RuntimeException("Passwords do not match");
             u.setPassword(encoder.encode(req.getNewPassword()));
@@ -274,6 +273,16 @@ public class AuthService {
                 u.getHideConnections(),
                 u.getHideContactInfo()
         );
+    }
+
+    // Registration + change: min 8 chars with at least one letter,
+    // one number and one symbol — enforced in both places.
+    static String validateNewPassword(String password) {
+        if (password == null || password.length() < 8)
+            throw new RuntimeException("Password must be at least 8 characters");
+        if (!password.matches("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z\\d]).+$"))
+            throw new RuntimeException("Password must contain a letter, a number and a symbol");
+        return password;
     }
 
     // Shared birth-date validation (register + profile update): optional,
