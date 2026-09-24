@@ -76,12 +76,19 @@ public class RelationshipResolver {
         // Hops (edges) from ego to this state; guards against runaway
         // re-exploration. Family relations resolve within a few hops.
         int depth;
+        // Node we arrived from (null for ego root). A hop straight back to
+        // it (A -> B -> A) is skipped by the caller: round trips label a
+        // person through themselves ("my nephew's aunt" for my own
+        // sister-in-law reads as blood Sister) and the detour-shifted
+        // states then beat the true labels on degree. Simple paths (which
+        // never contain a 2-cycle) are unaffected.
+        Long prevId;
         // Insertion order: keeps the search deterministic — equal-cost
         // paths resolve first-discovered-wins, as BFS did before.
         long seq;
 
         public State(Long userId, int v, int maxV, int s, int line, String prevCat,
-                     String prevG, boolean viaSide, int depth, long seq) {
+                     String prevG, boolean viaSide, int depth, long seq, Long prevId) {
             this.userId = userId;
             this.v = v;
             this.maxV = maxV;
@@ -92,6 +99,7 @@ public class RelationshipResolver {
             this.viaSide = viaSide;
             this.depth = depth;
             this.seq = seq;
+            this.prevId = prevId;
         }
     }
 
@@ -127,11 +135,19 @@ public class RelationshipResolver {
                 Comparator.comparingInt((State st) -> trueDegree(st.v, st.maxV, st.s))
                         .thenComparingLong(st -> st.seq));
         long seq = 0;
-        queue.add(new State(me.getId(), 0, 0, 0, 0, null, "N", false, 0, seq++));
+        queue.add(new State(me.getId(), 0, 0, 0, 0, null, "N", false, 0, seq++, null));
 
         Map<Long, Integer> bestDegree = new HashMap<>();
         bestDegree.put(me.getId(), 0);
+        // Whether the recorded best came from a proven side reading
+        // (spouse-side flip or exact sidePair name) as opposed to a plain
+        // generic inference: on a degree tie the proven reading wins even
+        // when both names are plain ("Sister-in-law" over "Sister").
+        Map<Long, Boolean> bestProven = new HashMap<>();
         Set<String> expanded = new HashSet<>();
+        // Proven side readings (see flipFired below) with their blood-degree.
+        Map<Long, String> provenLabel = new HashMap<>();
+        Map<Long, Integer> provenDegree = new HashMap<>();
 
         while (!queue.isEmpty()) {
             State curr = queue.poll();
@@ -144,6 +160,7 @@ public class RelationshipResolver {
             for (UserRelation edge : adj.getOrDefault(curr.userId, Collections.emptyList())) {
                 Long nextId = edge.getToUser().getId();
                 if (nextId.equals(me.getId())) continue; // never suggest ego
+                if (curr.prevId != null && nextId.equals(curr.prevId)) continue; // no 2-cycle returns
 
                 Relation rel = edge.getRelation();
                 String cat = rel.getRelationCategory() != null ? rel.getRelationCategory() : "OTHER";
@@ -179,6 +196,11 @@ public class RelationshipResolver {
                     if (!"N".equals(curr.prevG)) nextPrevG = curr.prevG;
                 }
                 boolean nextVia = curr.viaSide;
+                // Set when this edge's own side marker proves the reading
+                // (spouse-side flip below, or an exact sidePair name): such
+                // proven labels outrank degree-winning blood guesses for the
+                // same person (recorded after the search).
+                boolean flipFired = false;
 
                 switch (cat.toUpperCase()) {
                     case "PARENT":
@@ -258,7 +280,10 @@ public class RelationshipResolver {
                     case "GRANDPARENT":
                         nextV += 2; nextMaxV = Math.max(nextMaxV, nextV);
                         if (nextS == 2) nextS = 1;
-                        else if (isSpouseSideKin(rel, curr, me, nextId, adj)) nextS = 1;
+                        else if (isSpouseSideKin(rel, curr, me, nextId, adj)) {
+                            nextS = 1;
+                            flipFired = true;
+                        }
                         else if (nextS == 0 && kinSideOf(rel) > 0
                                 && !(curr.v == -1 && curr.maxV == 0)
                                 && ((("NIBLING".equals(curr.prevCat)
@@ -308,7 +333,10 @@ public class RelationshipResolver {
                     case "PIBLING": // Uncle/Aunt
                         nextV += 1; nextMaxV = Math.max(nextMaxV, nextV + 1);
                         if (nextS == 2) nextS = 1;
-                        else if (isSpouseSideKin(rel, curr, me, nextId, adj)) nextS = 1;
+                        else if (isSpouseSideKin(rel, curr, me, nextId, adj)) {
+                            nextS = 1;
+                            flipFired = true;
+                        }
                         else if (kinSideOf(rel) != 0 && !(curr.v == -1 && curr.maxV == 0)) {
                             // My grandchild's/nibling's/descendant's uncle/aunt,
                             // side-aware. The link gender comes from the edge
@@ -390,7 +418,8 @@ public class RelationshipResolver {
                 }
                 
                 String[] sidePair = sideSpecificPair(cat.toUpperCase(), curr, nextS,
-                        middleGender, egoGender, targetGender, gender, kinSideOf(rel));
+                        middleGender, egoGender, targetGender, gender, kinSideOf(rel),
+                        rel != null ? rel.getRelationName() : null);
                 String otherToMeStr;
                 String meToOtherStr;
                 if (sidePair != null) {
@@ -418,19 +447,54 @@ public class RelationshipResolver {
                             + (rel != null ? rel.getRelationName() + "/" + rel.getRelationCategory() : "?")
                             + "]->" + edge.getToUser().getEmail()
                             + " st=(" + nextV + "," + nextMaxV + "," + nextS + ",l=" + nextLine + "," + nextPrevCat + ")"
-                            + " from=(" + curr.v + "," + curr.maxV + "," + curr.s + ",l=" + curr.line + "," + curr.prevCat + ")"
+                            + " from=(" + curr.v + "," + curr.maxV + "," + curr.s + ",l=" + curr.line + "," + curr.prevCat + ",pg=" + curr.prevG + ")"
                             + " lbl=" + otherToMeStr + "/" + meToOtherStr + " deg=" + nextDegree);
                 }
                 if (nextDegree <= MAX_SUGGESTION_DEGREE
                         && nextDegree < bestDegree.getOrDefault(nextId, Integer.MAX_VALUE)) {
                     bestDegree.put(nextId, nextDegree);
+                    bestProven.put(nextId, flipFired || sidePair != null);
                     results.put(nextId, new RelResult(otherToMeStr, meToOtherStr, nextVia));
                 }
+                // A proven side reading (edge's own side marker, or an exact
+                // sidePair name) outranks a degree-winning blood guess for
+                // the same person: record it at blood degree (no in-law
+                // penalty) and prefer it over equal-or-farther labels below.
+                // Closer labels (lower degree) still stand — a proven flip
+                // never demotes a nearer truth.
+                if ((flipFired || sidePair != null) && otherToMeStr != null) {
+                    int provenDeg = trueDegree(nextV, nextMaxV, 0);
+                    int curDeg = provenDegree.getOrDefault(nextId, Integer.MAX_VALUE);
+                    String curLbl = provenLabel.get(nextId);
+                    if (provenDeg < curDeg || (provenDeg == curDeg && curLbl != null
+                            && isExactName(otherToMeStr) && !isExactName(curLbl))) {
+                        provenDegree.put(nextId, provenDeg);
+                        provenLabel.put(nextId, otherToMeStr);
+                    }
+                }
                 queue.add(new State(nextId, nextV, nextMaxV, nextS, nextLine, nextPrevCat,
-                        nextPrevG, nextVia, curr.depth + 1, seq++));
+                        nextPrevG, nextVia, curr.depth + 1, seq++, curr.userId));
             }
         }
-        
+
+        // Prefer proven side readings over equal-or-farther labels. On a
+        // degree tie: a proven reading beats an unproven generic even when
+        // both names are plain; between two proven readings the exact
+        // (chain/parenthesized) name beats the plain generic one.
+        for (Map.Entry<Long, String> e : provenLabel.entrySet()) {
+            Long uid = e.getKey();
+            int pd = provenDegree.get(uid);
+            int best = bestDegree.getOrDefault(uid, Integer.MAX_VALUE);
+            RelResult cur = results.get(uid);
+            boolean curProven = bestProven.getOrDefault(uid, false);
+            boolean curExact = cur != null && isExactName(cur.otherToMe);
+            if (pd < best || (pd == best && !curProven)
+                    || (pd == best && curProven && isExactName(e.getValue()) && !curExact)) {
+                results.put(uid, new RelResult(e.getValue(),
+                        cur != null ? cur.meToOther : null, false));
+            }
+        }
+
         return results;
     }
 
@@ -496,8 +560,8 @@ public class RelationshipResolver {
     private static String[] sideSpecificPair(String cat, State curr, int nextS,
                                              String middleGender, String egoGender,
                                              String targetGender, String otherGender,
-                                             int kinSide) {
-        if (curr.s != 0 && curr.s != 1) return null;
+                                             int kinSide, String relName) {
+        if (curr.s != 0 && curr.s != 1 && curr.s != 2) return null;
         boolean mMale = "M".equals(middleGender);
         boolean mFemale = "F".equals(middleGender);
         if (!mMale && !mFemale) return null;
@@ -506,6 +570,57 @@ public class RelationshipResolver {
         if (!tMale && !tFemale) return null;
         boolean eMale = "M".equals(egoGender);
         boolean oMale = "M".equals(otherGender);
+        // My spouse's sibling is never generic Brother/Sister-in-law: a
+        // wife's brother/sister is Sala/Sali, a husband's brother/sister is
+        // Devar/Nanad (all rows exist). Direct-spouse state only (s == 2).
+        if ("SIBLING".equals(cat) && curr.s == 2 && nextS == 1) {
+            // eMale: my wife's sibling; else my husband's sibling.
+            String myView;
+            String theirView;
+            if (eMale) {
+                myView = tMale ? "Brother-in-law (Wife's Brother)"
+                        : "Sister-in-law (Wife's Sister)";
+                theirView = "Brother-in-law (Sister's Husband)";
+            } else {
+                myView = tMale ? "Brother-in-law (Husband's Brother)"
+                        : "Sister-in-law (Husband's Sister)";
+                theirView = "Sister-in-law (Brother's Wife)";
+            }
+            return new String[]{myView, theirView};
+        }
+        // My child's flipped pibling (spouse side) is never generic: name
+        // the exact seat. Plain sides derive from ego gender (my husband's
+        // brother is Devar, my wife's sister is Sali...); married-in rows
+        // map to their exact counterpart each way (Tai<->Jethani,
+        // Chachi<->Devrani, Fufa<->Nandoi/Jija, Mami<->Bhabhi/Sarhaj,
+        // Mausa<->Jija/Sadu). Blood-side readings stay generic (my own
+        // brother/sister). Flipped (nextS == 1) direct-child states only.
+        if ("PIBLING".equals(cat) && curr.v == -1 && curr.maxV == 0 && curr.s == 0 && nextS == 1) {
+            String[] exact = flippedPiblingExact(relName, kinSide, eMale, tMale);
+            if (exact != null) return exact;
+        }
+        // My nibling's parent: a brother-line nibling's mother is my
+        // brother's wife (Bhabhi) and the father is my Brother; a
+        // sister-line nibling mirrors this (Sister / Jija). Exact rows all
+        // exist. Nibling-state, blood path, fresh line only. (nextS is as
+        // the switch computed: in-law rows with s == 1, blood with s == 0 —
+        // the formulas below mirror that switch logic exactly.)
+        if ("PARENT".equals(cat) && curr.v == -1 && curr.maxV == 1 && curr.s == 0
+                && "NIBLING".equals(curr.prevCat) && curr.line != 0) {
+            String myView;
+            String theirView;
+            if (curr.line == 2) {
+                myView = tMale ? "Brother" : "Sister-in-law (Brother's Wife)";
+                theirView = tMale ? (eMale ? "Brother" : "Sister")
+                        : "Sister-in-law (Husband's Sister)";
+            } else {
+                myView = tMale ? "Brother-in-law (Sister's Husband)" : "Sister";
+                theirView = tMale ? (eMale ? "Brother-in-law (Wife's Brother)"
+                                : "Sister-in-law (Wife's Sister)")
+                        : (eMale ? "Brother" : "Sister");
+            }
+            return new String[]{myView, theirView};
+        }
         // My parent's parent: mother's side is maternal, father's paternal.
         // Strictly blood path only (an in-law's parent has no side name).
         if ("PARENT".equals(cat) && curr.s == 0 && nextS == 0
@@ -559,7 +674,7 @@ public class RelationshipResolver {
                 return new String[]{myView, theirView};
             }
         }
-        // My root-sibling's side-marked kin shares my sides (same parents):
+        // My sibling's side-marked pibling shares my sides (same parents):
         // naming stays generic above, but here the side is certain, so name
         // it exactly (Paternal/Maternal Aunt/Uncle/GF/GM). SIBLING-prevCat
         // with s == 0 means a same-parents chain from ego's own sibling
@@ -584,7 +699,104 @@ public class RelationshipResolver {
             }
             return new String[]{sideName, backName};
         }
+        // My grandchild's side-marked pibling, line-known: a son-line
+        // grandchild's paternal aunt/uncle is my own child (Son/Daughter),
+        // but the maternal side married in — my Daughter-in-law's
+        // sibling, i.e. my Son's Brother/Sister-in-law (rows exist);
+        // daughter-line mirrors this. Fresh line only (prevCat proves whose
+        // line it is); married-in markers ("... Wife/Husband") stay generic.
+        if ("PIBLING".equals(cat) && curr.v == -2 && curr.s == 0
+                && (("GRANDCHILD".equals(curr.prevCat) || "NIBLING".equals(curr.prevCat)))
+                && curr.line != 0 && kinSide > 0) {
+            boolean sonLine = curr.line == 2;
+            boolean paternal = kinSide == 1;
+            String myView;
+            String theirView;
+            if (sonLine == paternal) {
+                myView = tMale ? "Son" : "Daughter";
+                theirView = eMale ? "Father" : "Mother";
+            } else if (sonLine) {
+                myView = tMale ? "Son's Brother-in-law" : "Son's Sister-in-law";
+                theirView = eMale ? "Son's Father-in-law" : "Son's Mother-in-law";
+            } else {
+                myView = tMale ? "Daughter's Brother-in-law" : "Daughter's Sister-in-law";
+                theirView = eMale ? "Daughter's Father-in-law" : "Daughter's Mother-in-law";
+            }
+            return new String[]{myView, theirView};
+        }
+        // My sibling's child is my nibling, brother/sister-line by the
+        // sibling's own gender ("my brother's son" is exact, not generic
+        // Nephew). Sibling-state (same parents) with s == 0 only.
+        if ("CHILD".equals(cat) && curr.v == 0 && curr.maxV == 1 && curr.s == 0 && nextS == 0) {
+            boolean broLine = "M".equals(middleGender);
+            boolean sisLine = "F".equals(middleGender);
+            if (broLine || sisLine) {
+                String myView = broLine
+                        ? (tMale ? "Brother Son" : "Brother Daughter")
+                        : (tMale ? "Sister Son" : "Sister Daughter");
+                String theirView = (broLine ? "Paternal " : "Maternal ")
+                        + (eMale ? "Uncle" : "Aunt");
+                return new String[]{myView, theirView};
+            }
+        }
         return null;
+    }
+
+    // Exact (chain or parenthesized specific) vs plain generic names:
+    // "Sister-in-law (Husband's Sister)" and "Brother's Father-in-law"
+    // describe precisely; "Sister-in-law" does not.
+    private static boolean isExactName(String name) {
+        return name != null && (name.contains("(") || name.contains("'s "));
+    }
+
+    // Exact names for a flipped (spouse-side) pibling of my own child.
+    // Plain sides: my husband's brother/sister = Devar/Nanad, my wife's
+    // brother/sister = Sala/Sali. Married-in rows map to their counterpart:
+    // Tai<->Jethani, Chachi<->Devrani, Fufa->Nandoi(mine f)/Jija(mine m),
+    // Mami->Bhabhi(mine f)/Sarhaj(mine m), Mausa->Jija(mine f)/Sadu(mine m).
+    // theirView is the reverse seat (all rows exist). Returns null when the
+    // generic in-law label should stand.
+    private static String[] flippedPiblingExact(String relName, int kinSide,
+                                                boolean eMale, boolean tMale) {
+        if (relName == null) return null;
+        String n = relName.toLowerCase().trim();
+        // Plain side rows reached flipped: derive from ego gender.
+        if (n.equals("paternal uncle") || n.equals("paternal aunt")
+                || n.equals("father elder brother")) {
+            if (eMale) return null; // my own brother/sister: generic stands
+            return new String[]{
+                    tMale ? "Brother-in-law (Husband's Brother)"
+                            : "Sister-in-law (Husband's Sister)",
+                    "Sister-in-law (Brother's Wife)"};
+        }
+        if (n.equals("maternal uncle") || n.equals("maternal aunt")) {
+            if (!eMale) return null; // my own brother/sister: generic stands
+            return new String[]{
+                    tMale ? "Brother-in-law (Wife's Brother)"
+                            : "Sister-in-law (Wife's Sister)",
+                    "Brother-in-law (Sister's Husband)"};
+        }
+        // Married-in rows: exact counterpart each way.
+        String myView = null;
+        String theirView = null;
+        if (n.equals("father elder brother wife")) {
+            if (eMale) { myView = "Sister-in-law (Brother's Wife)"; theirView = "Brother-in-law (Husband's Brother)"; }
+            else { myView = "Husband's Elder Brother's Wife"; theirView = "Husband's Brother's Wife"; }
+        } else if (n.equals("father younger brother wife")) {
+            if (eMale) { myView = "Sister-in-law (Brother's Wife)"; theirView = "Brother-in-law (Husband's Brother)"; }
+            else { myView = "Husband's Brother's Wife"; theirView = "Husband's Elder Brother's Wife"; }
+        } else if (n.equals("father sister husband")) {
+            if (eMale) { myView = "Brother-in-law (Sister's Husband)"; theirView = "Brother-in-law (Wife's Sister's Husband)"; }
+            else { myView = "Husband's Sister's Husband"; theirView = "Sister-in-law (Wife's Brother's Wife)"; }
+        } else if (n.equals("mother brother wife")) {
+            if (eMale) { myView = "Sister-in-law (Wife's Brother's Wife)"; theirView = "Husband's Sister's Husband"; }
+            else { myView = "Sister-in-law (Brother's Wife)"; theirView = "Sister-in-law (Husband's Sister)"; }
+        } else if (n.equals("mother sister husband")) {
+            if (eMale) { myView = "Brother-in-law (Wife's Sister's Husband)"; theirView = "Brother-in-law (Wife's Sister's Husband)"; }
+            else { myView = "Brother-in-law (Sister's Husband)"; theirView = "Sister-in-law (Wife's Sister)"; }
+        }
+        if (myView == null) return null;
+        return new String[]{myView, theirView};
     }
 
     private String resolveStateName(int v, int maxV, int s, String gender) {

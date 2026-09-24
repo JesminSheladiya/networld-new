@@ -584,10 +584,20 @@ public class UserRelationService {
             if (tailRow == null) continue;
             // Chain tail uses the relation's own name (e.g. "Son's
             // Father-in-law"); the old generic display label is gone.
+            // If the exact tail has no chain row, retry with its base form
+            // ("Sister-in-law (Husband's Sister)" -> "Sister-in-law"):
+            // generalizing an exact tail preserves truth ("Sister's
+            // Sister-in-law" still describes her exactly).
             String tailGeneric = tailName;
-
             String candidate = headName + "'s " + tailGeneric;
             Optional<Relation> hit = relationRepository.findByRelationNameIgnoreCase(candidate);
+            if (hit.isEmpty()) {
+                int paren = tailGeneric.indexOf(" (");
+                if (paren > 0) {
+                    candidate = headName + "'s " + tailGeneric.substring(0, paren);
+                    hit = relationRepository.findByRelationNameIgnoreCase(candidate);
+                }
+            }
             if (hit.isPresent()) return hit.get().getRelationName();
         }
         return null;

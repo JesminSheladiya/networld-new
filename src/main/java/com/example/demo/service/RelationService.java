@@ -105,13 +105,29 @@ public class RelationService {
     // Group key: explicit couple position when listed, else a shared
     // fallback bucket — the side/base keys after this do the rest, so
     // paternal sides (dada-dadi, paternal cousins) always precede maternal
-    // ones while unlisted future rows still slot in sensibly.
+    // ones while unlisted future rows still slot in sensibly. Within every
+    // pair the male comes first (Father-Mother, Son-Daughter, ...).
+    private static final java.util.List<String> CHILD_ORDER = java.util.List.of(
+            "son", "daughter");
+    private static final java.util.List<String> GRANDCHILD_ORDER = java.util.List.of(
+            "daughter's son", "daughter's daughter", "grandson", "granddaughter");
+    private static final java.util.List<String> NIBLING_ORDER = java.util.List.of(
+            "brother son", "brother daughter", "sister son", "sister daughter");
+    private static final java.util.List<String> COUSIN_ORDER = java.util.List.of(
+            "paternal cousin brother", "paternal cousin sister",
+            "maternal cousin brother", "maternal cousin sister",
+            "cousin brother", "cousin sister");
+
     private static String orderKey(Relation r) {
         String name = r.getRelationName() == null ? "" : r.getRelationName().toLowerCase();
         String cat = r.getRelationCategory() == null ? "" : r.getRelationCategory().toUpperCase();
         int idx = -1;
         if ("PIBLING".equals(cat)) idx = PIBLING_ORDER.indexOf(name);
         else if ("INLAW".equals(cat)) idx = INLAW_ORDER.indexOf(name);
+        else if ("CHILD".equals(cat)) idx = CHILD_ORDER.indexOf(name);
+        else if ("GRANDCHILD".equals(cat)) idx = GRANDCHILD_ORDER.indexOf(name);
+        else if ("NIBLING".equals(cat)) idx = NIBLING_ORDER.indexOf(name);
+        else if ("COUSIN".equals(cat)) idx = COUSIN_ORDER.indexOf(name);
         if (idx >= 0) return "0:" + String.format("%03d", idx);
         return "1:";
     }
