@@ -10,8 +10,10 @@ const FIELD_BY_FORMAT = {
   indian: 'indianRelation',
 };
 
-// Stored 'generic' choices from before the format was removed map to English.
-const normalizeFormat = (f) => (f === 'generic' ? 'english' : f);
+// Stored 'generic' choices from before the format was removed map to
+// English. Anything unknown also falls back to English (default), while
+// null stays null so the first-login popup still appears.
+const normalizeFormat = (f) => (f == null ? null : (f === 'indian' ? 'indian' : 'english'));
 
 const RelationDisplayContext = createContext(null);
 

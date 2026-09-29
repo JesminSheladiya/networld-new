@@ -55,6 +55,7 @@ export function getInverseRelation(rel, gender = "M") {
         "maternal aunt": F ? "sister daughter" : "sister son",
         "father elder brother": F ? "brother daughter" : "brother son",
         "father elder brother wife": F ? "brother daughter" : "brother son",
+        "father younger brother": F ? "brother daughter" : "brother son",
         "father younger brother wife": F ? "brother daughter" : "brother son",
         "father sister husband": F ? "brother daughter" : "brother son",
         "mother brother wife": F ? "sister daughter" : "sister son",
