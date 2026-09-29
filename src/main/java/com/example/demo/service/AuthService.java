@@ -42,18 +42,19 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest req) {
         String username = validateUsername(req.getUsername());
+        String phone = validatePhone(req.getPhone());
         if (users.existsByUsernameIgnoreCase(username))
             throw new RuntimeException("Username already taken");
         if (users.existsByEmail(req.getEmail()))
             throw new RuntimeException("Email already exists");
-        if (users.existsByPhone(req.getPhone()))
+        if (users.existsByPhone(phone))
             throw new RuntimeException("Phone already exists");
 
         User u = new User();
         u.setUsername(username);
         u.setPassword(encoder.encode(validateNewPassword(req.getPassword())));
         u.setEmail(req.getEmail());
-        u.setPhone(req.getPhone());
+        u.setPhone(phone);
         u.setFullName(req.getFullName());
         u.setGender(req.getGender());
         u.setBirthDate(validateBirthDate(req.getBirthDate()));
@@ -78,9 +79,10 @@ public class AuthService {
 
         if (req.getPhone() != null && !req.getPhone().isBlank()
                 && !req.getPhone().equals(u.getPhone())) {
-            if (users.existsByPhone(req.getPhone()))
+            String phone = validatePhone(req.getPhone());
+            if (users.existsByPhone(phone))
                 throw new RuntimeException("Phone already in use");
-            u.setPhone(req.getPhone());
+            u.setPhone(phone);
         }
 
         if (req.getFullName() != null && !req.getFullName().isBlank())
@@ -273,6 +275,17 @@ public class AuthService {
                 u.getHideConnections(),
                 u.getHideContactInfo()
         );
+    }
+
+    // Phone: digits only, exactly 10 (register + profile update).
+    private static final java.util.regex.Pattern PHONE_PATTERN =
+            java.util.regex.Pattern.compile("^[0-9]{10}$");
+
+    static String validatePhone(String phone) {
+        String v = phone == null ? "" : phone.trim();
+        if (!PHONE_PATTERN.matcher(v).matches())
+            throw new RuntimeException("Phone must be 10 digits");
+        return v;
     }
 
     // Registration + change: min 8 chars with at least one letter,
