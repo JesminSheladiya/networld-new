@@ -234,6 +234,9 @@ function EditProfilePage() {
                 placeholder="Username"
                 size="large"
                 autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </Form.Item>
             <Form.Item

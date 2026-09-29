@@ -441,6 +441,9 @@ function ProfilePage({ hidePassword = false }) {
                   className="auth-input"
                   prefix={<LockOutlined className="auth-input-icon" />}
                   placeholder="••••••••"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   size="middle"
                   iconRender={(visible) => (
                     <FontAwesomeIcon
@@ -467,6 +470,9 @@ function ProfilePage({ hidePassword = false }) {
                   className="auth-input"
                   prefix={<LockOutlined className="auth-input-icon" />}
                   placeholder="Min 8 characters"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   size="middle"
                   iconRender={(visible) => (
                     <FontAwesomeIcon
@@ -495,6 +501,9 @@ function ProfilePage({ hidePassword = false }) {
                   className="auth-input"
                   prefix={<LockOutlined className="auth-input-icon" />}
                   placeholder="Repeat it"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   size="middle"
                   iconRender={(visible) => (
                     <FontAwesomeIcon

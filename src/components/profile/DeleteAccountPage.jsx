@@ -20,9 +20,20 @@ function DeleteAccountPage() {
   const [deleting, setDeleting] = useState(false);
 
   const expected = (user?.username || "").trim();
+  // Same username rules as register/edit, but dots stay typable —
+  // invalid input only shows an error, it is never stripped mid-typing.
+  const normalizeConfirm = (v) =>
+    (v || "").toLowerCase().replace(/\s+/g, "_");
+  const USERNAME_PATTERN = /^(?!\.)(?!.*\.$)[a-z0-9._]+$/;
+  const typed = normalizeConfirm(confirmText);
+  const confirmError =
+    typed !== "" && !USERNAME_PATTERN.test(typed)
+      ? "Lowercase a-z, 0-9, _ and . only; can't start/end with ."
+      : "";
   const matched =
     expected !== "" &&
-    confirmText.trim().toLowerCase() === expected.toLowerCase();
+    confirmError === "" &&
+    typed === expected.toLowerCase();
   const canArm = agreed && matched;
 
   const goBack = () => {
@@ -95,10 +106,16 @@ function DeleteAccountPage() {
               placeholder={`Type "${expected}" to confirm`}
               size="large"
               autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               disabled={!agreed}
               value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
+              onChange={(e) => setConfirmText(normalizeConfirm(e.target.value))}
             />
+            {confirmError !== "" && (
+              <div className="auth-username-status auth-err">{confirmError}</div>
+            )}
             <div className="pf-danger-actions-row">
               <button
                 type="button"
