@@ -51,6 +51,7 @@ INSERT INTO relations (relation_name, generation_level, gender, relation_categor
 ('Brother-in-law', 0, 'M', 'INLAW', false, 'Brother-in-law', 'Jija'),
 ('Sister-in-law', 0, 'F', 'INLAW', false, 'Sister-in-law', 'Nanad'),
 ('Paternal Uncle', 1, 'M', 'PIBLING', true, 'Father''s Brother', 'Chacha'),
+('Father Younger Brother', 1, 'M', 'PIBLING', true, 'Father''s Younger Brother', 'Chacha'),
 ('Paternal Aunt', 1, 'F', 'PIBLING', true, 'Father''s Sister', 'Bua'),
 ('Maternal Uncle', 1, 'M', 'PIBLING', true, 'Mother''s Brother', 'Mama'),
 ('Maternal Aunt', 1, 'F', 'PIBLING', true, 'Mother''s Sister', 'Mausi'),

@@ -621,6 +621,21 @@ public class RelationshipResolver {
             }
             return new String[]{myView, theirView};
         }
+        // My parent's sibling shares my parent's sides: a father's sister
+        // is my Paternal Aunt, a mother's brother my Maternal Uncle — never
+        // generic Aunt/Uncle. Parent-state, blood path, known middle gender.
+        if ("SIBLING".equals(cat) && curr.v == 1 && curr.maxV == 1 && curr.s == 0 && nextS == 0) {
+            boolean midMale = "M".equals(middleGender);
+            boolean midFemale = "F".equals(middleGender);
+            if (midMale || midFemale) {
+                String myView = (midMale ? "Paternal " : "Maternal ")
+                        + (tMale ? "Uncle" : "Aunt");
+                String theirView = (tMale ? "Brother " : "Sister ")
+                        + (eMale ? "Son" : "Daughter");
+                return new String[]{myView, theirView};
+            }
+        }
+        // Strictly blood path only (an in-law's parent has no side name).
         // My parent's parent: mother's side is maternal, father's paternal.
         // Strictly blood path only (an in-law's parent has no side name).
         if ("PARENT".equals(cat) && curr.s == 0 && nextS == 0

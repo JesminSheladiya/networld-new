@@ -62,6 +62,8 @@ public class UserRelationService {
                 .orElseThrow(() -> new RuntimeException("Invalid relation!"));
 
         validateRelationGender(relation, toUser);
+        // Younger/Elder precision when both birth dates are known.
+        relation = refineSiblingByAge(relation, fromUser, toUser);
 
         if (existing.isPresent()) {
             // Reuse the declined row as a fresh request (keeps from/to unique)
@@ -84,12 +86,19 @@ public class UserRelationService {
             throw new RuntimeException("Not authorized!");
 
         ur.setStatus("ACCEPTED");
+        // Younger/Elder precision on the accepted row too when both birth
+        // dates are known (describer = sender, described = recipient).
+        ur.setRelation(refineSiblingByAge(ur.getRelation(), ur.getFromUser(), currentUser));
         userRelationRepo.save(ur);
 
         Relation reverse = findReverseRelation(ur.getRelation(), ur.getFromUser());
         if (reverse == null && "N".equals(ur.getRelation().getGender())) {
             // Gender-neutral symmetric relations (e.g. Friend) mirror themselves
             reverse = ur.getRelation();
+        }
+        if (reverse != null) {
+            // Reverse describes the sender as seen by me.
+            reverse = refineSiblingByAge(reverse, currentUser, ur.getFromUser());
         }
         Optional<UserRelation> reverseOpt = userRelationRepo.findByFromUserAndToUser(currentUser, ur.getFromUser());
         if (reverseOpt.isEmpty()) {
@@ -421,6 +430,30 @@ public class UserRelationService {
         }
     }
 
+    // Younger/Elder precision: a generic Brother/Sister becomes the exact
+    // age variant when BOTH birth dates are known (described older than
+    // describer = Elder, else Younger; same date keeps generic). Only the
+    // generic pair is ever refined — explicit Elder/Younger choices and all
+    // other relations pass through untouched, as does anything with unknown
+    // dates or a gender-neutral described user. describer = the viewer,
+    // described = the person the row talks about.
+    private Relation refineSiblingByAge(Relation rel, User describer, User described) {
+        if (rel == null) return null;
+        if (!"SIBLING".equalsIgnoreCase(rel.getRelationCategory())) return rel;
+        String n = rel.getRelationName() == null ? "" : rel.getRelationName().trim();
+        boolean male;
+        if ("Brother".equalsIgnoreCase(n)) male = true;
+        else if ("Sister".equalsIgnoreCase(n)) male = false;
+        else return rel;
+        if (describer == null || described == null
+                || describer.getBirthDate() == null || described.getBirthDate() == null) return rel;
+        if (rel.getGender() == null || !rel.getGender().equals(described.getGender())) return rel;
+        int cmp = described.getBirthDate().compareTo(describer.getBirthDate());
+        if (cmp == 0) return rel;
+        String want = (cmp < 0 ? "Elder " : "Younger ") + (male ? "Brother" : "Sister");
+        return relationRepository.findByRelationNameIgnoreCase(want).orElse(rel);
+    }
+
     // Custom relations are disabled: only predefined relations from the
     // relations table are accepted. Unknown names are rejected.
     private Relation getRequiredRelation(String relationName) {
@@ -509,6 +542,8 @@ public class UserRelationService {
 
             Optional<Relation> finalRel = relationRepository.findByRelationNameIgnoreCase(finalName);
             if (finalRel.isEmpty()) continue;
+            // Younger/Elder precision on suggestions too (describer = me).
+            finalRel = Optional.of(refineSiblingByAge(finalRel.get(), me, other));
 
             if (existing.isPresent()) {
                 UserRelation ur = existing.get();
@@ -713,6 +748,7 @@ public class UserRelationService {
             case "paternal aunt":
             case "father elder brother":
             case "father elder brother wife":
+            case "father younger brother":
             case "father younger brother wife":
             case "father sister husband":
                 return f ? "Brother Daughter" : "Brother Son";

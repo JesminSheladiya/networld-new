@@ -84,7 +84,7 @@ public class RelationService {
     // side/base-form order below. Keys are lowercase relation names.
     private static final java.util.List<String> PIBLING_ORDER = java.util.List.of(
             "father elder brother", "father elder brother wife",
-            "paternal uncle", "father younger brother wife",
+            "paternal uncle", "father younger brother", "father younger brother wife",
             "father sister husband", "paternal aunt",
             "maternal uncle", "mother brother wife",
             "mother sister husband", "maternal aunt");
