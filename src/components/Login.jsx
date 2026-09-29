@@ -76,6 +76,9 @@ function Login() {
               ref={firstInputRef}
               autoComplete="username"
               inputMode="text"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
             />
           </Form.Item>
 
@@ -89,6 +92,9 @@ function Login() {
               prefix={<LockOutlined className="auth-input-icon" />}
               placeholder="Password"
               size="large"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               iconRender={(visible) => (
                 <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
               )}

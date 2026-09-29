@@ -190,6 +190,9 @@ function Register() {
               placeholder="Username"
               size="large"
               autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               onFocus={() => setUserFocused(true)}
               onBlur={() => setUserFocused(false)}
             />
@@ -241,12 +244,16 @@ function Register() {
               size="large"
               autoComplete="email"
               inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
             />
           </Form.Item>
 
           <Form.Item
             className="auth-field"
             name="phone"
+            normalize={(v) => (v || "").replace(/\D/g, "").slice(0, 10)}
             rules={[
               { required: true, message: "Please enter phone!" },
               { pattern: /^[0-9]{10}$/, message: "Phone must be 10 digits!" },
@@ -257,6 +264,9 @@ function Register() {
               prefix={<PhoneOutlined className="auth-input-icon" />}
               placeholder="Phone (10 digits)"
               size="large"
+              inputMode="numeric"
+              autoComplete="tel"
+              maxLength={10}
             />
           </Form.Item>
           </div>
@@ -280,6 +290,9 @@ function Register() {
               prefix={<LockOutlined className="auth-input-icon" />}
               placeholder="Password"
               size="large"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               iconRender={(visible) => (
                 <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
               )}
@@ -305,6 +318,9 @@ function Register() {
               prefix={<LockOutlined className="auth-input-icon" />}
               placeholder="Confirm Password"
               size="large"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               iconRender={(visible) => (
                 <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
               )}
