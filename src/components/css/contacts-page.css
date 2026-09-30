@@ -605,7 +605,7 @@
   .nw-tools {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 4px;
   }
 
   .nw-chips {
@@ -1100,21 +1100,28 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  height: 28px;
+  padding: 2px 8px 2px 4px;
   border: 1px solid rgba(59, 130, 246, 0.4);
   background: rgba(37, 99, 235, 0.12);
-  border-radius: 20px;
-  padding: 2px 4px 2px 2px;
+  border-radius: 999px;
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.nw-mfilter-active-label {
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding-left: 4px;
 }
 
 .nw-mfilter-active-x {
   color: #64748b;
   font-size: 10px;
-  padding-right: 6px;
-}
-
-.nw-mfilter-active-chip:hover .nw-mfilter-active-x {
-  color: #f87171;
+  display: inline-flex;
+  padding: 2px;
 }
 
 .nw-mfilter-active-clear {
@@ -1276,10 +1283,73 @@
 /* ── Contacts searchbar: full-width row above everything (tabs included) ── */
 .nw-contact-search-top {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .nw-contact-search-top .nw-contact-search.ant-input-affix-wrapper {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+}
+
+.nw-contact-search-top .nw-mobile-filter-btn {
+  flex-shrink: 0;
+}
+
+/* Sort section inside the filter popup — mobile only */
+.nw-mfilter-sort {
+  display: none;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  margin-top: 4px;
+  padding: 5px 10px;
+}
+
+.nw-mfilter-section-title {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 0 4px 6px;
+}
+
+/* Compact sort chips (popup) */
+.nw-msort-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 4px 4px;
+}
+
+.nw-msort-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.nw-msort-chip:hover {
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.nw-msort-chip.active {
+  color: #fff;
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+@media (max-width: 640px) {
+  .nw-mfilter-sort {
+    display: block;
+  }
 }
 
 /* ── Sort + filter sit at the tabs' right side (space-between via .nw-tools) ── */
@@ -1296,11 +1366,16 @@
   gap: 8px;
 }
 
+.nw-contact-toolbar-row>* {
+  box-sizing: border-box;
+}
+
 .nw-contact-toolbar-row .nw-sort-select.ant-select {
   flex: 0 0 auto;
   width: max-content;
   min-width: 150px;
   max-width: 240px;
+  height: 35px;
 }
 
 .nw-sort-select.ant-select .ant-select-selector {
@@ -1385,15 +1460,6 @@
   text-transform: none;
 }
 
-.nw-contact-meta {
-  color: #475569;
-  font-size: 11.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-transform: none;
-}
-
 .nw-contact-right {
   display: flex;
   align-items: center;
@@ -1457,10 +1523,6 @@
     width: auto;
     min-width: 0;
     max-width: none;
-  }
-
-  .nw-contact-meta {
-    display: none;
   }
 
   .nw-contact-right {

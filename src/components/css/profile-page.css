@@ -1279,6 +1279,140 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   border-color: #f87171 !important;
 }
 
+/* Pending-request banner beside identity (mirrors Requests tab rows) */
+.pf-req-msg {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #e2e8f0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pf-req-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.pf-req-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Full-width request strip below the header row.
+   Stable layout: single row (message truncates) on tablet/desktop,
+   stacked with full text on mobile — same look at every width. */
+.pf-req-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.14), rgba(59, 130, 246, 0.05));
+  border: 1px solid rgb(32 57 93);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
+}
+
+.pf-req-strip .pf-req-msg {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pf-req-strip .pf-req-side {
+  flex-shrink: 0;
+}
+
+.pf-req-side .pf-ghost-btn,
+.pf-req-side .pf-primary-btn {
+  height: 34px;
+}
+
+/* Labeled accept button (icon + text) */
+.pf-req-accept {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pf-req-accept:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.2);
+  color: #fff;
+}
+
+.pf-req-accept:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 600px) {
+
+  .pf-req-strip .pf-req-msg {
+    flex: 1 1 100%;
+    white-space: normal;
+  }
+
+  .pf-req-strip .pf-req-side {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+}
+
+.pf-req-strip-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: #7fb4ff;
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.pf-req-strip .pf-req-msg {
+  flex: 1 1 220px;
+  min-width: 0;
+  color: #e2e8f0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.pf-req-strip .pf-req-side {
+  margin-left: auto;
+}
+
+/* Avatar-bottom action row (send on contact profiles) */
+.pf-sk-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pf-sk-actions-row .pf-ghost-btn,
+.pf-sk-actions-row .pf-primary-btn {
+  height: 34px;
+}
+
 /* Count pill in card heads (e.g. connections list) */
 .pf-count-pill {
   color: #8b98ad;

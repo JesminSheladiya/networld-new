@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input, Spin, Empty, Tooltip, message, Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faUsers, faXmark, faPaperPlane, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faUsers, faXmark, faPaperPlane, faPlus, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { useAuth } from "../../context/AuthContext";
@@ -108,6 +108,8 @@ function FindPeoplePage() {
       coverHidden: !!u.coverHidden,
       relation: u.relationName || "",
       relationId: null,
+      pending: u.pending || null,
+      pendingRelationId: u.pendingRelationId ?? null,
       gender: u.gender || null,
       birthDate: u.birthDate || null,
       bio: u.bio || "",
@@ -253,6 +255,7 @@ function FindPeoplePage() {
                     </>
                   )}
                 </div>
+                <FontAwesomeIcon icon={faChevronRight} className="nw-find-arrow" />
               </div>
             ))}
           </div>

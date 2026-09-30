@@ -35,6 +35,8 @@ function ContactDetailPage() {
   // True once server data lands — sensitive sections stay gated until then
   // so a stale seed can never flash private details (backend is the truth).
   const [fresh, setFresh] = useState(false);
+  // Bumped after in-profile actions (send/accept/decline) to refetch.
+  const [refreshSeq, setRefreshSeq] = useState(0);
 
   useEffect(() => {
     if (isOwnProfile) {
@@ -69,24 +71,26 @@ function ContactDetailPage() {
         const exact =
           list.find((u) => (u.username || "").toLowerCase() === slug.toLowerCase()) ||
           list.find((u) => u.email === slug);
-if (exact) {
-            setContact({
-              key: 0,
-              name: exact.name || "",
-              username: exact.username || "",
-              email: exact.email || "",
-              phone: exact.phone || "",
-              profilePicture: toDataUrl(exact.profilePic || null),
-              coverImage: toDataUrl(exact.coverImage || null),
+        if (exact) {
+          setContact({
+            key: 0,
+            name: exact.name || "",
+            username: exact.username || "",
+            email: exact.email || "",
+            phone: exact.phone || "",
+            profilePicture: toDataUrl(exact.profilePic || null),
+            coverImage: toDataUrl(exact.coverImage || null),
               coverHidden: !!exact.coverHidden,
-              relation: exact.relationName || "",
-              relationId: null,
-              gender: exact.gender || null,
-              birthDate: exact.birthDate || null,
-              bio: exact.bio || "",
-              contactInfoHidden: !!exact.contactInfoHidden,
-            });
-            setFresh(true);
+              relation: exact.relationName || exact.inferredRelation || "",
+            relationId: null,
+            pending: exact.pending || null,
+            pendingRelationId: exact.pendingRelationId ?? null,
+            gender: exact.gender || null,
+            birthDate: exact.birthDate || null,
+            bio: exact.bio || "",
+            contactInfoHidden: !!exact.contactInfoHidden,
+          });
+          setFresh(true);
         } else if (!seedMatchesSlug(urlSeed, slug)) {
           setContact(null);
         }
@@ -102,7 +106,7 @@ if (exact) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, isOwnProfile]);
+  }, [slug, isOwnProfile, refreshSeq]);
 
   if (isOwnProfile) {
     return <ProfilePage hidePassword />;
@@ -140,6 +144,10 @@ if (exact) {
           // going back shows it there too — no reload round-trip anywhere.
           setContact((prev) => (prev ? { ...prev, relation: newRel } : prev));
           bump();
+        }}
+        onChanged={() => {
+          bump();
+          setRefreshSeq((s) => s + 1);
         }}
       />
     </div>

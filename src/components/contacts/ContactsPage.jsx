@@ -56,6 +56,13 @@ function ContactsPage() {
   const [selectedRelations, setSelectedRelations] = useState([]);
   const [filterOpen, setFilterOpen] = useState(false);
   const [mobileQ, setMobileQ] = useState("");
+  const [sortDraft, setSortDraft] = useState(null);
+
+  // Sort applies only via Show — picking chips just stages the choice.
+  useEffect(() => {
+    if (filterOpen) setSortDraft(sortParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterOpen]);
 
   // All tabs always visible (with counts)
   const visibleCategories = CATEGORIES;
@@ -85,6 +92,19 @@ function ContactsPage() {
   useEffect(() => {
     const mq = window.matchMedia(MQ_NARROW);
     const onChange = (e) => setIsNarrow(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  // Mobile tools layout (≤640px): search + filter share one row,
+  // sort lives inside the filter popup.
+  const [isMobileTools, setIsMobileTools] = useState(
+    () => window.matchMedia("(max-width: 640px)").matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const onChange = (e) => setIsMobileTools(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
@@ -213,31 +233,13 @@ function ContactsPage() {
     navigate(`/contacts/${encodeURIComponent(rec.username || rec.email)}`, { state: { contact: rec } });
   };
 
-  // Desktop sorts by name/username/mobile; mobile only name/username.
-  const DESKTOP_SORT_OPTIONS = [
-    { value: "name,asc", label: "Name A–Z" },
-    { value: "name,desc", label: "Name Z–A" },
-    { value: "username,asc", label: "Username A–Z" },
-    { value: "username,desc", label: "Username Z–A" },
-    { value: "phone,asc", label: "Mobile A–Z" },
-    { value: "phone,desc", label: "Mobile Z–A" },
-  ];
-  const MOBILE_SORT_OPTIONS = [
+  // Same sort options on every screen (no phone sorts — numbers hidden).
+  const sortOptions = [
     { value: "name,asc", label: "Name A–Z" },
     { value: "name,desc", label: "Name Z–A" },
     { value: "username,asc", label: "Username A–Z" },
     { value: "username,desc", label: "Username Z–A" },
   ];
-  const sortOptions = isCompact ? MOBILE_SORT_OPTIONS : DESKTOP_SORT_OPTIONS;
-
-  // Switching desktop ↔ mobile drops a sort the new mode doesn't offer
-  // (e.g. Mobile sort active while resizing to desktop is fine, but a
-  // desktop-only Mobile sort must not stick on mobile).
-  useEffect(() => {
-    const allowed = (isCompact ? MOBILE_SORT_OPTIONS : DESKTOP_SORT_OPTIONS).map((o) => o.value);
-    setSortParam((prev) => (prev && !allowed.includes(prev) ? null : prev));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCompact]);
 
   return (
     <div className="nw-page">
@@ -259,6 +261,20 @@ function ContactsPage() {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
+          {isMobileTools && (
+            <Tooltip title="Filter by relation">
+              <button
+                className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
+                onClick={() => { setMobileQ(""); setFilterOpen(true); }}
+                aria-label="Filter by relation"
+              >
+                <FontAwesomeIcon icon={faFilter} />
+                {selectedRelations.length > 0 && (
+                  <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
+                )}
+              </button>
+            </Tooltip>
+          )}
         </div>
         <div className="nw-tools">
           {isNarrow ? (
@@ -290,6 +306,7 @@ function ContactsPage() {
               ))}
             </div>
           )}
+          {!isMobileTools && (
           <div className="nw-contact-toolbar">
             <div className="nw-contact-toolbar-row">
               <Select
@@ -315,9 +332,20 @@ function ContactsPage() {
               </Tooltip>
             </div>
           </div>
+          )}
         </div>
-        {selectedRelations.length > 0 && (
+        {(selectedRelations.length > 0 || sortParam) && (
           <div className="nw-mfilter-active">
+            {sortParam && (
+              <button
+                className="nw-mfilter-active-chip"
+                onClick={() => setSortParam(null)}
+                title="Clear sort"
+              >
+                <span className="nw-mfilter-active-label">Sort: {sortOptions.find((o) => o.value === sortParam)?.label || sortParam}</span>
+                <FontAwesomeIcon icon={faXmark} className="nw-mfilter-active-x" />
+              </button>
+            )}
             {selectedRelations.map((r) => (
               <button
                 key={r}
@@ -328,7 +356,7 @@ function ContactsPage() {
                 <FontAwesomeIcon icon={faXmark} className="nw-mfilter-active-x" />
               </button>
             ))}
-            <button className="nw-mfilter-active-clear" onClick={() => setSelectedRelations([])}>
+            <button className="nw-mfilter-active-clear" onClick={() => { setSelectedRelations([]); setSortParam(null); }}>
               Clear all
             </button>
           </div>
@@ -397,9 +425,6 @@ function ContactsPage() {
                   <span className="nw-contact-sub">
                     {rec.username ? `@${rec.username.toLowerCase()}` : (rec.phone || "—")}
                   </span>
-                  {rec.phone && rec.username && (
-                    <span className="nw-contact-meta">{rec.phone}</span>
-                  )}
                 </span>
                 <span className="nw-contact-right">
                   <RelationChip relation={rec.relation} style={{ flexShrink: 0, fontSize: 11 }} />
@@ -576,11 +601,25 @@ function ContactsPage() {
               })
           )}
         </div>
+        <div className="nw-mfilter-sort">
+          <div className="nw-mfilter-section-title">Sort by</div>
+          <div className="nw-msort-chips">
+            {[{ value: null, label: "Default" }, ...sortOptions].map((o) => (
+              <button
+                key={o.value || "default"}
+                className={`nw-msort-chip${(sortDraft || null) === o.value ? " active" : ""}`}
+                onClick={() => setSortDraft(o.value)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="nw-mfilter-footer">
-          <button className="nw-relation-filter-btn reset" onClick={() => setSelectedRelations([])}>
+          <button className="nw-relation-filter-btn reset" onClick={() => { setSelectedRelations([]); setSortDraft(sortParam); }}>
             <FontAwesomeIcon icon={faRotateLeft} /> Reset
           </button>
-          <button className="nw-relation-filter-btn apply" onClick={() => setFilterOpen(false)}>
+          <button className="nw-relation-filter-btn apply" onClick={() => { setSortParam(sortDraft); setFilterOpen(false); }}>
             Show{selectedRelations.length > 0 ? ` (${selectedRelations.length})` : ""}
           </button>
         </div>

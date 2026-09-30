@@ -58,6 +58,8 @@ function SuggestionsPage() {
       coverHidden: !!s.coverHidden,
       relation: s.inferredRelation || "",
       relationId: null,
+      pending: s.pending || null,
+      pendingRelationId: s.pendingRelationId ?? null,
       gender: s.suggestedUserGender || null,
       birthDate: s.suggestedUserBirthDate || null,
       bio: s.suggestedUserBio || "",
