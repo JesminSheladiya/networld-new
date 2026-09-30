@@ -71,19 +71,25 @@ public class UserRelationController {
             item.put("bio",        u.getBio());
 
             // Only PENDING counts as sent/received — DECLINED resets to fresh state
+            Long pendingId = null;
             if (fwd.isPresent()) {
                 if ("ACCEPTED".equals(fwd.get().getStatus())) {
                     item.put("relationName", fwd.get().getRelation().getRelationName());
                 } else if ("PENDING".equals(fwd.get().getStatus())) {
                     item.put("pending", "sent");
+                    pendingId = fwd.get().getId();
+                    item.put("inferredRelation", fwd.get().getRelation().getRelationName());
                 }
             } else if (rev.isPresent()) {
                 if ("ACCEPTED".equals(rev.get().getStatus())) {
                     item.put("relationName", rev.get().getRelation().getRelationName());
                 } else if ("PENDING".equals(rev.get().getStatus())) {
                     item.put("pending", "received");
+                    pendingId = rev.get().getId();
+                    item.put("inferredRelation", rev.get().getRelation().getRelationName());
                 }
             }
+            item.put("pendingRelationId", pendingId);
             result.add(item);
         }
         return ResponseEntity.ok(result);
