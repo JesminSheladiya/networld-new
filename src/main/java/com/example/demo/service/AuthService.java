@@ -55,7 +55,7 @@ public class AuthService {
         u.setPassword(encoder.encode(validateNewPassword(req.getPassword())));
         u.setEmail(req.getEmail());
         u.setPhone(phone);
-        u.setFullName(req.getFullName());
+        u.setFullName(normalizeFullName(req.getFullName()));
         u.setGender(req.getGender());
         u.setBirthDate(validateBirthDate(req.getBirthDate()));
         users.save(u);
@@ -86,7 +86,7 @@ public class AuthService {
         }
 
         if (req.getFullName() != null && !req.getFullName().isBlank())
-            u.setFullName(req.getFullName());
+            u.setFullName(normalizeFullName(req.getFullName()));
 
         if (req.getUsername() != null && !req.getUsername().isBlank()) {
             String newUsername = validateUsername(req.getUsername());
@@ -275,6 +275,22 @@ public class AuthService {
                 u.getHideConnections(),
                 u.getHideContactInfo()
         );
+    }
+
+    // Full name: trimmed, single spaces, first letter of every word
+    // capital (register + profile update) — "jesmin  sheladiya" → "Jesmin Sheladiya".
+    static String normalizeFullName(String fullName) {
+        if (fullName == null) return null;
+        String v = fullName.trim().replaceAll("\\s+", " ");
+        if (v.isEmpty()) return v;
+        String[] words = v.split(" ");
+        StringBuilder sb = new StringBuilder();
+        for (String w : words) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(Character.toUpperCase(w.charAt(0)));
+            if (w.length() > 1) sb.append(w.substring(1).toLowerCase());
+        }
+        return sb.toString();
     }
 
     // Phone: digits only, exactly 10 (register + profile update).
