@@ -242,6 +242,14 @@ function EditProfilePage() {
             <Form.Item
               className="auth-field pf-fullname-item"
               name="fullName"
+              normalize={(v) =>
+                v
+                  ? v
+                      .replace(/^\s+/, "")
+                      .replace(/\s+/g, " ")
+                      .replace(/(^|\s)([a-z])/g, (m, sp, ch) => sp + ch.toUpperCase())
+                  : v
+              }
               rules={[{ required: true, message: "Please enter full name!" }]}
             >
               <Input
