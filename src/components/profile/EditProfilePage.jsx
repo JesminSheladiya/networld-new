@@ -27,7 +27,7 @@ import "../css/Auth.css";
 const USERNAME_RE = /^(?!\.)(?!.*\.$)[a-z0-9._]+$/;
 const isUsernameFormatOk = (v) => !!v && v.length <= 30 && USERNAME_RE.test(v);
 
-// Occupation: optional, only max-length matters (mirrors backend).
+// Profession: optional, only max-length matters (mirrors backend).
 const OCCUPATION_MAX = 60;
 
 // Standalone edit page — opened from the header "Edit Profile" button.
@@ -155,7 +155,7 @@ function EditProfilePage() {
     }
     const occupation = (values.occupation || "").trim();
     if (occupation.length > OCCUPATION_MAX) {
-      message.error(`Occupation must be ${OCCUPATION_MAX} characters or less`);
+      message.error(`Profession must be ${OCCUPATION_MAX} characters or less`);
       return;
     }
     setSaving(true);
@@ -371,7 +371,7 @@ function EditProfilePage() {
               <ScrollDatePicker placeholder="Birth Date" />
             </Form.Item>
           </div>
-          {/* Row 4: Occupation, full width */}
+          {/* Row 4: Profession, full width */}
           <Form.Item
             className="auth-field"
             name="occupation"
@@ -390,7 +390,7 @@ function EditProfilePage() {
             <Input
               className="auth-input"
               prefix={<FontAwesomeIcon icon={faBriefcase} className="auth-input-icon" />}
-              placeholder="Occupation / Business / Job"
+              placeholder="Profession / Business / Job"
               size="large"
               autoComplete="organization-title"
               maxLength={OCCUPATION_MAX}

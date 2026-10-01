@@ -1501,6 +1501,10 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
   background: rgba(59, 130, 246, 0.14);
 }
 
+.pf-req-strip-icon .fa-lightbulb {
+  color: #fbbf24;
+}
+
 .pf-req-strip-badge {
   flex-shrink: 0;
   background: rgba(56, 189, 248, 0.12);

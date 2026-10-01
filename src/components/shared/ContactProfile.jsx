@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, Spin, Tooltip, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEnvelope, faPenToSquare, faUser, faAddressCard, faBell } from "@fortawesome/free-regular-svg-icons";
+import { faEnvelope, faPenToSquare, faUser, faAddressCard, faBell, faLightbulb } from "@fortawesome/free-regular-svg-icons";
 import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo, faPaperPlane, faPlus, faCheck, faXmark, faUserPlus, faBriefcase } from "@fortawesome/free-solid-svg-icons";
-import { PhoneOutlined, LockOutlined } from "@ant-design/icons";
+import { PhoneOutlined, LockOutlined, UserAddOutlined } from "@ant-design/icons";
 import { avatarColorFor } from "../../constants";
 import { api } from "../../Services/networld";
 import { mapConnectionToContact } from "../../utils/contactMapper";
@@ -269,7 +269,11 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
           ) : isStranger ? (
             <div className="pf-req-strip">
               <span className="pf-req-strip-icon">
-                <FontAwesomeIcon icon={faUserPlus} />
+                {isSuggestion ? (
+                  <FontAwesomeIcon icon={faLightbulb} />
+                ) : (
+                  <UserAddOutlined />
+                )}
               </span>
               {isSuggestion && <span className="pf-req-strip-badge">AUTO</span>}
               <span className="pf-req-msg">
@@ -430,8 +434,16 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
                   </Tooltip>
                 </div>
               )}
+              {contact.occupation && (
+                <div className="pf-info-row">
+                  <span className="pf-info-icon"><FontAwesomeIcon icon={faBriefcase} /></span>
+                  <span className="pf-info-text">
+                    <span className="pf-info-label">Profession</span>
+                    <span className="pf-info-value">{contact.occupation}</span>
+                  </span>
+                </div>
+              )}
               {[
-                { label: "Occupation", value: contact.occupation || "—", icon: <FontAwesomeIcon icon={faBriefcase} /> },
                 { label: "Phone", value: contact.phone || "—", icon: <PhoneOutlined /> },
                 { label: "Email", value: contact.email || "—", icon: <FontAwesomeIcon icon={faEnvelope} /> },
                 {
@@ -448,13 +460,15 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
                   </span>
                 </div>
               ))}
-              <div className="pf-info-row">
-                <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
-                <span className="pf-info-text">
-                  <span className="pf-info-label">Birth Date</span>
-                  <span className="pf-info-value">{contact.birthDate ? formatBirthDateWithAge(contact.birthDate) : "—"}</span>
-                </span>
-              </div>
+              {contact.birthDate && (
+                <div className="pf-info-row">
+                  <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
+                  <span className="pf-info-text">
+                    <span className="pf-info-label">Birth Date</span>
+                    <span className="pf-info-value">{formatBirthDateWithAge(contact.birthDate)}</span>
+                  </span>
+                </div>
+              )}
             </div>
             )}
           </div>
