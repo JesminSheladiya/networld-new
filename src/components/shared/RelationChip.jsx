@@ -30,11 +30,9 @@ export default function RelationChip({ relation, style }) {
         background: tone.bg,
         border: `1px solid ${tone.border}`,
         borderRadius: 20,
-        padding: "3px 10px",
+        padding: "5px 10px",
         fontSize: 12,
         fontWeight: 600,
-        letterSpacing: 0.3,
-        whiteSpace: "nowrap",
         ...style,
       }}
     >

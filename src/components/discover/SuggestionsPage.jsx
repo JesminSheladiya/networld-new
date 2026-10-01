@@ -65,6 +65,8 @@ function SuggestionsPage() {
       bio: s.suggestedUserBio || "",
       occupation: s.suggestedUserOccupation || "",
       contactInfoHidden: !!s.contactInfoHidden,
+      reason: s.reason || "",
+      suggested: true,
     };
     navigate(
       `/contacts/${encodeURIComponent(s.suggestedUserUsername || s.suggestedUserEmail)}`,

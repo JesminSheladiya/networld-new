@@ -558,7 +558,7 @@
 }
 
 .nw-content-compact {
-  padding: 72px 16px calc(90px + env(safe-area-inset-bottom));
+  padding: 72px 10px calc(90px + env(safe-area-inset-bottom));
 }
 
 /* Pages without the bottom nav (e.g. profile) don't need its clearance */
