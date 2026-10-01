@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form, Input, Select, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faAt } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faAt, faBriefcase } from "@fortawesome/free-solid-svg-icons";
 import { faEnvelope, faUser } from "@fortawesome/free-regular-svg-icons";
 import { PhoneOutlined } from "@ant-design/icons";
 import {
@@ -27,6 +27,9 @@ import "../css/Auth.css";
 const USERNAME_RE = /^(?!\.)(?!.*\.$)[a-z0-9._]+$/;
 const isUsernameFormatOk = (v) => !!v && v.length <= 30 && USERNAME_RE.test(v);
 
+// Occupation: optional, only max-length matters (mirrors backend).
+const OCCUPATION_MAX = 60;
+
 // Standalone edit page — opened from the header "Edit Profile" button.
 // All editable details (username, name, gender, birth date, bio) save
 // together in one update call. Email/phone are identity fields and
@@ -38,6 +41,8 @@ function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const bioValue = Form.useWatch("bio", form);
   const bioLen = (bioValue || "").length;
+  const occupationValue = Form.useWatch("occupation", form);
+  const occupationLen = (occupationValue || "").length;
 
   // Save stays disabled until something actually changes.
   const allValues = Form.useWatch([], form);
@@ -47,6 +52,7 @@ function EditProfilePage() {
     if (norm(allValues.username).toLowerCase() !== norm(user?.username).toLowerCase())
       return true;
     if (norm(allValues.fullName) !== norm(user?.fullName)) return true;
+    if (norm(allValues.occupation) !== norm(user?.occupation)) return true;
     if ((allValues.gender || "") !== (user?.gender || "")) return true;
     const watchedBirth = allValues.birthDate
       ? toBirthDateParam(allValues.birthDate)
@@ -147,6 +153,11 @@ function EditProfilePage() {
       message.error(`Bio must be ${BIO_MAX_LENGTH} characters or less`);
       return;
     }
+    const occupation = (values.occupation || "").trim();
+    if (occupation.length > OCCUPATION_MAX) {
+      message.error(`Occupation must be ${OCCUPATION_MAX} characters or less`);
+      return;
+    }
     setSaving(true);
     try {
       // Removed via the picker's "Remove birthday" (had one, now empty).
@@ -163,6 +174,7 @@ function EditProfilePage() {
         ...(values.birthDate ? { birthDate } : {}),
         ...(birthDateCleared ? { clearBirthDate: true } : {}),
         bio,
+        occupation,
       });
       patchUser({
         ...(usernameChanged ? { username } : {}),
@@ -170,6 +182,7 @@ function EditProfilePage() {
         gender: values.gender,
         birthDate,
         bio: bio === "" ? null : bio,
+        occupation: occupation === "" ? null : occupation,
       });
       message.success("Profile updated");
       navigate("/profile", { replace: true });
@@ -210,6 +223,7 @@ function EditProfilePage() {
             gender: user?.gender,
             birthDate: toBirthDatePickerValue(user?.birthDate),
             bio: user?.bio || "",
+            occupation: user?.occupation || "",
           }}
         >
           {/* Row 1: Username + Full name */}
@@ -357,7 +371,36 @@ function EditProfilePage() {
               <ScrollDatePicker placeholder="Birth Date" />
             </Form.Item>
           </div>
-          {/* Row 4: About, full width */}
+          {/* Row 4: Occupation, full width */}
+          <Form.Item
+            className="auth-field"
+            name="occupation"
+            normalize={(v) =>
+              v
+                ? v
+                    .replace(/^\s+/, "")
+                    .replace(/\s+/g, " ")
+                    .replace(/(^|\s)([a-z])/g, (m, sp, ch) => sp + ch.toUpperCase())
+                : v
+            }
+            rules={[
+              { max: OCCUPATION_MAX, message: `Max ${OCCUPATION_MAX} characters!` },
+            ]}
+          >
+            <Input
+              className="auth-input"
+              prefix={<FontAwesomeIcon icon={faBriefcase} className="auth-input-icon" />}
+              placeholder="Occupation / Business / Job"
+              size="large"
+              autoComplete="organization-title"
+              maxLength={OCCUPATION_MAX}
+              showCount={false}
+            />
+          </Form.Item>
+          <div className="pf-bio-count">
+            {occupationLen} / {OCCUPATION_MAX}
+          </div>
+          {/* Row 5: About, full width */}
           <Form.Item className="auth-field" name="bio">
             <Input.TextArea
               className="pf-textarea"

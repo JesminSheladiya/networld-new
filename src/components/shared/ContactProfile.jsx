@@ -1,28 +1,112 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Avatar, Spin, Tooltip } from "antd";
+import { Avatar, Spin, Tooltip, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEnvelope, faPenToSquare, faUser, faAddressCard } from "@fortawesome/free-regular-svg-icons";
-import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { faEnvelope, faPenToSquare, faUser, faAddressCard, faBell } from "@fortawesome/free-regular-svg-icons";
+import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo, faPaperPlane, faPlus, faCheck, faXmark, faUserPlus, faBriefcase } from "@fortawesome/free-solid-svg-icons";
 import { PhoneOutlined, LockOutlined } from "@ant-design/icons";
 import { avatarColorFor } from "../../constants";
 import { api } from "../../Services/networld";
 import { mapConnectionToContact } from "../../utils/contactMapper";
+import { useRefresh } from "./RefreshContext";
+import { useRelationDisplay } from "../../context/RelationDisplayContext";
+import { getInverseRelation } from "../../utils/relationUtils";
 import RelationChip from "./RelationChip";
 import EditRelationModal from "./EditRelationModal";
+import RelationPickerModal from "./RelationPickerModal";
+import ConfirmPopup from "./ConfirmPopup";
 import ProfileHeader from "../profile/ProfileHeader";
 import ProfilePictureViewer from "../ProfilePictureViewer";
 import { formatBirthDateWithAge } from "../../utils/dateUtils";
 import { toDataUrl } from "../../utils/imageUtils";
 import "../css/profile-page.css";
 
-function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, fresh = true }) {
+function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, onChanged, fresh = true }) {
   const navigate = useNavigate();
+  const { bump } = useRefresh();
+  const { relName } = useRelationDisplay();
   const [editing, setEditing] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [coverViewerOpen, setCoverViewerOpen] = useState(false);
   const [relation, setRelation] = useState(contact.relation || "");
   const [connections, setConnections] = useState(null);
+
+  // Stranger request flow (relation pick + send), like Find People.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickedRelId, setPickedRelId] = useState(null);
+  const [relations, setRelations] = useState([]);
+  const [sending, setSending] = useState(false);
+  const [acting, setActing] = useState(false);
+  const [declineOpen, setDeclineOpen] = useState(false);
+
+  const isConnection = contact.relationId != null;
+  const isPendingReceived =
+    !isConnection && contact.pending === "received" && contact.pendingRelationId != null;
+  const isPendingSent = !isConnection && !isPendingReceived && contact.pending === "sent";
+  const isStranger = !isConnection && !isPendingReceived && !isPendingSent;
+
+  useEffect(() => {
+    if (!isStranger) return;
+    api
+      .relations()
+      .then((res) => setRelations(res.data || []))
+      .catch(() => setRelations([]));
+  }, [isStranger, contact.email]);
+
+  const pickedFound = relations.find((r) => r.id === pickedRelId);
+
+  const refreshAfterAction = () => {
+    bump();
+    onChanged?.();
+  };
+
+  const sendRequest = async () => {
+    if (!pickedRelId || sending) return;
+    setSending(true);
+    try {
+      await api.send(contact.email, pickedRelId);
+      message.success("Connection request sent");
+      setPickedRelId(null);
+      refreshAfterAction();
+    } catch (e) {
+      // Server is the source of truth — show its message and re-fetch.
+      message.error(e?.response?.data?.message || "Could not send request");
+      refreshAfterAction();
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const doAccept = async () => {
+    if (acting) return;
+    setActing(true);
+    try {
+      await api.accept(contact.pendingRelationId);
+      message.success("Connection request accepted");
+      refreshAfterAction();
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not accept request");
+      refreshAfterAction();
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const doDecline = async () => {
+    if (acting) return;
+    setDeclineOpen(false);
+    setActing(true);
+    try {
+      await api.decline(contact.pendingRelationId);
+      message.success("Connection request declined");
+      refreshAfterAction();
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not decline request");
+      refreshAfterAction();
+    } finally {
+      setActing(false);
+    }
+  };
 
   // Header stat opens the connections list as its own page (mobile).
   const openConnections = () => {
@@ -105,6 +189,93 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, fr
         phone={contact.phone}
         connectionsCount={connTotal}
         onConnectionsClick={connLocked ? undefined : openConnections}
+        belowRowAction={
+          isPendingReceived ? (
+            <div className="pf-req-strip">
+              <span className="pf-req-strip-icon">
+                <FontAwesomeIcon icon={faBell} />
+              </span>
+              <span className="pf-req-msg">
+                <strong>{name}</strong> wants to add you as their{" "}
+                <strong>{relation ? relName(relation) : "connection"}</strong>
+              </span>
+              <span className="pf-req-side">
+                <RelationChip
+                  relation={getInverseRelation(relation, contact.gender)?.toLowerCase() || ""}
+                  style={{ fontSize: 11 }}
+                />
+                <span className="pf-req-btns">
+                  <Tooltip title="Decline">
+                    <button
+                      className="nw-act-btn nw-act-decline"
+                      disabled={acting}
+                      onClick={() => setDeclineOpen(true)}
+                      aria-label="Decline request"
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                  </Tooltip>
+                  <Tooltip title="Accept">
+                    <button
+                      className="pf-req-accept"
+                      disabled={acting}
+                      onClick={doAccept}
+                      aria-label="Accept request"
+                    >
+                      <FontAwesomeIcon icon={faCheck} />
+                      {acting ? "Accepting..." : "Accept"}
+                    </button>
+                  </Tooltip>
+                </span>
+              </span>
+            </div>
+          ) : isStranger ? (
+            <div className="pf-req-strip">
+              <span className="pf-req-strip-icon">
+                <FontAwesomeIcon icon={faUserPlus} />
+              </span>
+              <span className="pf-req-msg">
+                Send a connection to <strong>{name}</strong>
+                {pickedFound ? (
+                  <>
+                    {" "}as their <strong>{relName(pickedFound.relationName)}</strong>
+                  </>
+                ) : null}
+              </span>
+              <span className="pf-req-side">
+                <button
+                  className="pf-ghost-btn"
+                  onClick={() => setPickerOpen(true)}
+                  title={pickedFound ? relName(pickedFound.relationName) : "Select Relation"}
+                >
+                  {pickedFound ? (
+                    relName(pickedFound.relationName)
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faPlus} style={{ fontSize: "10px" }} /> Select
+                      Relation
+                    </>
+                  )}
+                </button>
+                <button
+                  className="pf-primary-btn"
+                  disabled={!pickedRelId || sending}
+                  onClick={sendRequest}
+                >
+                  <FontAwesomeIcon icon={faPaperPlane} style={{ fontSize: 11 }} />
+                  {sending ? "Sending..." : "Send"}
+                </button>
+              </span>
+            </div>
+          ) : null
+        }
+        belowAvatarAction={
+          isPendingSent ? (
+            <div className="pf-sk-actions-row">
+              <span className="nw-find-chip-sent">✓ Request Sent</span>
+            </div>
+          ) : null
+        }
       />
 
       {/* Stacked sections (same language as own profile) — no tabs. */}
@@ -165,6 +336,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, fr
                 </div>
               )}
               {[
+                { label: "Occupation", value: contact.occupation || "—", icon: <FontAwesomeIcon icon={faBriefcase} /> },
                 { label: "Phone", value: contact.phone || "—", icon: <PhoneOutlined /> },
                 { label: "Email", value: contact.email || "—", icon: <FontAwesomeIcon icon={faEnvelope} /> },
                 {
@@ -298,6 +470,29 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, fr
           contact.relation = newRel;
           onRelationSaved?.(newRel);
         }}
+      />
+
+      <RelationPickerModal
+        open={pickerOpen}
+        title="Select Relation"
+        personName={name}
+        personGender={contact.gender}
+        value={pickedRelId}
+        idMode
+        onClose={() => setPickerOpen(false)}
+        onPick={(v) => {
+          setPickedRelId(v);
+          setPickerOpen(false);
+        }}
+      />
+
+      <ConfirmPopup
+        open={declineOpen}
+        title="Decline request?"
+        message="This connection request will be removed."
+        okText="Decline"
+        onCancel={() => setDeclineOpen(false)}
+        onOk={doDecline}
       />
 
       <ProfilePictureViewer

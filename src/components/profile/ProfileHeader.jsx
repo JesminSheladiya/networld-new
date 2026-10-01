@@ -30,6 +30,8 @@ function ProfileHeader({
   actions = null,
   belowAvatarAction = null,
   onEditClick,  // NEW: edit profile click handler
+  identityAction = null, // optional row under name/username (e.g. request banner)
+  belowRowAction = null, // full-width strip below the header row
   coverControl = null, // owner-only cover upload/edit button (bottom-right)
   onCoverClick, // cover fullscreen viewer (disabled when coverLocked)
   coverLocked = false, // private blurred preview: lock overlay, no viewer
@@ -118,6 +120,7 @@ function ProfileHeader({
             <h1 className="pf-name">{name}</h1>
             {username && <div className="pf-sk-username">@{username.toLowerCase()}</div>}
             {meta && <div className="pf-meta">{meta}</div>}
+            {identityAction}
             {onEditClick && (
               <button
                 className="pf-edit-btn-sm"
@@ -154,6 +157,7 @@ function ProfileHeader({
             </div>
           )}
         </div>
+        {belowRowAction}
       </div>
     </div>
   );

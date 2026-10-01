@@ -67,9 +67,12 @@ function RequestsPage() {
       coverHidden: !!p.coverHidden,
       relation: p.inferredRelation || "",
       relationId: null,
+      pending: "received",
+      pendingRelationId: p.pendingRelationId ?? null,
       gender: p.suggestedUserGender || null,
       birthDate: p.suggestedUserBirthDate || null,
       bio: p.suggestedUserBio || "",
+      occupation: p.suggestedUserOccupation || "",
       contactInfoHidden: !!p.contactInfoHidden,
     };
     navigate(
@@ -165,14 +168,14 @@ function RequestsPage() {
                   <div className="nw-req-right">
                     <RelationChip relation={rel} style={{ fontSize: 11 }} />
                     <div className="nw-req-actions" onClick={(e) => e.stopPropagation()}>
-                      <Tooltip title="Accept">
-                        <button className="nw-act-btn nw-act-accept" onClick={() => accept(p.pendingRelationId)}>
-                          <FontAwesomeIcon icon={faCheck} />
-                        </button>
-                      </Tooltip>
                       <Tooltip title="Decline">
                         <button className="nw-act-btn nw-act-decline" onClick={() => setDeclineId(p.pendingRelationId)}>
                           <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip title="Accept">
+                        <button className="nw-act-btn nw-act-accept" onClick={() => accept(p.pendingRelationId)}>
+                          <FontAwesomeIcon icon={faCheck} />
                         </button>
                       </Tooltip>
                     </div>
