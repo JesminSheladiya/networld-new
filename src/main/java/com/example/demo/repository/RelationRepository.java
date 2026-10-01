@@ -9,6 +9,11 @@ public interface RelationRepository extends JpaRepository<Relation, Long> {
 
     Optional<Relation> findByRelationNameIgnoreCase(String relationName);
 
+    // Chain phrases live in english_relation (e.g. "Brother's Wife" on the
+    // "Sister-in-law (Brother's Wife)" row) — lets composeChain resolve a
+    // composed "<Head>'s <Tail>" path to its exact curated row.
+    Optional<Relation> findByEnglishRelationIgnoreCase(String englishRelation);
+
     Optional<Relation> findFirstByGenerationLevelAndGenderAndIsBlood(
             Integer generationLevel, String gender, Boolean isBlood
     );

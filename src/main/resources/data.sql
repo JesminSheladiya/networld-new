@@ -72,6 +72,7 @@ INSERT INTO relations (relation_name, generation_level, gender, relation_categor
 ('Sister-in-law (Wife''s Sister)', 0, 'F', 'INLAW', false, 'Wife''s Sister', 'Sali'),
 ('Sister-in-law (Brother''s Wife)', 0, 'F', 'INLAW', false, 'Brother''s Wife', 'Bhabhi'),
 ('Sister-in-law (Husband''s Sister)', 0, 'F', 'INLAW', false, 'Husband''s Sister', 'Nanad'),
+('Brother-in-law (Sister''s Husband)', 0, 'M', 'INLAW', false, 'Sister''s Husband', 'Jija'),
 ('Brother''s Brother-in-law', 0, 'M', 'INLAW', false, 'Brother''s Brother-in-law', 'Bhai ka Sala'),
 ('Sister''s Sister-in-law', 0, 'F', 'INLAW', false, 'Sister''s Sister-in-law', 'Behen ki Nanad'),
 ('Brother''s Father-in-law', 1, 'M', 'INLAW', false, 'Brother''s Father-in-law', 'Bhai ke Sasur'),

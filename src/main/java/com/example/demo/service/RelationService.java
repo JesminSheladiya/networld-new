@@ -41,13 +41,55 @@ public class RelationService {
             // generic Sister-in-law: its Indian name (Nanad) duplicates the
             // specific Husband's Sister row in pickers — engine fallbacks
             // still resolve it, it just isn't directly selectable.
-            "sister-in-law");
+            "sister-in-law",
+            // generic Brother-in-law: its Indian name (Jija) duplicates the
+            // specific Sister's Husband row in pickers — same deal, engine
+            // keeps resolving it, chain row stays selectable.
+            "brother-in-law");
 
     public List<Relation> getAll() {
-        return relationRepository.findAll().stream()
-                .filter(r -> !HIDDEN_FROM_SELECTION.contains(r.getRelationName().toLowerCase()))
+        List<Relation> all = relationRepository.findAll();
+        java.util.Set<String> hidden = new java.util.HashSet<>(HIDDEN_FROM_SELECTION);
+        hidden.addAll(chainDuplicateGenerics(all));
+        return all.stream()
+                .filter(r -> r.getRelationName() == null
+                        || !hidden.contains(r.getRelationName().toLowerCase()))
                 .sorted(SELECTION_ORDER)
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Future-proofing: whenever a chain-wise row (e.g. "Sister-in-law
+    // (Brother's Wife)") shares its Indian name with a plain generic
+    // ("Sister-in-law"), the plain one hides itself from pickers — no code
+    // change needed when new chain rows are added. Engine fallbacks and
+    // existing connections keep resolving (rows stay in the DB).
+    static java.util.Set<String> chainDuplicateGenerics(java.util.List<Relation> all) {
+        java.util.Map<String, java.util.List<Relation>> byIndian = new java.util.HashMap<>();
+        for (Relation r : all) {
+            String indian = r.getIndianRelation() == null ? "" : r.getIndianRelation().trim().toLowerCase();
+            if (indian.isEmpty()) continue;
+            byIndian.computeIfAbsent(indian, k -> new java.util.ArrayList<>()).add(r);
+        }
+        java.util.Set<String> out = new java.util.HashSet<>();
+        for (java.util.List<Relation> group : byIndian.values()) {
+            if (group.size() < 2) continue;
+            boolean hasChain = group.stream().anyMatch(RelationService::isChainForm);
+            if (!hasChain) continue;
+            for (Relation r : group) {
+                if (!isChainForm(r) && r.getRelationName() != null) {
+                    out.add(r.getRelationName().toLowerCase());
+                }
+            }
+        }
+        return out;
+    }
+
+    // Chain-wise names carry the path: possessive ("Brother's Wife") or
+    // parenthesized seat ("Sister-in-law (Brother's Wife)"). Plain generics
+    // ("Sister-in-law", "Maternal Aunt") carry neither.
+    private static boolean isChainForm(Relation r) {
+        String n = r.getRelationName() == null ? "" : r.getRelationName();
+        return n.contains("'s ") || n.contains("(");
     }
 
     // Selection order: family first, then side by side, so similar
@@ -94,7 +136,7 @@ public class RelationService {
             "brother-in-law (wife's brother)", "sister-in-law (wife's brother's wife)",
             "brother-in-law (wife's sister's husband)", "sister-in-law (wife's sister)",
             "brother-in-law (husband's brother)", "husband's brother's wife",
-            "sister-in-law (brother's wife)",
+            "sister-in-law (brother's wife)", "brother-in-law (sister's husband)",
             "husband's elder brother", "husband's elder brother's wife",
             "husband's sister's husband", "sister-in-law (husband's sister)",
             "sister-in-law",

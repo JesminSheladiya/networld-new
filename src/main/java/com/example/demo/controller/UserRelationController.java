@@ -73,6 +73,8 @@ public class UserRelationController {
 
             // Only PENDING counts as sent/received — DECLINED resets to fresh state
             Long pendingId = null;
+            boolean suggested = false;
+            String suggestedRelation = null;
             if (fwd.isPresent()) {
                 if ("ACCEPTED".equals(fwd.get().getStatus())) {
                     item.put("relationName", fwd.get().getRelation().getRelationName());
@@ -80,6 +82,9 @@ public class UserRelationController {
                     item.put("pending", "sent");
                     pendingId = fwd.get().getId();
                     item.put("inferredRelation", fwd.get().getRelation().getRelationName());
+                } else if ("SUGGESTED".equals(fwd.get().getStatus())) {
+                    suggested = true;
+                    suggestedRelation = fwd.get().getRelation().getRelationName();
                 }
             } else if (rev.isPresent()) {
                 if ("ACCEPTED".equals(rev.get().getStatus())) {
@@ -91,6 +96,10 @@ public class UserRelationController {
                 }
             }
             item.put("pendingRelationId", pendingId);
+            item.put("suggested", suggested);
+            if (suggestedRelation != null) {
+                item.put("inferredRelation", suggestedRelation);
+            }
             result.add(item);
         }
         return ResponseEntity.ok(result);
@@ -146,6 +155,24 @@ public class UserRelationController {
     public ResponseEntity<List<UserRelationSuggestionDTO>> getPending(
             @AuthenticationPrincipal UserDetails ud) {
         return ResponseEntity.ok(userRelationService.getPendingRequests(getCurrentUser(ud)));
+    }
+
+    // Outgoing requests I sent that are still pending (for the Sent tab).
+    @GetMapping("/sent")
+    public ResponseEntity<List<UserRelationSuggestionDTO>> getSent(
+            @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(userRelationService.getSentRequests(getCurrentUser(ud)));
+    }
+
+    // Sender withdraws their own outgoing PENDING request.
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<?> cancel(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails ud) {
+        userRelationService.cancelSentRequest(id, getCurrentUser(ud));
+        Map<String, String> resp = new HashMap<>();
+        resp.put("message", "Cancelled!");
+        return ResponseEntity.ok(resp);
     }
 
     // Returns system-inferred SUGGESTED entries

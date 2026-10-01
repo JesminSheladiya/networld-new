@@ -219,6 +219,46 @@ public class UserRelationService {
                 }).collect(Collectors.toList());
     }
 
+    // Outgoing PENDING rows — requests I sent that are still awaiting a reply.
+    // DECLINED rows are excluded (a cancelled/declined request resets to fresh
+    // state, same as search-users). Cancelled rows reuse the DECLINED status
+    // so a later re-send reuses the row (keeps from/to unique).
+    public List<UserRelationSuggestionDTO> getSentRequests(User currentUser) {
+        return userRelationRepo.findByFromUserAndStatus(currentUser, "PENDING")
+                .stream()
+                .map(ur -> {
+                    User t = ur.getToUser();
+                    String name = t.getFullName() != null ? t.getFullName() : t.getDisplayName();
+                    Relation rel = ur.getRelation();
+                    UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
+                            ur.getId(), name, t.getDisplayName(), t.getEmail(), t.getPhone(), t.getProfilePicture(),
+                            t.getCoverImage(),
+                            t.getGender(), t.getBirthDate(), t.getBio(), t.getOccupation(),
+                            rel.getRelationName(),
+                            rel.getEnglishRelation(),
+                            rel.getIndianRelation(),
+                            "You asked " + name + " to be your " + rel.getRelationName(),
+                            "PENDING");
+                    return applyProfilePrivacy(currentUser.getEmail(), t, false, dto);
+                }).collect(Collectors.toList());
+    }
+
+    // Sender withdraws their own outgoing PENDING request.
+    @Transactional
+    public void cancelSentRequest(Long id, User currentUser) {
+        UserRelation ur = userRelationRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Not found!"));
+
+        if (!ur.getFromUser().getId().equals(currentUser.getId()))
+            throw new RuntimeException("Not authorized!");
+
+        if (!"PENDING".equals(ur.getStatus()))
+            throw new RuntimeException("Request is no longer pending!");
+
+        ur.setStatus("DECLINED");
+        userRelationRepo.save(ur);
+    }
+
     public List<UserRelationSuggestionDTO> getMyConnections(User currentUser, String query) {
         return getMyConnections(currentUser, query, currentUser.getEmail(), null);
     }
@@ -517,16 +557,20 @@ public class UserRelationService {
             String genericName = (result == null) ? null : result.otherToMe;
             Optional<Relation> genericRel = (genericName == null) ? Optional.empty()
                     : relationRepository.findByRelationNameIgnoreCase(genericName);
+            if (genericRel.isEmpty() && genericName != null) {
+                genericRel = relationRepository.findByEnglishRelationIgnoreCase(genericName);
+            }
 
             // Distant/unnamed pairs get a descriptive chain ("Brother's
             // Brother-in-law") composed through a bridge person; close blood
-            // truths always keep their generic label. A tainted generic
-            // (built on side-assumptions or in-law translations rather than
-            // an exact composition) is also a chain candidate — the chain
-            // describes the actual path exactly.
+            // truths always keep their generic label. Every NON-BLOOD generic
+            // is also a chain candidate — a plain "Sister-in-law" is ambiguous
+            // (Brother's Wife vs Husband's Sister vs Wife's Sister are
+            // different seats in Indian kinship), while the composed chain
+            // names the actual path exactly. Chains only win when a curated
+            // master row matches; otherwise the generic stands.
             boolean keepGeneric = genericRel.isPresent()
-                    && (Boolean.TRUE.equals(genericRel.get().getIsBlood())
-                        || (result != null && !result.viaSideRule));
+                    && Boolean.TRUE.equals(genericRel.get().getIsBlood());
             String chainName = keepGeneric ? null
                     : composeChain(me, other, resolvedMap, accepted, adjLabels, usersById,
                             inferredCache, relationCache);
@@ -541,6 +585,9 @@ public class UserRelationService {
             }
 
             Optional<Relation> finalRel = relationRepository.findByRelationNameIgnoreCase(finalName);
+            if (finalRel.isEmpty()) {
+                finalRel = relationRepository.findByEnglishRelationIgnoreCase(finalName);
+            }
             if (finalRel.isEmpty()) continue;
             // Younger/Elder precision on suggestions too (describer = me).
             finalRel = Optional.of(refineSiblingByAge(finalRel.get(), me, other));
@@ -627,10 +674,18 @@ public class UserRelationService {
             String candidate = headName + "'s " + tailGeneric;
             Optional<Relation> hit = relationRepository.findByRelationNameIgnoreCase(candidate);
             if (hit.isEmpty()) {
+                // First-order chains live under english_relation, e.g.
+                // "Brother's Wife" → "Sister-in-law (Brother's Wife)".
+                hit = relationRepository.findByEnglishRelationIgnoreCase(candidate);
+            }
+            if (hit.isEmpty()) {
                 int paren = tailGeneric.indexOf(" (");
                 if (paren > 0) {
                     candidate = headName + "'s " + tailGeneric.substring(0, paren);
                     hit = relationRepository.findByRelationNameIgnoreCase(candidate);
+                    if (hit.isEmpty()) {
+                        hit = relationRepository.findByEnglishRelationIgnoreCase(candidate);
+                    }
                 }
             }
             if (hit.isPresent()) return hit.get().getRelationName();
@@ -706,6 +761,10 @@ public class UserRelationService {
                 return f ? "Daughter's Mother-in-law" : "Daughter's Father-in-law";
             case "daughter's mother-in-law":
                 return f ? "Son's Mother-in-law" : "Son's Father-in-law";
+            // First-order chain with no plain fallback: the reverse names the
+            // exact counter-seat (row added to master).
+            case "brother-in-law (sister's husband)":
+                return f ? "Sister-in-law (Wife's Sister)" : "Brother-in-law (Wife's Brother)";
             case "brother's son-in-law":
             case "sister's son-in-law":
             case "son's son-in-law":
@@ -792,15 +851,15 @@ public class UserRelationService {
             case "sister-in-law":
                 return f ? "Sister-in-law" : "Brother-in-law";
             case "brother-in-law (husband's brother)":
-                return f ? "Sister-in-law (Brother's Wife)" : "Brother-in-law";
+                return f ? "Sister-in-law (Brother's Wife)" : null;
             case "sister-in-law (husband's sister)":
-                return f ? "Sister-in-law (Brother's Wife)" : "Brother-in-law";
+                return f ? "Sister-in-law (Brother's Wife)" : null;
             case "sister-in-law (brother's wife)":
-                return f ? "Sister-in-law" : "Brother-in-law (Husband's Brother)";
+                return f ? "Sister-in-law (Husband's Sister)" : "Brother-in-law (Husband's Brother)";
             case "sister-in-law (wife's sister)":
-                return f ? "Sister-in-law" : "Brother-in-law";
+                return f ? null : "Brother-in-law (Sister's Husband)";
             case "brother-in-law (wife's brother)":
-                return f ? "Sister-in-law" : "Brother-in-law";
+                return f ? null : "Brother-in-law (Sister's Husband)";
             case "brother-in-law (wife's sister's husband)":
                 return f ? "Sister-in-law" : "Brother-in-law (Wife's Sister's Husband)";
             case "sister-in-law (wife's brother's wife)":
