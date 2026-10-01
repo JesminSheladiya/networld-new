@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form, Input, message, Upload, Dropdown } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCamera, faCakeCandles, faEye, faEyeSlash, faArrowLeft, faTrashCan, faEllipsisVertical } from "@fortawesome/free-solid-svg-icons";
+import { faCamera, faCakeCandles, faEye, faEyeSlash, faArrowLeft, faTrashCan, faEllipsisVertical, faBriefcase } from "@fortawesome/free-solid-svg-icons";
 import { faEnvelope, faUser } from "@fortawesome/free-regular-svg-icons";
 import { PhoneOutlined, LockOutlined } from "@ant-design/icons";
 import { updateProfile } from "../../Services/authService";
@@ -249,6 +249,7 @@ function ProfilePage({ hidePassword = false }) {
   };
 
   const infoRows = [
+    { label: "Occupation", value: user?.occupation || "—", icon: <FontAwesomeIcon icon={faBriefcase} /> },
     { label: "Phone", value: user?.phone || "—", icon: <PhoneOutlined /> },
     { label: "Email", value: user?.email || "—", icon: <FontAwesomeIcon icon={faEnvelope} /> },
     { label: "Gender", value: GENDER_LABEL[user?.gender] || "—", icon: <FontAwesomeIcon icon={faUser} /> },

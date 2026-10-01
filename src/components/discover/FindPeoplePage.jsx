@@ -113,6 +113,7 @@ function FindPeoplePage() {
       gender: u.gender || null,
       birthDate: u.birthDate || null,
       bio: u.bio || "",
+      occupation: u.occupation || "",
       contactInfoHidden: !!u.contactInfoHidden,
     };
     navigate(`/contacts/${encodeURIComponent(u.username || u.email)}`, {
@@ -136,6 +137,7 @@ function FindPeoplePage() {
           gender: user.gender || null,
           birthDate: user.birthDate || null,
           bio: user.bio || "",
+          occupation: user.occupation || "",
           _self: true,
         }
       : null;

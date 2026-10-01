@@ -87,6 +87,7 @@ function ContactDetailPage() {
             pendingRelationId: exact.pendingRelationId ?? null,
             gender: exact.gender || null,
             birthDate: exact.birthDate || null,
+            occupation: exact.occupation || "",
             bio: exact.bio || "",
             contactInfoHidden: !!exact.contactInfoHidden,
           });

@@ -63,6 +63,7 @@ function SuggestionsPage() {
       gender: s.suggestedUserGender || null,
       birthDate: s.suggestedUserBirthDate || null,
       bio: s.suggestedUserBio || "",
+      occupation: s.suggestedUserOccupation || "",
       contactInfoHidden: !!s.contactInfoHidden,
     };
     navigate(

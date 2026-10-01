@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Avatar, Spin, Tooltip, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faPenToSquare, faUser, faAddressCard, faBell } from "@fortawesome/free-regular-svg-icons";
-import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo, faPaperPlane, faPlus, faCheck, faXmark, faUserPlus } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo, faPaperPlane, faPlus, faCheck, faXmark, faUserPlus, faBriefcase } from "@fortawesome/free-solid-svg-icons";
 import { PhoneOutlined, LockOutlined } from "@ant-design/icons";
 import { avatarColorFor } from "../../constants";
 import { api } from "../../Services/networld";
@@ -336,6 +336,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
                 </div>
               )}
               {[
+                { label: "Occupation", value: contact.occupation || "—", icon: <FontAwesomeIcon icon={faBriefcase} /> },
                 { label: "Phone", value: contact.phone || "—", icon: <PhoneOutlined /> },
                 { label: "Email", value: contact.email || "—", icon: <FontAwesomeIcon icon={faEnvelope} /> },
                 {

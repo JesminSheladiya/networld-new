@@ -30,6 +30,6 @@ export function mapConnectionToContact(item, idx = 0) {
     gender: item.suggestedUserGender || null,
     birthDate: item.suggestedUserBirthDate || null,
     bio: item.suggestedUserBio || "",
-    contactInfoHidden: !!item.contactInfoHidden,
+    occupation: item.suggestedUserOccupation || "",
   };
 }

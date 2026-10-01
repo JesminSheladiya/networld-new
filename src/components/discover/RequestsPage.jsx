@@ -72,6 +72,7 @@ function RequestsPage() {
       gender: p.suggestedUserGender || null,
       birthDate: p.suggestedUserBirthDate || null,
       bio: p.suggestedUserBio || "",
+      occupation: p.suggestedUserOccupation || "",
       contactInfoHidden: !!p.contactInfoHidden,
     };
     navigate(
