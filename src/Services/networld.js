@@ -47,8 +47,10 @@ export const api = {
     http.post(`${BASE}/user-relations/suggestions/send`, { otherEmail, relationName }),
   dismissSuggestion: (id) => http.delete(`${BASE}/user-relations/suggestions/${id}/dismiss`),
   pending: () => http.get(`${BASE}/user-relations/pending`),
+  sent: () => http.get(`${BASE}/user-relations/sent`),
   accept: (id) => http.post(`${BASE}/user-relations/${id}/accept`),
   decline: (id) => http.post(`${BASE}/user-relations/${id}/decline`),
+  cancel: (id) => http.post(`${BASE}/user-relations/${id}/cancel`),
   updateRelation: (relationId, relationName) =>
     http.put(`${BASE}/user-relations/${relationId}/relation`, { relationName }),
 };

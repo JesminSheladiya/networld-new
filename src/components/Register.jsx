@@ -5,7 +5,7 @@ import { faUser, faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { faAt, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { LockOutlined, PhoneOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { register, checkUsernameAvailable, suggestUsernames } from "../Services/authService";
+import { register, checkUsernameAvailable, suggestUsernames, updateProfile } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
 import NetworkBackground from "./NetworkBackground";
 import ScrollDatePicker from "./shared/ScrollDatePicker";
@@ -113,6 +113,13 @@ function Register() {
         values.gender,
         toBirthDateParam(values.birthDate)
       );
+      // Set contact info private by default after registration
+      try {
+        await updateProfile({ hideContactInfo: true });
+      } catch (e) {
+        // Non-blocking: privacy update failed but registration succeeded
+        console.warn("Could not set default privacy:", e);
+      }
       message.success(`Welcome, ${(data.fullName || "").trim().split(/\s+/)[0] || data.username}! Registration successful.`);
       authLogin();
       navigate("/contacts", { replace: true });

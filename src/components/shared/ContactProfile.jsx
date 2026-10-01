@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, Spin, Tooltip, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEnvelope, faPenToSquare, faUser, faAddressCard, faBell } from "@fortawesome/free-regular-svg-icons";
+import { faEnvelope, faPenToSquare, faUser, faAddressCard, faBell, faLightbulb } from "@fortawesome/free-regular-svg-icons";
 import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo, faPaperPlane, faPlus, faCheck, faXmark, faUserPlus, faBriefcase } from "@fortawesome/free-solid-svg-icons";
-import { PhoneOutlined, LockOutlined } from "@ant-design/icons";
+import { PhoneOutlined, LockOutlined, UserAddOutlined } from "@ant-design/icons";
 import { avatarColorFor } from "../../constants";
 import { api } from "../../Services/networld";
 import { mapConnectionToContact } from "../../utils/contactMapper";
@@ -38,12 +38,17 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
   const [sending, setSending] = useState(false);
   const [acting, setActing] = useState(false);
   const [declineOpen, setDeclineOpen] = useState(false);
+  const [suggestEditOpen, setSuggestEditOpen] = useState(false);
+  const [dismissOpen, setDismissOpen] = useState(false);
 
   const isConnection = contact.relationId != null;
   const isPendingReceived =
     !isConnection && contact.pending === "received" && contact.pendingRelationId != null;
   const isPendingSent = !isConnection && !isPendingReceived && contact.pending === "sent";
   const isStranger = !isConnection && !isPendingReceived && !isPendingSent;
+  // Suggestion: stranger with a suggestion reason or suggestion pendingRelationId
+  const isSuggestion =
+    isStranger && (!!contact.suggested || !!contact.reason || !!contact.pendingRelationId);
 
   useEffect(() => {
     if (!isStranger) return;
@@ -102,6 +107,38 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
       refreshAfterAction();
     } catch (e) {
       message.error(e?.response?.data?.message || "Could not decline request");
+      refreshAfterAction();
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const sendSuggestion = async () => {
+    if (sending || !relation) return;
+    setSending(true);
+    try {
+      await api.suggestionsSend(contact.email, relation);
+      message.success("Connection request sent");
+      refreshAfterAction();
+    } catch (e) {
+      // Server is the source of truth — show its message and re-fetch.
+      message.error(e?.response?.data?.message || "Could not send request");
+      refreshAfterAction();
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const doDismiss = async () => {
+    if (acting) return;
+    setDismissOpen(false);
+    setActing(true);
+    try {
+      await api.dismissSuggestion(contact.pendingRelationId);
+      message.success("Suggestion dismissed");
+      refreshAfterAction();
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not dismiss suggestion");
       refreshAfterAction();
     } finally {
       setActing(false);
@@ -232,16 +269,79 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
           ) : isStranger ? (
             <div className="pf-req-strip">
               <span className="pf-req-strip-icon">
-                <FontAwesomeIcon icon={faUserPlus} />
+                {isSuggestion ? (
+                  <FontAwesomeIcon icon={faLightbulb} />
+                ) : (
+                  <UserAddOutlined />
+                )}
               </span>
+              {isSuggestion && <span className="pf-req-strip-badge">AUTO</span>}
               <span className="pf-req-msg">
-                Send a connection to <strong>{name}</strong>
-                {pickedFound ? (
+                {isSuggestion ? (
                   <>
-                    {" "}as their <strong>{relName(pickedFound.relationName)}</strong>
+                    {contact.reason ? (
+                      <span className="pf-req-reason">{contact.reason}</span>
+                    ) : (
+                      <span className="pf-req-reason">Discovered through your network connections</span>
+                    )}
                   </>
-                ) : null}
+                ) : (
+                  <span>
+                    Send a connection to <strong>{name}</strong>
+                    {pickedFound ? (
+                      <>
+                        {" "}as their <strong>{relName(pickedFound.relationName)}</strong>
+                      </>
+                    ) : relation ? (
+                      <>
+                        {" "}as their <strong>{relName(relation)}</strong>
+                      </>
+                    ) : null}
+                  </span>
+                )}
               </span>
+              {isSuggestion ? (
+                <span className="pf-req-side pf-req-side-suggestion">
+                  <span className="pf-req-chip-group">
+                    <RelationChip
+                      relation={(relation || "").toLowerCase()}
+                      style={{ fontSize: 11 }}
+                    />
+                    <Tooltip title="Edit relation">
+                      <button
+                        className="nw-act-btn"
+                        style={{ color: "#64748b", borderColor: "rgba(148,163,184,0.25)" }}
+                        onClick={() => setSuggestEditOpen(true)}
+                        aria-label="Edit suggested relation"
+                      >
+                        <FontAwesomeIcon icon={faPenToSquare} style={{ fontSize: 13 }} />
+                      </button>
+                    </Tooltip>
+                  </span>
+                  <span className="pf-req-action-group">
+                    <Tooltip title="Send request">
+                      <button
+                        className="nw-act-btn nw-act-send"
+                        disabled={sending || !relation}
+                        onClick={sendSuggestion}
+                        aria-label="Send request"
+                      >
+                        <FontAwesomeIcon icon={faPaperPlane} />
+                      </button>
+                    </Tooltip>
+                    <Tooltip title="Dismiss">
+                      <button
+                        className="nw-act-btn nw-act-dismiss"
+                        disabled={acting}
+                        onClick={() => setDismissOpen(true)}
+                        aria-label="Dismiss suggestion"
+                      >
+                        <FontAwesomeIcon icon={faXmark} />
+                      </button>
+                    </Tooltip>
+                  </span>
+                </span>
+              ) : (
               <span className="pf-req-side">
                 <button
                   className="pf-ghost-btn"
@@ -266,6 +366,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
                   {sending ? "Sending..." : "Send"}
                 </button>
               </span>
+              )}
             </div>
           ) : null
         }
@@ -315,28 +416,34 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
               </div>
             ) : (
             <div className="pf-info-rows">
-              {relation && (
+              {contact.relationId != null && relation && (
                 <div className="pf-info-row">
                   <span className="pf-info-icon"><FontAwesomeIcon icon={faLink} /></span>
                   <span className="pf-info-text">
                     <span className="pf-info-label">Relation</span>
                     <RelationChip relation={relation} style={{ fontSize: 12 }} />
                   </span>
-                  {contact.relationId != null && (
-                    <Tooltip title="Edit relation">
-                      <button
-                        className="pf-info-edit"
-                        aria-label="Edit relation"
-                        onClick={() => setEditing(true)}
-                      >
-                        <FontAwesomeIcon icon={faPenToSquare} />
-                      </button>
-                    </Tooltip>
-                  )}
+                  <Tooltip title="Edit relation">
+                    <button
+                      className="pf-info-edit"
+                      aria-label="Edit relation"
+                      onClick={() => setEditing(true)}
+                    >
+                      <FontAwesomeIcon icon={faPenToSquare} />
+                    </button>
+                  </Tooltip>
+                </div>
+              )}
+              {contact.occupation && (
+                <div className="pf-info-row">
+                  <span className="pf-info-icon"><FontAwesomeIcon icon={faBriefcase} /></span>
+                  <span className="pf-info-text">
+                    <span className="pf-info-label">Profession</span>
+                    <span className="pf-info-value">{contact.occupation}</span>
+                  </span>
                 </div>
               )}
               {[
-                { label: "Occupation", value: contact.occupation || "—", icon: <FontAwesomeIcon icon={faBriefcase} /> },
                 { label: "Phone", value: contact.phone || "—", icon: <PhoneOutlined /> },
                 { label: "Email", value: contact.email || "—", icon: <FontAwesomeIcon icon={faEnvelope} /> },
                 {
@@ -353,13 +460,15 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
                   </span>
                 </div>
               ))}
-              <div className="pf-info-row">
-                <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
-                <span className="pf-info-text">
-                  <span className="pf-info-label">Birth Date</span>
-                  <span className="pf-info-value">{contact.birthDate ? formatBirthDateWithAge(contact.birthDate) : "—"}</span>
-                </span>
-              </div>
+              {contact.birthDate && (
+                <div className="pf-info-row">
+                  <span className="pf-info-icon"><FontAwesomeIcon icon={faCakeCandles} /></span>
+                  <span className="pf-info-text">
+                    <span className="pf-info-label">Birth Date</span>
+                    <span className="pf-info-value">{formatBirthDateWithAge(contact.birthDate)}</span>
+                  </span>
+                </div>
+              )}
             </div>
             )}
           </div>
@@ -484,6 +593,29 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
           setPickedRelId(v);
           setPickerOpen(false);
         }}
+      />
+
+      <RelationPickerModal
+        open={suggestEditOpen}
+        title="Edit Relation"
+        personName={name}
+        personGender={contact.gender}
+        value={relation}
+        onClose={() => setSuggestEditOpen(false)}
+        onPick={(v) => {
+          setRelation(v);
+          contact.relation = v;
+          setSuggestEditOpen(false);
+        }}
+      />
+
+      <ConfirmPopup
+        open={dismissOpen}
+        title="Dismiss suggestion?"
+        message="This suggestion will be removed."
+        okText="Dismiss"
+        onCancel={() => setDismissOpen(false)}
+        onOk={doDismiss}
       />
 
       <ConfirmPopup

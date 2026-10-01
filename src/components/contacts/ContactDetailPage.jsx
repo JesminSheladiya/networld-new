@@ -84,12 +84,16 @@ function ContactDetailPage() {
               relation: exact.relationName || exact.inferredRelation || "",
             relationId: null,
             pending: exact.pending || null,
-            pendingRelationId: exact.pendingRelationId ?? null,
+            pendingRelationId:
+              exact.pendingRelationId ??
+              (seedMatchesSlug(urlSeed, slug) ? urlSeed.pendingRelationId ?? null : null),
             gender: exact.gender || null,
             birthDate: exact.birthDate || null,
             occupation: exact.occupation || "",
             bio: exact.bio || "",
             contactInfoHidden: !!exact.contactInfoHidden,
+            reason: exact.reason || (seedMatchesSlug(urlSeed, slug) ? urlSeed.reason || "" : ""),
+            suggested: !!exact.suggested,
           });
           setFresh(true);
         } else if (!seedMatchesSlug(urlSeed, slug)) {

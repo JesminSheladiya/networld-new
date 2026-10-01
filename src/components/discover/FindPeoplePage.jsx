@@ -115,6 +115,8 @@ function FindPeoplePage() {
       bio: u.bio || "",
       occupation: u.occupation || "",
       contactInfoHidden: !!u.contactInfoHidden,
+      reason: u.reason || "",
+      suggested: !!u.suggested,
     };
     navigate(`/contacts/${encodeURIComponent(u.username || u.email)}`, {
       state: { contact },

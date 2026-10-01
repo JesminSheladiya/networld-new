@@ -191,7 +191,7 @@
 /* Full-width divider line — avatar overlaps its center (see sketch) */
 .pf-sk-divider {
   border-top: 1px solid rgba(148, 163, 184, 0.28);
-  padding: 20px 40px 30px 40px;
+  padding: 20px 15px 15px 15px;
 }
 
 .pf-sk-row {
@@ -268,6 +268,7 @@
 
 .pf-sk-stats {
   display: flex;
+  flex-wrap: wrap;
   gap: 15px;
   padding-top: 14px;
   margin-left: auto;
@@ -315,13 +316,13 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 .pf-sk-stat {
   background: rgba(59, 130, 246, 0.1);
-  padding: 8px;
+  padding: 6px 12px;
   border: 1px solid rgba(96, 165, 250, 0.22);
   border-radius: 8px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 2px;
+  gap: 10px;
   cursor: pointer;
 }
 
@@ -334,6 +335,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   font-size: 18px;
   font-weight: 800;
   line-height: 1.2;
+  transition: 0.2s all;
 }
 
 .pf-sk-stat-label {
@@ -341,9 +343,11 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
+  transition: 0.2s all;
 }
 
-button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
+button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num,
+button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
   color: #38bdf8;
 }
 
@@ -378,7 +382,8 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 .pf-ghost-btn {
   height: 32px;
-  padding: 0 14px;
+  padding: 5px 14px;
+  margin-top: 5px;
   border-radius: 9px;
   font-size: 12.5px;
   font-weight: 700;
@@ -510,12 +515,12 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 18px 24px 6px;
+  padding: 15px 15px 6px;
 }
 
 .pf-card-title {
   color: #f8fafc;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   margin: 0;
   letter-spacing: 0.2px;
@@ -908,7 +913,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 /* ── Info rows ── */
 .pf-info-rows {
-  padding: 8px 24px 14px;
+  padding: 8px 15px 14px;
 }
 
 /* Profile page contact card: single column by default, 2 columns
@@ -931,7 +936,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 0;
+  padding: 8px 0;
 }
 
 /* Tinted tiles instead of bordered tiles — color, not outlines */
@@ -1308,19 +1313,32 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 .pf-req-strip {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   flex-wrap: wrap;
   margin-top: 14px;
   padding: 8px 10px;
   border-radius: 14px;
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.14), rgba(59, 130, 246, 0.05));
-  border: 1px solid rgb(32 57 93);
+  background: linear-gradient(90deg, rgb(11 19 40), rgb(30 41 59));
+  border: 1px solid rgb(19 37 72);
   box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
 }
 
 .pf-req-strip .pf-req-msg {
   flex: 1 1 auto;
   min-width: 0;
+  gap: 3px;
+  color: #e2e8f0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pf-req-reason {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .pf-req-strip .pf-req-side {
@@ -1329,7 +1347,8 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
 
 .pf-req-side .pf-ghost-btn,
 .pf-req-side .pf-primary-btn {
-  height: 34px;
+  min-height: 34px;
+  height: max-content;
 }
 
 /* Labeled accept button (icon + text) */
@@ -1372,6 +1391,101 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
     margin-left: 0;
     justify-content: space-between;
   }
+
+  .pf-req-strip .pf-req-side-suggestion {
+    width: 100%;
+    margin-left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pf-req-side-suggestion .pf-req-chip-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    order: 1;
+  }
+
+  .pf-req-side-suggestion .pf-req-action-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    order: 2;
+  }
+}
+
+/* Extra small phones: stack if needed */
+@media (max-width: 400px) {
+  .pf-req-strip .pf-req-side-suggestion {
+    gap: 6px;
+  }
+
+  .pf-req-side-suggestion .nw-act-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+}
+
+/* Tablet (601px - 860px): suggestion side - chip + edit left, send + dismiss right */
+@media (min-width: 601px) and (max-width: 860px) {
+  .pf-req-strip {
+    flex-wrap: wrap;
+  }
+
+  .pf-req-strip .pf-req-msg {
+    flex: 1 1 calc(100% - 50px);
+    min-width: 0;
+  }
+
+  .pf-req-strip .pf-req-side-suggestion {
+    flex: 1 1 100%;
+    margin-left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pf-req-side-suggestion .pf-req-chip-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    order: 1;
+  }
+
+  .pf-req-side-suggestion .pf-req-action-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    order: 2;
+  }
+}
+
+/* Desktop: suggestion side stays on right - chip+edit left, send+dismiss right */
+@media (min-width: 861px) {
+  .pf-req-strip .pf-req-side-suggestion {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pf-req-side-suggestion .pf-req-chip-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pf-req-side-suggestion .pf-req-action-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
 }
 
 .pf-req-strip-icon {
@@ -1387,8 +1501,25 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   background: rgba(59, 130, 246, 0.14);
 }
 
+.pf-req-strip-icon .fa-lightbulb {
+  color: #fbbf24;
+}
+
+.pf-req-strip-badge {
+  flex-shrink: 0;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1;
+}
+
 .pf-req-strip .pf-req-msg {
-  flex: 1 1 220px;
+  flex: 1 1 200px;
   min-width: 0;
   color: #e2e8f0;
   font-size: 13.5px;
@@ -1635,7 +1766,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   }
 
   .pf-sk-divider {
-    padding: 10px 20px 28px;
+    padding: 10px 14px 18px;
   }
 
   .pf-sk-row {
@@ -1764,7 +1895,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-num {
   }
 
   .pf-sk-divider {
-    padding: 10px 16px 18px;
+    padding: 10px 12px 18px;
   }
 
   .pf-sk-row {

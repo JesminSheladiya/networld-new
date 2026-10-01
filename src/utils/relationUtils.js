@@ -88,6 +88,7 @@ export function getInverseRelation(rel, gender = "M") {
         "sister-in-law (husbands sister)": F ? "Sister-in-law (Brother's Wife)" : "Brother-in-law",
         "sister-in-law (brothers wife)": F ? "Sister-in-law" : "Brother-in-law (Husband's Brother)",
         "sister-in-law (wifes sister)": F ? "Sister-in-law" : "Brother-in-law",
+        "brother-in-law (sisters husband)": F ? "Sister-in-law" : "Brother-in-law (Wife's Brother)",
         // neutral
         "friend": "friend",
         // english-compositional aliases (same relations, descriptive names)

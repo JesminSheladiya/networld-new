@@ -249,7 +249,9 @@ function ProfilePage({ hidePassword = false }) {
   };
 
   const infoRows = [
-    { label: "Occupation", value: user?.occupation || "—", icon: <FontAwesomeIcon icon={faBriefcase} /> },
+    ...(user?.occupation
+      ? [{ label: "Profession", value: user.occupation, icon: <FontAwesomeIcon icon={faBriefcase} /> }]
+      : []),
     { label: "Phone", value: user?.phone || "—", icon: <PhoneOutlined /> },
     { label: "Email", value: user?.email || "—", icon: <FontAwesomeIcon icon={faEnvelope} /> },
     { label: "Gender", value: GENDER_LABEL[user?.gender] || "—", icon: <FontAwesomeIcon icon={faUser} /> },
