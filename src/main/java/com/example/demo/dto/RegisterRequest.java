@@ -26,6 +26,9 @@ public class RegisterRequest {
 
     private String fullName;
 
+    // Optional — validated in service (2-60 chars, letters/digits/spaces + & . , - ' ( ) /).
+    private String occupation;
+
     // Optional: when provided must be a past date (validated in service
     // together with the 150-year sanity bound).
     @Past(message = "Birth date must be in the past")
@@ -45,6 +48,9 @@ public class RegisterRequest {
 
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
+
+    public String getOccupation() { return occupation; }
+    public void setOccupation(String occupation) { this.occupation = occupation; }
 
     public String getGender() { return gender; }
     public void setGender(String gender) { this.gender = gender; }

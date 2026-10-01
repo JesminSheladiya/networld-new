@@ -69,6 +69,7 @@ public class UserRelationController {
             item.put("gender",     u.getGender());
             item.put("birthDate",  u.hidesContactInfoFrom(me.getEmail(), connected) ? null : u.getBirthDate());
             item.put("bio",        u.getBio());
+            item.put("occupation", u.getOccupation());
 
             // Only PENDING counts as sent/received — DECLINED resets to fresh state
             Long pendingId = null;

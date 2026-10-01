@@ -13,6 +13,7 @@ public class UpdateProfileRequest {
     private java.time.LocalDate birthDate;
     private Boolean clearBirthDate;
     private String bio;
+    private String occupation;
     private Boolean hideCover;
     private Boolean hideConnections;
     private Boolean hideContactInfo;
@@ -53,6 +54,9 @@ public class UpdateProfileRequest {
 
     public String getBio()       { return bio; }
     public void setBio(String v) { this.bio = v; }
+
+    public String getOccupation()       { return occupation; }
+    public void setOccupation(String v) { this.occupation = v; }
 
     public Boolean getHideCover()       { return hideCover; }
     public void setHideCover(Boolean v) { this.hideCover = v; }

@@ -56,6 +56,7 @@ public class AuthService {
         u.setEmail(req.getEmail());
         u.setPhone(phone);
         u.setFullName(normalizeFullName(req.getFullName()));
+        u.setOccupation(validateOccupation(req.getOccupation()));
         u.setGender(req.getGender());
         u.setBirthDate(validateBirthDate(req.getBirthDate()));
         users.save(u);
@@ -120,6 +121,9 @@ public class AuthService {
                 throw new RuntimeException("Bio must be 200 characters or less");
             u.setBio(bio.isEmpty() ? null : bio);
         }
+
+        if (req.getOccupation() != null)
+            u.setOccupation(validateOccupation(req.getOccupation()));
 
         if (req.getProfilePicture() != null)
             u.setProfilePicture(req.getProfilePicture());
@@ -271,6 +275,7 @@ public class AuthService {
                 u.getGender(),
                 u.getBirthDate(),
                 u.getBio(),
+                u.getOccupation(),
                 u.getHideCover(),
                 u.getHideConnections(),
                 u.getHideContactInfo()
@@ -289,6 +294,31 @@ public class AuthService {
             if (sb.length() > 0) sb.append(' ');
             sb.append(Character.toUpperCase(w.charAt(0)));
             if (w.length() > 1) sb.append(w.substring(1).toLowerCase());
+        }
+        return sb.toString();
+    }
+
+    // Occupation: optional (blank clears it). Only rule is max length —
+    // any text is allowed. Normalized to Title Case, keeping short
+    // all-caps words (CEO, HR, IT) as acronyms.
+    private static final java.util.regex.Pattern OCCUPATION_ACRONYM =
+            java.util.regex.Pattern.compile("^[A-Z0-9&.'()/\\-]{1,6}$");
+
+    static String validateOccupation(String occupation) {
+        if (occupation == null) return null;
+        String v = occupation.trim().replaceAll("\\s+", " ");
+        if (v.isEmpty()) return null;
+        if (v.length() > 60)
+            throw new RuntimeException("Occupation must be 60 characters or less");
+        String[] words = v.split(" ");
+        StringBuilder sb = new StringBuilder();
+        for (String w : words) {
+            if (sb.length() > 0) sb.append(' ');
+            if (OCCUPATION_ACRONYM.matcher(w).matches()) sb.append(w);
+            else {
+                sb.append(Character.toUpperCase(w.charAt(0)));
+                if (w.length() > 1) sb.append(w.substring(1).toLowerCase());
+            }
         }
         return sb.toString();
     }

@@ -209,7 +209,7 @@ public class UserRelationService {
                     UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
                             ur.getId(), name, s.getDisplayName(), s.getEmail(), s.getPhone(), s.getProfilePicture(),
                             s.getCoverImage(),
-                            s.getGender(), s.getBirthDate(), s.getBio(),
+                            s.getGender(), s.getBirthDate(), s.getBio(), s.getOccupation(),
                             rel.getRelationName(),
                             rel.getEnglishRelation(),
                             rel.getIndianRelation(),
@@ -238,7 +238,7 @@ public class UserRelationService {
             UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
                     ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
                     o.getCoverImage(),
-                    o.getGender(), o.getBirthDate(), o.getBio(),
+                    o.getGender(), o.getBirthDate(), o.getBio(), o.getOccupation(),
                     rel.getRelationName(),
                     rel.getEnglishRelation(),
                     rel.getIndianRelation(),
@@ -327,7 +327,7 @@ public class UserRelationService {
             UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
                     ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
                     o.getCoverImage(),
-                    o.getGender(), o.getBirthDate(), o.getBio(),
+                    o.getGender(), o.getBirthDate(), o.getBio(), o.getOccupation(),
                     rel.getRelationName(),
                     rel.getEnglishRelation(),
                     rel.getIndianRelation(),
@@ -378,7 +378,7 @@ public class UserRelationService {
             UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
                     ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
                     o.getCoverImage(),
-                    o.getGender(), o.getBirthDate(), o.getBio(),
+                    o.getGender(), o.getBirthDate(), o.getBio(), o.getOccupation(),
                             rel.getRelationName(),
                             rel.getEnglishRelation(),
                             rel.getIndianRelation(),

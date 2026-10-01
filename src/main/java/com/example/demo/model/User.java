@@ -48,6 +48,9 @@ public class User implements UserDetails {
     @Column(name = "bio", length = 200)
     private String bio;
 
+    @Column(name = "occupation", length = 60)
+    private String occupation;
+
     // Privacy: granular hides. Nullable for old rows —
     // null counts as false everywhere (see helpers below).
     @Column(name = "hide_cover")
@@ -99,6 +102,9 @@ public class User implements UserDetails {
 
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }
+
+    public String getOccupation() { return occupation; }
+    public void setOccupation(String occupation) { this.occupation = occupation; }
 
     public Boolean getHideCover() { return hideCover; }
     public void setHideCover(Boolean hideCover) { this.hideCover = hideCover; }
