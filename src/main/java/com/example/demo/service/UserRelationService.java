@@ -603,11 +603,22 @@ public class UserRelationService {
     }
 
     // First-link categories for chain composition: simple blood ties only.
-    // Spouse/in-law/nibling/pibling links are excluded (spouse-led chains
+    // Spouse/in-law/nibling/cousin links are excluded (spouse-led chains
     // collapse into existing in-law rows; compound words like "Brother Son"
-    // or "Maternal Uncle" read poorly as chain heads).
+    // read poorly as chain heads). Piblings ARE included — uncle/aunt-led
+    // chains are exactly how cousin seats resolve ("Father Sister" + "Son"
+    // = Fufera Bhai); misses simply fall through to the generic label.
     private static final java.util.Set<String> CHAIN_HEAD_CATEGORIES = java.util.Set.of(
-            "PARENT", "CHILD", "SIBLING", "GRANDPARENT", "GRANDCHILD");
+            "PARENT", "CHILD", "SIBLING", "GRANDPARENT", "GRANDCHILD", "PIBLING");
+
+    // Seat-identical side wordings: "Paternal Aunt" IS "Father Sister" (no
+    // elder/younger split exists for aunts, maternal uncles/aunts). Used as
+    // extra chain-head forms. Deliberately NOT mapped: "Paternal Uncle"
+    // (elder Tau vs younger Chacha is unknowable) and grandparents.
+    private static final java.util.Map<String, String> PIBLING_SYNONYMS = java.util.Map.of(
+            "paternal aunt", "father sister",
+            "maternal uncle", "mother brother",
+            "maternal aunt", "mother sister");
 
     // Compose a descriptive chain relation ("Brother's Brother-in-law") for a
     // distant pair via a bridge person X: "<my label for X>'s <X's label for
@@ -634,17 +645,24 @@ public class UserRelationService {
             return Long.compare(a, b);
         });
 
+        java.util.Map<Long, String> myLabels =
+                adjLabels.getOrDefault(me.getId(), java.util.Collections.emptyMap());
+
         for (Long bridgeId : bridges) {
             RelationshipResolver.RelResult head = egoMap.get(bridgeId);
             if (head == null || head.otherToMe == null) continue;
-            String headName = head.otherToMe;
-            Relation headRow = relationCache.computeIfAbsent(headName.toLowerCase(),
-                    k -> relationRepository.findByRelationNameIgnoreCase(headName).orElse(null));
-            if (headRow == null || !Boolean.TRUE.equals(headRow.getIsBlood())
-                    || !CHAIN_HEAD_CATEGORIES.contains(
-                            headRow.getRelationCategory() != null
-                                    ? headRow.getRelationCategory().toUpperCase() : "")) {
-                continue;
+            // Head wordings to try: the resolver's label plus my own chosen
+            // label for a directly-added bridge (the resolver generalizes
+            // "Father Younger Brother" → "Paternal Uncle", which would make
+            // exact chains unresolvable) plus seat-identical synonyms
+            // ("Paternal Aunt" IS "Father Sister").
+            java.util.LinkedHashSet<String> headForms = new java.util.LinkedHashSet<>();
+            headForms.add(head.otherToMe);
+            String directEdge = myLabels.get(bridgeId);
+            if (directEdge != null) headForms.add(directEdge);
+            for (String hf : new java.util.ArrayList<>(headForms)) {
+                String syn = PIBLING_SYNONYMS.get(hf.toLowerCase());
+                if (syn != null) headForms.add(syn);
             }
 
             // Second link: bridge's own accepted wording first, else bridge's inference.
@@ -671,24 +689,86 @@ public class UserRelationService {
             // generalizing an exact tail preserves truth ("Sister's
             // Sister-in-law" still describes her exactly).
             String tailGeneric = tailName;
-            String candidate = headName + "'s " + tailGeneric;
-            Optional<Relation> hit = relationRepository.findByRelationNameIgnoreCase(candidate);
-            if (hit.isEmpty()) {
-                // First-order chains live under english_relation, e.g.
-                // "Brother's Wife" → "Sister-in-law (Brother's Wife)".
-                hit = relationRepository.findByEnglishRelationIgnoreCase(candidate);
-            }
-            if (hit.isEmpty()) {
-                int paren = tailGeneric.indexOf(" (");
-                if (paren > 0) {
-                    candidate = headName + "'s " + tailGeneric.substring(0, paren);
-                    hit = relationRepository.findByRelationNameIgnoreCase(candidate);
-                    if (hit.isEmpty()) {
-                        hit = relationRepository.findByEnglishRelationIgnoreCase(candidate);
+            Optional<Relation> hit = Optional.empty();
+            for (String hf : headForms) {
+                Relation hr = relationOf(hf, relationCache);
+                // Gate on the REAL row; synonyms inherit it (a synonym is
+                // not itself a master row, so it can never pass the gate).
+                if (!isChainHead(hr)) continue;
+                hit = findChainRowCandidate(hf, tailGeneric);
+                if (hit.isEmpty()) {
+                    String syn = PIBLING_SYNONYMS.get(hf.toLowerCase());
+                    if (syn != null) hit = findChainRowCandidate(syn, tailGeneric);
+                }
+                if (hit.isEmpty()) {
+                    // Married-in pibling heads (Chachi, Mami, Fufa, Mausa,
+                    // Tai) carry the spouse suffix — the bloodline is the
+                    // head minus that suffix ("Father Sister Husband" +
+                    // "Son" is really "Father Sister's Son" = Fufera Bhai).
+                    String stripped = strippedPiblingHead(hf, hr);
+                    if (stripped != null) {
+                        hit = findChainRowCandidate(stripped, tailGeneric);
                     }
                 }
+                if (hit.isPresent()) break;
             }
             if (hit.isPresent()) return hit.get().getRelationName();
+        }
+        return null;
+    }
+
+    // Bridge-head gate: simple blood ties only. Spouse/in-law/nibling/
+    // cousin links are excluded (spouse-led chains collapse into existing
+    // in-law rows); piblings ARE allowed — uncle/aunt-led chains are exactly
+    // how cousin seats (Tayera, Fufera, Masera, ...) resolve.
+    private static boolean isChainHead(Relation headRow) {
+        return headRow != null
+                && Boolean.TRUE.equals(headRow.getIsBlood())
+                && CHAIN_HEAD_CATEGORIES.contains(
+                        headRow.getRelationCategory() != null
+                                ? headRow.getRelationCategory().toUpperCase() : "");
+    }
+
+    // Master-row lookup with the shared cache (cache holds nulls too —
+    // HashMap, so a second lookup for the same miss stays free).
+    private Relation relationOf(String name, Map<String, Relation> relationCache) {
+        String key = name.toLowerCase();
+        if (relationCache.containsKey(key)) return relationCache.get(key);
+        Relation rel = relationRepository.findByRelationNameIgnoreCase(name).orElse(null);
+        relationCache.put(key, rel);
+        return rel;
+    }
+
+    // Curated chain-row lookup for a composed "<Head>'s <Tail>" path:
+    // relation_name first, then english_relation (first-order chains like
+    // "Brother's Wife" live there), then the same two with a parenthesized
+    // tail generalized ("Sister-in-law (Husband's Sister)" → "Sister-in-law").
+    private Optional<Relation> findChainRowCandidate(String head, String tailGeneric) {
+        String candidate = head + "'s " + tailGeneric;
+        Optional<Relation> hit = relationRepository.findByRelationNameIgnoreCase(candidate);
+        if (hit.isPresent()) return hit;
+        hit = relationRepository.findByEnglishRelationIgnoreCase(candidate);
+        if (hit.isPresent()) return hit;
+        int paren = tailGeneric.indexOf(" (");
+        if (paren > 0) {
+            candidate = head + "'s " + tailGeneric.substring(0, paren);
+            hit = relationRepository.findByRelationNameIgnoreCase(candidate);
+            if (hit.isPresent()) return hit;
+            hit = relationRepository.findByEnglishRelationIgnoreCase(candidate);
+        }
+        return hit;
+    }
+
+    // Married-in pibling head ("Father Sister Husband") → bloodline head
+    // ("Father Sister") for chain composition, or null when not applicable.
+    private static String strippedPiblingHead(String headName, Relation headRel) {
+        if (headName == null || headRel == null) return null;
+        if (!"PIBLING".equalsIgnoreCase(headRel.getRelationCategory())) return null;
+        if (headName.endsWith(" Husband")) {
+            return headName.substring(0, headName.length() - " Husband".length());
+        }
+        if (headName.endsWith(" Wife")) {
+            return headName.substring(0, headName.length() - " Wife".length());
         }
         return null;
     }

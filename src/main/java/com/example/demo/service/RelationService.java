@@ -38,6 +38,12 @@ public class RelationService {
     private static final java.util.Set<String> HIDDEN_FROM_SELECTION = java.util.Set.of(
             "cousin", "grandfather", "grandmother", "brother", "sister",
             "uncle", "aunt", "nephew", "niece",
+            // Ambiguous cousin generics: exact seats now exist (Tayera /
+            // Chachera / Fufera / Mamera / Masera brother-sister). Engine
+            // fallbacks still resolve them, they just aren't selectable.
+            "cousin brother", "cousin sister",
+            "paternal cousin brother", "paternal cousin sister",
+            "maternal cousin brother", "maternal cousin sister",
             // generic Sister-in-law: its Indian name (Nanad) duplicates the
             // specific Husband's Sister row in pickers — engine fallbacks
             // still resolve it, it just isn't directly selectable.
@@ -156,9 +162,11 @@ public class RelationService {
     private static final java.util.List<String> NIBLING_ORDER = java.util.List.of(
             "brother son", "brother daughter", "sister son", "sister daughter");
     private static final java.util.List<String> COUSIN_ORDER = java.util.List.of(
-            "paternal cousin brother", "paternal cousin sister",
-            "maternal cousin brother", "maternal cousin sister",
-            "cousin brother", "cousin sister");
+            "father elder brother son", "father elder brother daughter",
+            "father younger brother son", "father younger brother daughter",
+            "father sister son", "father sister daughter",
+            "mother brother son", "mother brother daughter",
+            "mother sister son", "mother sister daughter");
 
     private static String orderKey(Relation r) {
         String name = r.getRelationName() == null ? "" : r.getRelationName().toLowerCase();
