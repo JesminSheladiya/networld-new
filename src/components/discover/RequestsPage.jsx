@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Spin, Button, Tooltip, message, Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -24,6 +24,9 @@ function RequestsPage() {
   const [cancelId, setCancelId] = useState(null);
   const { bump, key: refreshKey, setPendingCount } = useRefresh();
   const { relName, relCategory } = useRelationDisplay();
+  const chipsRef = useRef(null);
+  const chipRefs = useRef([]);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
 
   // "X wants to add you as their <Relation>" → relation in chosen language
   const formatReason = (reason) => {
@@ -79,6 +82,21 @@ function RequestsPage() {
     fetchPending();
     fetchSent();
   }, [refreshKey, fetchPending, fetchSent]);
+
+  // Sliding pill indicator — same segmented control as Contacts tabs.
+  useEffect(() => {
+    const activeIdx = tab === "received" ? 0 : 1;
+    const el = chipRefs.current[activeIdx];
+    if (!el || !chipsRef.current) return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      const c = chipsRef.current.getBoundingClientRect();
+      setIndicator({ left: r.left - c.left, width: r.width });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [tab, pending.length, sent.length]);
 
   const refreshAll = () => {
     fetchPending();
@@ -199,25 +217,33 @@ function RequestsPage() {
             Refresh
           </Button>
         </div>
-        <div className="nw-req-tabs" role="tablist" aria-label="Requests">
-          <button
-            role="tab"
-            aria-selected={isReceived}
-            className={isReceived ? "nw-req-tab active" : "nw-req-tab"}
-            onClick={() => setTab("received")}
-          >
-            Received
-            <span className="nw-req-tab-count">{pending.length}</span>
-          </button>
-          <button
-            role="tab"
-            aria-selected={!isReceived}
-            className={!isReceived ? "nw-req-tab active" : "nw-req-tab"}
-            onClick={() => setTab("sent")}
-          >
-            Sent
-            <span className="nw-req-tab-count">{sent.length}</span>
-          </button>
+        <div className="nw-req-chips-row">
+          <div className="nw-chips" ref={chipsRef} role="tablist" aria-label="Requests">
+            <span
+              className="nw-chip-indicator"
+              style={{ left: indicator.left, width: indicator.width }}
+            />
+            <button
+              role="tab"
+              aria-selected={isReceived}
+              ref={(el) => (chipRefs.current[0] = el)}
+              className={isReceived ? "nw-chip active" : "nw-chip"}
+              onClick={() => setTab("received")}
+            >
+              Received
+              <span className="nw-chip-count">{pending.length}</span>
+            </button>
+            <button
+              role="tab"
+              aria-selected={!isReceived}
+              ref={(el) => (chipRefs.current[1] = el)}
+              className={!isReceived ? "nw-chip active" : "nw-chip"}
+              onClick={() => setTab("sent")}
+            >
+              Sent
+              <span className="nw-chip-count">{sent.length}</span>
+            </button>
+          </div>
         </div>
       </div>
 
