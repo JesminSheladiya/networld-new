@@ -5,7 +5,7 @@ import { faUser, faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { faAt, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { LockOutlined, PhoneOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
-import { register, checkUsernameAvailable, suggestUsernames, updateProfile, requestOtp, verifyOtp, resendOtp } from "../Services/authService";
+import { register, checkUsernameAvailable, checkEmailAvailable, checkPhoneAvailable, suggestUsernames, updateProfile, requestOtp, verifyOtp, resendOtp } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
 import NetworkBackground from "./NetworkBackground";
 import ScrollDatePicker from "./shared/ScrollDatePicker";
@@ -18,6 +18,7 @@ const { Title } = Typography;
 const USERNAME_RE = /^(?!\.)(?!.*\.$)[a-z0-9._]+$/;
 const isUsernameFormatOk = (v) => !!v && v.length <= 30 && USERNAME_RE.test(v);
 const isEmailFormatOk = (v) => !!v && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim());
+const isPhoneFormatOk = (v) => !!v && /^[0-9]{10}$/.test((v || "").trim());
 
 function Register() {
   const [loading, setLoading] = useState(false);
@@ -67,7 +68,10 @@ function Register() {
   const usernameValue = Form.useWatch("username", form);
   const fullNameValue = Form.useWatch("name", form);
   const emailValue = Form.useWatch("email", form);
+  const phoneValue = Form.useWatch("phone", form);
   const [usernameStatus, setUsernameStatus] = useState(null); // checking | available | taken | null
+  const [emailStatus, setEmailStatus] = useState(null); // checking | available | taken | null
+  const [phoneStatus, setPhoneStatus] = useState(null); // checking | available | taken | null
   const [suggestions, setSuggestions] = useState([]);
   const [userFocused, setUserFocused] = useState(false);
 
@@ -88,6 +92,63 @@ function Register() {
     }, 500);
     return () => clearTimeout(t);
   }, [usernameValue]);
+
+  // Instant email availability — same pattern as username.
+  useEffect(() => {
+    const v = (emailValue || "").trim();
+    if (otpVerified) {
+      setEmailStatus(null);
+      return;
+    }
+    if (!v || !isEmailFormatOk(v)) {
+      setEmailStatus(null);
+      return;
+    }
+    setEmailStatus("checking");
+    const t = setTimeout(async () => {
+      try {
+        const res = await checkEmailAvailable(v);
+        const available = !!res?.available;
+        setEmailStatus(available ? "available" : "taken");
+        if (available) {
+          const errs = form.getFieldError("email") || [];
+          if (errs.some((e) => /already exists/i.test(e))) {
+            form.setFields([{ name: "email", errors: [] }]);
+          }
+        }
+      } catch {
+        setEmailStatus(null);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [emailValue, otpVerified, form]);
+
+  // Instant phone availability — same pattern as username.
+  useEffect(() => {
+    const v = (phoneValue || "").trim();
+    if (!v || !isPhoneFormatOk(v)) {
+      setPhoneStatus(null);
+      return;
+    }
+    setPhoneStatus("checking");
+    const t = setTimeout(async () => {
+      try {
+        const res = await checkPhoneAvailable(v);
+        const available = !!res?.available;
+        setPhoneStatus(available ? "available" : "taken");
+        if (available) {
+          // Clear a stale "taken" inline error as soon as the number becomes free.
+          const errs = form.getFieldError("phone") || [];
+          if (errs.some((e) => /already exists/i.test(e))) {
+            form.setFields([{ name: "phone", errors: [] }]);
+          }
+        }
+      } catch {
+        setPhoneStatus(null);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [phoneValue, form]);
 
   useEffect(() => {
     const rawBase = (usernameValue || "").trim() || (fullNameValue || "");
@@ -139,6 +200,15 @@ function Register() {
       const { email } = await form.validateFields(["email"]);
       if (!isEmailFormatOk(email)) {
         message.error("Please enter a valid email!");
+        return;
+      }
+      if (emailStatus === "taken") {
+        form.setFields([{ name: "email", errors: ["Email already exists. Please login."] }]);
+        message.error("Email already exists. Please login.");
+        return;
+      }
+      if (emailStatus === "checking") {
+        message.error("Checking email availability, please wait...");
         return;
       }
       setSendLoading(true);
@@ -225,6 +295,21 @@ function Register() {
         message.error("Please enter at least 2 words (First Last)!");
         return;
       }
+      // Instant checks — surface taken numbers/emails here, not only on Register.
+      if (phoneStatus === "taken") {
+        form.setFields([{ name: "phone", errors: ["Phone already exists."] }]);
+        message.error("Phone already exists.");
+        return;
+      }
+      if (emailStatus === "taken") {
+        form.setFields([{ name: "email", errors: ["Email already exists. Please login."] }]);
+        message.error("Email already exists. Please login.");
+        return;
+      }
+      if (phoneStatus === "checking" || emailStatus === "checking") {
+        message.error("Checking availability, please wait...");
+        return;
+      }
       if (!otpVerified) {
         message.error("Please verify email OTP first!");
         return;
@@ -248,6 +333,15 @@ function Register() {
     }
     if (usernameStatus === "taken") {
       message.error("This username is already taken. Try one of the suggestions below.");
+      return;
+    }
+    // Re-check instant statuses in case user jumped to Step-2 before debounce finished.
+    if (emailStatus === "taken" || phoneStatus === "taken") {
+      const field = emailStatus === "taken" ? "email" : "phone";
+      const msg = emailStatus === "taken" ? "Email already exists. Please login." : "Phone already exists.";
+      form.setFields([{ name: field, errors: [msg] }]);
+      message.error(msg);
+      setStep(1);
       return;
     }
     setLoading(true);
@@ -365,6 +459,14 @@ function Register() {
                 rules={[
                   { required: true, message: "Please enter phone!" },
                   { pattern: /^[0-9]{10}$/, message: "Phone must be 10 digits!" },
+                  {
+                    validator: (_, value) => {
+                      if (!value || !isPhoneFormatOk(value)) return Promise.resolve();
+                      if (phoneStatus === "taken")
+                        return Promise.reject("Phone already exists.");
+                      return Promise.resolve();
+                    },
+                  },
                 ]}
               >
                 <Input
@@ -377,6 +479,15 @@ function Register() {
                   maxLength={10}
                 />
               </Form.Item>
+              {(phoneValue || "").trim() !== "" && phoneStatus === "checking" && (
+                <div className="auth-username-status auth-checking">Checking phone…</div>
+              )}
+              {(phoneValue || "").trim() !== "" && phoneStatus === "available" && (
+                <div className="auth-username-status auth-ok">✓ Phone available</div>
+              )}
+              {(phoneValue || "").trim() !== "" && phoneStatus === "taken" && (
+                <div className="auth-username-status auth-err">Phone already exists.</div>
+              )}
 
               <Form.Item
                 className="auth-field"
@@ -384,6 +495,15 @@ function Register() {
                 rules={[
                   { required: true, message: "Please enter email!" },
                   { type: "email", message: "Please enter a valid email!" },
+                  {
+                    validator: (_, value) => {
+                      if (!value || !isEmailFormatOk(value)) return Promise.resolve();
+                      if (otpVerified) return Promise.resolve();
+                      if (emailStatus === "taken")
+                        return Promise.reject("Email already exists. Please login.");
+                      return Promise.resolve();
+                    },
+                  },
                 ]}
               >
                 <Input
@@ -403,22 +523,33 @@ function Register() {
                   }}
                 />
               </Form.Item>
+              {(emailValue || "").trim() !== "" && emailStatus === "checking" && !otpVerified && (
+                <div className="auth-username-status auth-checking">Checking email…</div>
+              )}
+              {(emailValue || "").trim() !== "" && emailStatus === "available" && !otpVerified && (
+                <div className="auth-username-status auth-ok">✓ Email available</div>
+              )}
+              {(emailValue || "").trim() !== "" && emailStatus === "taken" && !otpVerified && (
+                <div className="auth-username-status auth-err">Email already exists. Please login.</div>
+              )}
 
               {!otpVerified && (
                 <Tooltip
                   title={
                     !otpSent && !isEmailFormatOk(emailValue || "")
                       ? "Type your email first"
-                      : otpSent && cooldown > 0
-                        ? `Wait ${cooldown}s to resend`
-                        : ""
+                      : emailStatus === "taken"
+                        ? "This email is already registered"
+                        : otpSent && cooldown > 0
+                          ? `Wait ${cooldown}s to resend`
+                          : ""
                   }
                 >
                   <span className="auth-tip-full">
                     <button
                       type="button"
                       className="pf-primary-btn auth-otp-send-btn auth-send-full"
-                      disabled={sendLoading || (!otpSent && !isEmailFormatOk(emailValue || "")) || (otpSent && cooldown > 0)}
+                      disabled={sendLoading || emailStatus === "taken" || (!otpSent && !isEmailFormatOk(emailValue || "")) || (otpSent && cooldown > 0)}
                       onClick={() => handleSendOtp(otpSent)}
                     >
                       {sendLoading
@@ -486,18 +617,22 @@ function Register() {
                 <div className="auth-nav-row auth-nav-end">
                   <Tooltip
                     title={
-                      !otpVerified
-                        ? !otpSent
-                          ? "Send OTP first"
-                          : "Verify OTP first"
-                        : ""
+                      phoneStatus === "taken"
+                        ? "This phone is already registered"
+                        : emailStatus === "taken"
+                          ? "This email is already registered"
+                          : !otpVerified
+                            ? !otpSent
+                              ? "Send OTP first"
+                              : "Verify OTP first"
+                            : ""
                     }
                   >
                     <span className="auth-tip-inline">
                       <button
                         type="button"
                         className="pf-primary-btn auth-next-btn"
-                        disabled={!otpVerified}
+                        disabled={!otpVerified || phoneStatus === "taken" || emailStatus === "taken"}
                         onClick={handleNext}
                       >
                         Next

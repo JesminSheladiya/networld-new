@@ -62,6 +62,20 @@ export const checkUsernameAvailable = async (username) => {
   return data;
 };
 
+export const checkEmailAvailable = async (email) => {
+  const { data } = await http.get(`${API_BASE}/auth/email-available`, {
+    params: { email },
+  });
+  return data;
+};
+
+export const checkPhoneAvailable = async (phone) => {
+  const { data } = await http.get(`${API_BASE}/auth/phone-available`, {
+    params: { phone },
+  });
+  return data;
+};
+
 export const suggestUsernames = async (base, limit = 5) => {
   const { data } = await http.get(`${API_BASE}/auth/username-suggestions`, {
     params: { base, limit },
