@@ -1,8 +1,10 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.*;
+import com.example.demo.model.EmailOtpVerification;
 import com.example.demo.model.User;
 import com.example.demo.repository.ContactRepository;
+import com.example.demo.repository.EmailOtpRepository;
 import com.example.demo.repository.UserRelationRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.UsernameChangeHistoryRepository;
@@ -22,6 +24,20 @@ public class AuthService {
     private final UsernameChangeHistoryRepository history;
     private final UserRelationRepository relations;
     private final ContactRepository contacts;
+    private final ResendEmailService mailer;
+    private final EmailOtpRepository pendingOtps;
+    private final boolean otpTestMode;
+    // Test-hook storage (active only when OTP_TEST_MODE=true): email -> plain OTP.
+    // Always empty in production — plain OTPs are never persisted.
+    private final java.util.concurrent.ConcurrentHashMap<String, String> testOtpCodes =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    // OTP: 6-digit, 5-min expiry, max 5 wrong tries, 60-sec resend cooldown.
+    // Verified email stays valid for registration for 30 minutes.
+    private static final int OTP_EXPIRY_MINUTES = 5;
+    private static final int OTP_MAX_ATTEMPTS = 5;
+    private static final long RESEND_COOLDOWN_SECONDS = 60;
+    private static final long VERIFIED_VALID_MINUTES = 30;
 
     // Max username changes in any rolling 7-day window.
     private static final int MAX_USERNAME_CHANGES_PER_WEEK = 2;
@@ -30,7 +46,10 @@ public class AuthService {
                        JwtUtil jwt, CustomUserDetailsService uds,
                        UsernameChangeHistoryRepository history,
                        UserRelationRepository relations,
-                       ContactRepository contacts) {
+                       ContactRepository contacts,
+                       ResendEmailService mailer,
+                       EmailOtpRepository pendingOtps,
+                       @org.springframework.beans.factory.annotation.Value("${app.otp.test-mode:false}") boolean otpTestMode) {
         this.users   = users;
         this.encoder = encoder;
         this.jwt     = jwt;
@@ -38,30 +57,199 @@ public class AuthService {
         this.history = history;
         this.relations = relations;
         this.contacts  = contacts;
+        this.mailer  = mailer;
+        this.pendingOtps = pendingOtps;
+        this.otpTestMode = otpTestMode;
+        if (otpTestMode) {
+            System.out.println("WARN: OTP_TEST_MODE=true — /api/auth/test-otp enabled. NEVER use in production.");
+        }
     }
 
+    private static final java.util.regex.Pattern EMAIL_PATTERN =
+            java.util.regex.Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+
+    static String normalizeEmail(String email) {
+        if (email == null) throw new RuntimeException("Email is required");
+        String v = email.trim().toLowerCase();
+        if (!EMAIL_PATTERN.matcher(v).matches())
+            throw new RuntimeException("Please enter a valid email");
+        return v;
+    }
+
+    // Step 1 of registration: email-only OTP. No account is created here.
+    public java.util.Map<String, Object> requestOtp(String rawEmail) {
+        String email = normalizeEmail(rawEmail);
+        if (users.existsByEmail(email)) {
+            // New-flow account waiting for verification (created via old endpoint)?
+            // Those users verify through /verify-otp fallback instead.
+            User existing = users.findByEmail(email).orElse(null);
+            if (existing != null && !Boolean.TRUE.equals(existing.getEmailVerified())
+                    && existing.getOtpHash() != null) {
+                throw new RuntimeException("OTP already sent. Please verify the OTP.");
+            }
+            throw new RuntimeException("Email already exists. Please login.");
+        }
+        EmailOtpVerification p = pendingOtps.findByEmail(email).orElseGet(() -> {
+            EmailOtpVerification n = new EmailOtpVerification();
+            n.setEmail(email);
+            return n;
+        });
+        if (p.getOtpSentAt() != null && java.time.Instant.now().isBefore(
+                p.getOtpSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS))) {
+            throw new RuntimeException("Please wait a minute before resending OTP.");
+        }
+        String otp = newOtp(p);
+        pendingOtps.save(p);
+        if (otpTestMode) testOtpCodes.put(email, otp);
+        mailer.sendOtpAsync(email, otp, null);
+        return java.util.Map.of("message", "OTP sent to your email.", "email", email);
+    }
+
+    // Verify Step-1 OTP. Checks the pending table first, then falls back to
+    // new-flow User rows (accounts created via /register before this split).
+    public java.util.Map<String, Object> verifyOtp(String rawEmail, String otp) {
+        String email = normalizeEmail(rawEmail);
+        EmailOtpVerification p = pendingOtps.findByEmail(email).orElse(null);
+        if (p != null) {
+            if (Boolean.TRUE.equals(p.getVerified())) {
+                return java.util.Map.of("verified", true, "email", email);
+            }
+            checkOtp(p.getOtpHash(), p.getOtpExpiry(), p.getOtpAttempts(), otp);
+            if (!encoder.matches(otp, p.getOtpHash())) {
+                p.setOtpAttempts((p.getOtpAttempts() == null ? 0 : p.getOtpAttempts()) + 1);
+                pendingOtps.save(p);
+                throw new RuntimeException("Invalid OTP.");
+            }
+            p.setVerified(true);
+            p.setVerifiedAt(java.time.Instant.now());
+            p.setOtpHash(null);
+            p.setOtpExpiry(null);
+            p.setOtpAttempts(0);
+            pendingOtps.save(p);
+            if (otpTestMode) testOtpCodes.remove(email);
+            return java.util.Map.of("verified", true, "email", email);
+        }
+        // Fallback: User row created via /register with embedded OTP.
+        User u = users.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No OTP request found. Please send OTP first."));
+        if (Boolean.TRUE.equals(u.getEmailVerified())) {
+            return java.util.Map.of("verified", true, "email", email);
+        }
+        checkOtp(u.getOtpHash(), u.getOtpExpiry(), u.getOtpAttempts(), otp);
+        if (!encoder.matches(otp, u.getOtpHash())) {
+            u.setOtpAttempts((u.getOtpAttempts() == null ? 0 : u.getOtpAttempts()) + 1);
+            users.save(u);
+            throw new RuntimeException("Invalid OTP.");
+        }
+        u.setEmailVerified(true);
+        u.setOtpHash(null);
+        u.setOtpExpiry(null);
+        u.setOtpAttempts(0);
+        users.save(u);
+        return java.util.Map.of("verified", true, "email", email);
+    }
+
+    private void checkOtp(String hash, java.time.Instant expiry, Integer attempts, String otp) {
+        if (otp == null || !otp.matches("^[0-9]{6}$"))
+            throw new RuntimeException("OTP must be 6 digits.");
+        if (hash == null || expiry == null || java.time.Instant.now().isAfter(expiry)) {
+            throw new RuntimeException("OTP expired. Please resend OTP.");
+        }
+        if ((attempts == null ? 0 : attempts) >= OTP_MAX_ATTEMPTS) {
+            throw new RuntimeException("Too many wrong attempts. Please resend OTP.");
+        }
+    }
+
+    private String newOtp(EmailOtpVerification p) {
+        String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
+        p.setOtpHash(encoder.encode(otp));
+        p.setOtpExpiry(java.time.Instant.now().plus(OTP_EXPIRY_MINUTES, java.time.temporal.ChronoUnit.MINUTES));
+        p.setOtpAttempts(0);
+        p.setOtpSentAt(java.time.Instant.now());
+        p.setVerified(false);
+        p.setVerifiedAt(null);
+        return otp;
+    }
+
+    // Step 2 of registration: requires a verified Step-1 OTP. Returns token.
     public AuthResponse register(RegisterRequest req) {
+        String email = normalizeEmail(req.getEmail());
+        EmailOtpVerification p = pendingOtps.findByEmail(email).orElse(null);
+        boolean verified = p != null && Boolean.TRUE.equals(p.getVerified())
+                && p.getVerifiedAt() != null && java.time.Instant.now().isBefore(
+                        p.getVerifiedAt().plus(VERIFIED_VALID_MINUTES, java.time.temporal.ChronoUnit.MINUTES));
+        if (!verified)
+            throw new RuntimeException("Please verify email OTP first.");
+
         String username = validateUsername(req.getUsername());
         String phone = validatePhone(req.getPhone());
         if (users.existsByUsernameIgnoreCase(username))
             throw new RuntimeException("Username already taken");
-        if (users.existsByEmail(req.getEmail()))
-            throw new RuntimeException("Email already exists");
         if (users.existsByPhone(phone))
             throw new RuntimeException("Phone already exists");
+        if (users.existsByEmail(email))
+            throw new RuntimeException("Email already exists");
 
         User u = new User();
         u.setUsername(username);
         u.setPassword(encoder.encode(validateNewPassword(req.getPassword())));
-        u.setEmail(req.getEmail());
+        u.setEmail(email);
         u.setPhone(phone);
         u.setFullName(normalizeFullName(req.getFullName()));
         u.setOccupation(validateOccupation(req.getOccupation()));
         u.setGender(req.getGender());
         u.setBirthDate(validateBirthDate(req.getBirthDate()));
+        u.setEmailVerified(true);
         users.save(u);
+        pendingOtps.deleteByEmail(email);
+        if (otpTestMode) testOtpCodes.remove(email);
 
         return buildResponse(u);
+    }
+
+    public java.util.Map<String, Object> resendOtp(String rawEmail) {
+        String email = normalizeEmail(rawEmail);
+        EmailOtpVerification p = pendingOtps.findByEmail(email).orElse(null);
+        if (p == null) {
+            // Fallback: new-flow User row waiting for verification.
+            User u = users.findByEmail(email).orElse(null);
+            if (u != null && !Boolean.TRUE.equals(u.getEmailVerified()) && u.getOtpHash() != null) {
+                if (u.getOtpSentAt() != null && java.time.Instant.now().isBefore(
+                        u.getOtpSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS))) {
+                    throw new RuntimeException("Please wait a minute before resending OTP.");
+                }
+                String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
+                u.setOtpHash(encoder.encode(otp));
+                u.setOtpExpiry(java.time.Instant.now().plus(OTP_EXPIRY_MINUTES, java.time.temporal.ChronoUnit.MINUTES));
+                u.setOtpAttempts(0);
+                u.setOtpSentAt(java.time.Instant.now());
+                users.save(u);
+                mailer.sendOtpAsync(email, otp, u.getFullName());
+                return java.util.Map.of("message", "OTP resent to your email.", "email", email);
+            }
+            throw new RuntimeException("No OTP request found. Please send OTP first.");
+        }
+        if (Boolean.TRUE.equals(p.getVerified())) {
+            return java.util.Map.of("message", "Email already verified.", "email", email);
+        }
+        if (p.getOtpSentAt() != null && java.time.Instant.now().isBefore(
+                p.getOtpSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS))) {
+            throw new RuntimeException("Please wait a minute before resending OTP.");
+        }
+        String otp = newOtp(p);
+        pendingOtps.save(p);
+        if (otpTestMode) testOtpCodes.put(email, otp);
+        mailer.sendOtpAsync(email, otp, null);
+        return java.util.Map.of("message", "OTP resent to your email.", "email", email);
+    }
+
+    // Test hook — works only when OTP_TEST_MODE=true, otherwise behaves as not found.
+    public String getTestOtp(String rawEmail) {
+        if (!otpTestMode) throw new RuntimeException("Not found");
+        String email = normalizeEmail(rawEmail);
+        String code = testOtpCodes.get(email);
+        if (code == null) throw new RuntimeException("No OTP for this email");
+        return code;
     }
 
     public AuthResponse login(LoginRequest req) {
@@ -70,6 +258,17 @@ public class AuthService {
 
         if (!encoder.matches(req.getPassword(), u.getPassword()))
             throw new BadCredentialsException("Invalid password");
+
+        if (!Boolean.TRUE.equals(u.getEmailVerified())) {
+            // New-flow account still pending OTP -> block. Legacy accounts
+            // (created before OTP existed: no OTP fields) pass through once
+            // and get marked verified.
+            if (u.getOtpHash() != null || u.getOtpSentAt() != null) {
+                throw new RuntimeException("Email not verified. Please verify OTP sent to your email.");
+            }
+            u.setEmailVerified(true);
+            users.save(u);
+        }
 
         return buildResponse(u);
     }
@@ -163,6 +362,7 @@ public class AuthService {
         relations.deleteAllInvolving(u);
         contacts.deleteByUser(u);
         history.deleteByUser(u);
+        try { pendingOtps.deleteByEmail(email); } catch (Exception ignored) {}
         users.delete(u);
     }
 

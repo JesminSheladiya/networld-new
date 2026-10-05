@@ -23,6 +23,27 @@ public class AuthController {
         return ResponseEntity.ok(auth.register(req));
     }
 
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequest req) {
+        return ResponseEntity.ok(auth.verifyOtp(req.getEmail(), req.getOtp()));
+    }
+
+    @PostMapping("/request-otp")
+    public ResponseEntity<?> requestOtp(@RequestBody java.util.Map<String, String> body) {
+        return ResponseEntity.ok(auth.requestOtp(body.get("email")));
+    }
+
+    // Test hook — active only when OTP_TEST_MODE=true, otherwise returns "Not found".
+    @GetMapping("/test-otp")
+    public ResponseEntity<?> testOtp(@RequestParam("email") String email) {
+        return ResponseEntity.ok(java.util.Map.of("otp", auth.getTestOtp(email)));
+    }
+
+    @PostMapping("/resend-otp")
+    public ResponseEntity<?> resendOtp(@RequestBody java.util.Map<String, String> body) {
+        return ResponseEntity.ok(auth.resendOtp(body.get("email")));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
         return ResponseEntity.ok(auth.login(req));

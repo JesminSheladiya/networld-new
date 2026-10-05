@@ -65,6 +65,22 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String role = "USER";
 
+    // Email OTP verification (Resend). Null-safe for old rows.
+    @Column(name = "email_verified", nullable = false)
+    private Boolean emailVerified = false;
+
+    @Column(name = "otp_hash", length = 120)
+    private String otpHash;
+
+    @Column(name = "otp_expiry")
+    private java.time.Instant otpExpiry;
+
+    @Column(name = "otp_attempts", nullable = false)
+    private Integer otpAttempts = 0;
+
+    @Column(name = "otp_sent_at")
+    private java.time.Instant otpSentAt;
+
     public User() {}
 
     public Long getId() { return id; }
@@ -148,4 +164,19 @@ public class User implements UserDetails {
     @Override public boolean isAccountNonLocked()      { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }
     @Override public boolean isEnabled()               { return true; }
+
+    public Boolean getEmailVerified() { return emailVerified; }
+    public void setEmailVerified(Boolean emailVerified) { this.emailVerified = emailVerified; }
+
+    public String getOtpHash() { return otpHash; }
+    public void setOtpHash(String otpHash) { this.otpHash = otpHash; }
+
+    public java.time.Instant getOtpExpiry() { return otpExpiry; }
+    public void setOtpExpiry(java.time.Instant otpExpiry) { this.otpExpiry = otpExpiry; }
+
+    public Integer getOtpAttempts() { return otpAttempts; }
+    public void setOtpAttempts(Integer otpAttempts) { this.otpAttempts = otpAttempts; }
+
+    public java.time.Instant getOtpSentAt() { return otpSentAt; }
+    public void setOtpSentAt(java.time.Instant otpSentAt) { this.otpSentAt = otpSentAt; }
 }
