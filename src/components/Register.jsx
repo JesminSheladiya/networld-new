@@ -295,10 +295,20 @@ function Register() {
   };
 
   const handleNext = async () => {
+    console.log('[Register] handleNext called', { step, otpVerified, otpSent });
     try {
-      const v = await form.validateFields(["name", "phone", "email"]);
+      // Get email directly from form since it may be disabled after OTP verification
+      const email = (form.getFieldValue("email") || "").trim();
+      console.log('[Register] handleNext email from form:', email);
+      const v = await form.validateFields(["name", "phone"]);
       if (!v.name || v.name.trim().split(/\s+/).length < 2) {
         message.error("Please enter at least 2 words (First Last)!");
+        return;
+      }
+      // Validate email format manually since field may be disabled
+      if (!email || !isEmailFormatOk(email)) {
+        form.setFields([{ name: "email", errors: ["Please enter a valid email!"] }]);
+        message.error("Please enter a valid email!");
         return;
       }
       // Instant checks — surface taken numbers/emails here, not only on Register.
@@ -327,6 +337,7 @@ function Register() {
   };
 
   const onFinish = async (vals) => {
+    console.log('[Register] onFinish called', { vals, otpVerified, step, usernameStatus, emailStatus, phoneStatus, registerReady: Boolean(vals?.username?.trim() && vals?.password && vals?.confirmPassword && vals?.gender) });
     if (!otpVerified) {
       message.error("Please verify email OTP first!");
       setStep(1);
@@ -350,11 +361,13 @@ function Register() {
       setStep(1);
       return;
     }
+    // Get email from form directly since disabled fields are not in vals
+    const email = (form.getFieldValue("email") || "").trim();
     setLoading(true);
     try {
       const data = await register(
         username,
-        (vals.email || "").trim(),
+        email,
         vals.phone,
         vals.password,
         vals.name.trim(),
