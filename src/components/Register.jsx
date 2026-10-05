@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Form, Input, Card, message, Typography, Select, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faEnvelope } from "@fortawesome/free-regular-svg-icons";
-import { faAt, faEye, faEyeSlash, faArrowRight, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import { faAt, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { LockOutlined, PhoneOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { register, checkUsernameAvailable, suggestUsernames, updateProfile, requestOtp, verifyOtp, resendOtp } from "../Services/authService";
@@ -482,7 +482,7 @@ function Register() {
                         disabled={!otpVerified}
                         onClick={handleNext}
                       >
-                        Next <FontAwesomeIcon icon={faArrowRight} />
+                        Next
                       </button>
                     </span>
                   </Tooltip>
@@ -550,88 +550,84 @@ function Register() {
                 )}
               </div>
 
-              <div className="auth-form-grid">
-                <Form.Item
-                  className="auth-field"
-                  name="password"
-                  validateFirst
-                  rules={[
-                    { required: true, message: "Please enter password!" },
-                    {
-                      pattern: /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/,
-                      message: "Password must include at least one letter, one number and one symbol.",
+              <Form.Item
+                className="auth-field"
+                name="password"
+                validateFirst
+                rules={[
+                  { required: true, message: "Please enter password!" },
+                  {
+                    pattern: /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/,
+                    message: "Password must include at least one letter, one number and one symbol.",
+                  },
+                  { min: 8, message: "Password must be at least 8 characters long." },
+                ]}
+              >
+                <Input.Password
+                  className="auth-input"
+                  prefix={<LockOutlined className="auth-input-icon" />}
+                  placeholder="Password"
+                  size="large"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  iconRender={(visible) => (
+                    <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
+                  )}
+                />
+              </Form.Item>
+
+              <Form.Item
+                className="auth-field"
+                name="confirmPassword"
+                dependencies={["password"]}
+                rules={[
+                  { required: true, message: "Please confirm password!" },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue("password") === value) return Promise.resolve();
+                      return Promise.reject("Passwords do not match!");
                     },
-                    { min: 8, message: "Password must be at least 8 characters long." },
+                  }),
+                ]}
+              >
+                <Input.Password
+                  className="auth-input"
+                  prefix={<LockOutlined className="auth-input-icon" />}
+                  placeholder="Confirm Password"
+                  size="large"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  iconRender={(visible) => (
+                    <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
+                  )}
+                />
+              </Form.Item>
+
+              <Form.Item
+                className="auth-field"
+                name="gender"
+                rules={[{ required: true, message: "Please select gender!" }]}
+              >
+                <Select
+                  className="auth-input"
+                  placeholder="Gender"
+                  size="large"
+                  options={[
+                    { value: "M", label: "Male" },
+                    { value: "F", label: "Female" },
                   ]}
-                >
-                  <Input.Password
-                    className="auth-input"
-                    prefix={<LockOutlined className="auth-input-icon" />}
-                    placeholder="Password"
-                    size="large"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    iconRender={(visible) => (
-                      <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
-                    )}
-                  />
-                </Form.Item>
+                />
+              </Form.Item>
 
-                <Form.Item
-                  className="auth-field"
-                  name="confirmPassword"
-                  dependencies={["password"]}
-                  rules={[
-                    { required: true, message: "Please confirm password!" },
-                    ({ getFieldValue }) => ({
-                      validator(_, value) {
-                        if (!value || getFieldValue("password") === value) return Promise.resolve();
-                        return Promise.reject("Passwords do not match!");
-                      },
-                    }),
-                  ]}
-                >
-                  <Input.Password
-                    className="auth-input"
-                    prefix={<LockOutlined className="auth-input-icon" />}
-                    placeholder="Confirm Password"
-                    size="large"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    iconRender={(visible) => (
-                      <FontAwesomeIcon icon={visible ? faEye : faEyeSlash} className="auth-input-icon" style={{ color: '#3b82f6', cursor: 'pointer' }} />
-                    )}
-                  />
-                </Form.Item>
-              </div>
-
-              <div className="auth-form-grid">
-                <Form.Item
-                  className="auth-field"
-                  name="gender"
-                  rules={[{ required: true, message: "Please select gender!" }]}
-                >
-                  <Select
-                    className="auth-input"
-                    placeholder="Gender"
-                    size="large"
-                    options={[
-                      { value: "M", label: "Male" },
-                      { value: "F", label: "Female" },
-                    ]}
-                  />
-                </Form.Item>
-
-                <Form.Item
-                  className="auth-field"
-                  name="birthDate"
-                  rules={[birthDateValidator()]}
-                >
-                  <ScrollDatePicker placeholder="Birth Date (optional)" />
-                </Form.Item>
-              </div>
+              <Form.Item
+                className="auth-field"
+                name="birthDate"
+                rules={[birthDateValidator()]}
+              >
+                <ScrollDatePicker placeholder="Birth Date (optional)" />
+              </Form.Item>
 
               <Form.Item className="auth-field auth-submit">
                 <div className="auth-nav-row">
@@ -639,8 +635,7 @@ function Register() {
                     type="button"
                     className="auth-back-btn"
                     onClick={() => setStep(1)}
-                  >
-                    <FontAwesomeIcon icon={faArrowLeft} /> Back
+                  >Back
                   </button>
                   <Tooltip
                     title={
