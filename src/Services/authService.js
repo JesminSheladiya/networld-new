@@ -15,6 +15,21 @@ export const register = async (username, email, phone, password, fullName, gende
   return data;
 };
 
+export const requestOtp = async (email) => {
+  const { data } = await http.post(`${API_BASE}/auth/request-otp`, { email });
+  return data;
+};
+
+export const verifyOtp = async (email, otp) => {
+  const { data } = await http.post(`${API_BASE}/auth/verify-otp`, { email, otp });
+  return data;
+};
+
+export const resendOtp = async (email) => {
+  const { data } = await http.post(`${API_BASE}/auth/resend-otp`, { email });
+  return data;
+};
+
 export const login = async (identifier, password) => {
   const { data } = await http.post(`${API_BASE}/auth/login`,
     { identifier, password });

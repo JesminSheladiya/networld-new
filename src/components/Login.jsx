@@ -37,11 +37,15 @@ function Login() {
       authLogin();
       navigate("/contacts", { replace: true });
     } catch (error) {
-      message.error(
+      const msg =
         error.response?.data?.error ||
         error.response?.data?.message ||
-        "Login failed!"
-      );
+        "Login failed!";
+      message.error(msg);
+      // Unverified email -> redirect to register Step-1 with the email prefilled.
+      if (/not verified|verify/i.test(msg) && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((values.identifier || "").trim())) {
+        navigate("/register", { replace: true, state: { email: values.identifier.trim() } });
+      }
     } finally {
       setLoading(false);
     }
