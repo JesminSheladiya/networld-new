@@ -89,6 +89,19 @@ public class AuthController {
         return ResponseEntity.ok(auth.suggestUsernames(email, base, limit));
     }
 
+    // Public instant checks for register Step-1 — same pattern as username-available.
+    @GetMapping("/email-available")
+    public ResponseEntity<?> emailAvailable(@RequestParam("email") String email) {
+        return ResponseEntity.ok(java.util.Map.of("available",
+                auth.isEmailAvailable(email)));
+    }
+
+    @GetMapping("/phone-available")
+    public ResponseEntity<?> phoneAvailable(@RequestParam("phone") String phone) {
+        return ResponseEntity.ok(java.util.Map.of("available",
+                auth.isPhoneAvailable(phone)));
+    }
+
     @GetMapping("/username-change-info")
     public ResponseEntity<?> usernameChangeInfo(
             @AuthenticationPrincipal UserDetails userDetails) {

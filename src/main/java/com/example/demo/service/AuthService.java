@@ -393,6 +393,26 @@ public class AuthService {
         return !users.existsByUsernameIgnoreCaseAndEmailNot(v, email);
     }
 
+    // Instant availability for register Step-1 — same idea as username.
+    // Invalid format returns false (caller shows format error, not taken).
+    public boolean isEmailAvailable(String rawEmail) {
+        if (rawEmail == null || rawEmail.isBlank()) return false;
+        String v;
+        try {
+            v = normalizeEmail(rawEmail);
+        } catch (RuntimeException e) {
+            return false;
+        }
+        return !users.existsByEmail(v);
+    }
+
+    public boolean isPhoneAvailable(String phone) {
+        if (phone == null) return false;
+        String v = phone.trim();
+        if (!PHONE_PATTERN.matcher(v).matches()) return false;
+        return !users.existsByPhone(v);
+    }
+
     // Suggest available usernames derived from a base (full name / typed name).
     // Spaces become separators: "jesmin sheladiya" yields jesmin_sheladiya,
     // jesmin.sheladiya and jesminsheladiya variants.
