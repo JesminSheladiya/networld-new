@@ -158,7 +158,11 @@ function Register() {
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (error) {
       if (error?.errorFields) return; // antd validation, message shown inline
-      message.error(errMsg(error, "Failed to send OTP!"));
+      const msg = errMsg(error, "Failed to send OTP!");
+      message.error(msg);
+      if (/already exists|already sent|please login/i.test(msg)) {
+        form.setFields([{ name: "email", errors: [msg] }]);
+      }
     } finally {
       setSendLoading(false);
     }
@@ -270,7 +274,21 @@ function Register() {
     } catch (error) {
       const msg = errMsg(error, "Registration failed!");
       message.error(msg);
-      if (/verify|otp|expired/i.test(msg)) setStep(1);
+      const lower = msg.toLowerCase();
+      if (lower.includes("phone")) {
+        form.setFields([{ name: "phone", errors: [msg] }]);
+        setStep(1);
+      } else if (lower.includes("email")) {
+        form.setFields([{ name: "email", errors: [msg] }]);
+        setStep(1);
+      } else if (lower.includes("username") || lower.includes("taken")) {
+        form.setFields([{ name: "username", errors: [msg] }]);
+      } else if (lower.includes("full name") || lower.includes("name")) {
+        form.setFields([{ name: "name", errors: [msg] }]);
+        setStep(1);
+      } else if (/verify|otp|expired/i.test(msg)) {
+        setStep(1);
+      }
     } finally {
       setLoading(false);
     }
