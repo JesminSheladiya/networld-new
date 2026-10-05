@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Form, Input, Card, message, Typography, Select } from "antd";
+import { Form, Input, Card, message, Typography, Select, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { faAt, faEye, faEyeSlash, faArrowRight, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
@@ -292,6 +292,18 @@ function Register() {
         </div>
 
         <Form form={form} className="auth-form" name="register" onFinish={onFinish} autoComplete="off" layout="vertical">
+          <div className="auth-steps-top">
+            <div className={`auth-step-item ${step === 1 ? "active" : ""}`}>
+              <span className="auth-step-num">1</span>
+              <span className="auth-step-text">Verify Email</span>
+            </div>
+            <span className="auth-step-line" />
+            <div className={`auth-step-item ${step === 2 ? "active" : ""}`}>
+              <span className="auth-step-num">2</span>
+              <span className="auth-step-text">Account</span>
+            </div>
+          </div>
+
           {step === 1 && (
             <>
               <Form.Item
@@ -348,46 +360,63 @@ function Register() {
                 />
               </Form.Item>
 
-              <div className="auth-email-row">
-                <Form.Item
-                  className="auth-field auth-email-field"
-                  name="email"
-                  rules={[
-                    { required: true, message: "Please enter email!" },
-                    { type: "email", message: "Please enter a valid email!" },
-                  ]}
+              <Form.Item
+                className="auth-field"
+                name="email"
+                rules={[
+                  { required: true, message: "Please enter email!" },
+                  { type: "email", message: "Please enter a valid email!" },
+                ]}
+              >
+                <Input
+                  className="auth-input"
+                  prefix={<FontAwesomeIcon icon={faEnvelope} className="auth-input-icon" />}
+                  placeholder="Email"
+                  size="large"
+                  autoComplete="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  disabled={otpVerified}
+                  onChange={() => {
+                    // A changed email invalidates the sent OTP — request a new one.
+                    if (otpSent) resetOtp();
+                  }}
+                />
+              </Form.Item>
+
+              {!otpVerified && (
+                <Tooltip
+                  title={
+                    !otpSent && !isEmailFormatOk(emailValue || "")
+                      ? "Type your email first"
+                      : otpSent && cooldown > 0
+                        ? `Wait ${cooldown}s to resend`
+                        : ""
+                  }
                 >
-                  <Input
-                    className="auth-input"
-                    prefix={<FontAwesomeIcon icon={faEnvelope} className="auth-input-icon" />}
-                    placeholder="Email"
-                    size="large"
-                    autoComplete="email"
-                    inputMode="email"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    disabled={otpVerified}
-                    onChange={() => {
-                      // A changed email invalidates the sent OTP — request a new one.
-                      if (otpSent) resetOtp();
-                    }}
-                  />
-                </Form.Item>
-                {!otpSent && (
-                  <button
-                    type="button"
-                    className="pf-primary-btn auth-otp-send-btn"
-                    disabled={sendLoading || !isEmailFormatOk(emailValue || "")}
-                    onClick={() => handleSendOtp(false)}
-                  >
-                    {sendLoading ? "Sending..." : "Send OTP"}
-                  </button>
-                )}
-              </div>
+                  <span className="auth-tip-full">
+                    <button
+                      type="button"
+                      className="pf-primary-btn auth-otp-send-btn auth-send-full"
+                      disabled={sendLoading || (!otpSent && !isEmailFormatOk(emailValue || "")) || (otpSent && cooldown > 0)}
+                      onClick={() => handleSendOtp(otpSent)}
+                    >
+                      {sendLoading
+                        ? "Sending..."
+                        : !otpSent
+                          ? "Send OTP"
+                          : cooldown > 0
+                            ? `Resend in ${cooldown}s`
+                            : "Resend code"}
+                    </button>
+                  </span>
+                </Tooltip>
+              )}
 
               <div className="auth-otp">
-                <div className="auth-email-row">
+                <div className="auth-otp-row">
                   <div className="auth-otp-boxes" onPaste={handleOtpPaste}>
                     {otpDigits.map((d, i) => (
                       <input
@@ -406,43 +435,57 @@ function Register() {
                     ))}
                   </div>
                   {!otpVerified && (
-                    <button
-                      type="button"
-                      className="pf-primary-btn auth-otp-verify-btn"
-                      disabled={!otpSent || !otpComplete || verifyLoading}
-                      onClick={handleVerifyOtp}
+                    <Tooltip
+                      title={
+                        !otpSent
+                          ? "Send OTP first"
+                          : !otpComplete
+                            ? "Enter the 6-digit code first"
+                            : ""
+                      }
                     >
-                      {verifyLoading ? "..." : "Verify"}
-                    </button>
+                      <span className="auth-tip-stretch">
+                        <button
+                          type="button"
+                          className="pf-primary-btn auth-otp-verify-btn"
+                          disabled={!otpSent || !otpComplete || verifyLoading}
+                          onClick={handleVerifyOtp}
+                        >
+                          {verifyLoading ? "Verifying..." : "Verify"}
+                        </button>
+                      </span>
+                    </Tooltip>
                   )}
                 </div>
-                {otpSent && !otpVerified && (
-                  <button
-                    type="button"
-                    className="auth-link-btn auth-otp-resend"
-                    disabled={cooldown > 0 || sendLoading}
-                    onClick={() => handleSendOtp(true)}
-                  >
-                    {sendLoading
-                      ? "Sending..."
-                      : cooldown > 0
-                        ? `Resend in ${cooldown}s`
-                        : "Resend code"}
-                  </button>
+                {otpVerified && (
+                  <div className="auth-otp-foot">
+                    <span className="auth-otp-ok">✓ Email verified — you can continue.</span>
+                  </div>
                 )}
               </div>
 
               <Form.Item className="auth-field auth-submit">
-                <div className="auth-nav-row">
-                  <span className="auth-step-count">{step} / 2</span>
-                  <button
-                    type="button"
-                    className="pf-primary-btn auth-next-btn"
-                    disabled={!otpVerified}
-                    onClick={handleNext}
+                <div className="auth-nav-row auth-nav-end">
+                  <Tooltip
+                    title={
+                      !otpVerified
+                        ? !otpSent
+                          ? "Send OTP first"
+                          : "Verify OTP first"
+                        : ""
+                    }
                   >
-                    Next <FontAwesomeIcon icon={faArrowRight} />
-                  </button>
+                    <span className="auth-tip-inline">
+                      <button
+                        type="button"
+                        className="pf-primary-btn auth-next-btn"
+                        disabled={!otpVerified}
+                        onClick={handleNext}
+                      >
+                        Next <FontAwesomeIcon icon={faArrowRight} />
+                      </button>
+                    </span>
+                  </Tooltip>
                 </div>
               </Form.Item>
             </>
@@ -599,13 +642,25 @@ function Register() {
                   >
                     <FontAwesomeIcon icon={faArrowLeft} /> Back
                   </button>
-                  <button
-                    type="submit"
-                    className="pf-primary-btn auth-next-btn"
-                    disabled={!registerReady || loading || usernameStatus === "taken"}
+                  <Tooltip
+                    title={
+                      usernameStatus === "taken"
+                        ? "This username is taken — try a suggestion"
+                        : !registerReady
+                          ? "Fill all required fields first"
+                          : ""
+                    }
                   >
-                    {loading ? "Registering..." : "Register"}
-                  </button>
+                    <span className="auth-tip-inline">
+                      <button
+                        type="submit"
+                        className="pf-primary-btn auth-next-btn"
+                        disabled={!registerReady || loading || usernameStatus === "taken"}
+                      >
+                        {loading ? "Registering..." : "Register"}
+                      </button>
+                    </span>
+                  </Tooltip>
                 </div>
               </Form.Item>
             </>

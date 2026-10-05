@@ -279,6 +279,59 @@
   font-weight: 700;
 }
 
+/* Top stepper: ① Verify Email ── ② Account */
+.auth-steps-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.auth-step-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auth-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(148, 163, 184, 0.4);
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.auth-step-item.active .auth-step-num {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.7), rgba(37, 99, 235, 0.7));
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.auth-step-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.auth-step-item.active .auth-step-text {
+  color: #f1f5f9;
+}
+
+.auth-step-line {
+  width: 40px;
+  max-width: 100%;
+  height: 1px;
+  background: rgba(148, 163, 184, 0.25);
+}
+
 .auth-email-row {
   display: flex;
   gap: 12px;
@@ -296,14 +349,34 @@
 }
 
 .pf-primary-btn.auth-otp-send-btn {
-  height: 38px;
+  width: 100%;
+  justify-content: center;
   white-space: nowrap;
-  padding: 0 18px;
-  flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 .auth-otp {
   margin-bottom: 12px;
+}
+
+.auth-otp-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.auth-otp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 8px;
+  min-height: 20px;
+}
+
+.auth-otp-ok {
+  color: #4ade80;
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
 .auth-otp-caption {
@@ -331,18 +404,17 @@
 }
 
 .auth-otp-boxes {
+  flex: 1 1 auto;
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 9px;
+  gap: 8px;
 }
 
 .auth-otp-box {
   width: 100%;
-  max-width: 44px;
   height: auto;
   aspect-ratio: 1 / 1;
-  justify-self: center;
   text-align: center;
   font-size: 17px;
   font-weight: 800;
@@ -372,10 +444,10 @@
 }
 
 .pf-primary-btn.auth-otp-verify-btn {
-  height: 38px;
+  width: 100%;
+  justify-content: center;
   white-space: nowrap;
-  padding: 0 18px;
-  flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 .pf-primary-btn.auth-next-btn {
@@ -383,11 +455,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  flex: 1 1 auto;
-  max-width: 180px;
-  height: 44px;
-  font-size: 14px;
-  border-radius: 10px;
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 22px;
+  font-size: 13px;
+  border-radius: 9px;
 }
 
 .auth-otp-resend {
@@ -423,6 +495,10 @@
   width: 100%;
 }
 
+.auth-nav-row.auth-nav-end {
+  justify-content: flex-end;
+}
+
 .auth-back-btn {
   display: inline-flex;
   align-items: center;
@@ -446,8 +522,10 @@
   color: #fff;
 }
 
-@media (max-width: 480px) {
-  .auth-email-row {
+@media (max-width: 400px) {
+
+  .auth-email-row,
+  .auth-otp-row {
     flex-direction: column;
   }
 
@@ -459,8 +537,12 @@
     width: 100%;
   }
 
+  .auth-otp-row {
+    flex-wrap: wrap;
+  }
+
   .auth-otp-verify-btn {
-    width: 100%;
+    flex: 1 1 auto;
   }
 
   .auth-otp-resend {
@@ -475,7 +557,7 @@
 }
 
 .auth-card.auth-card-register {
-  max-width: 460px;
+  max-width: 400px;
 }
 
 /* ============================================================
