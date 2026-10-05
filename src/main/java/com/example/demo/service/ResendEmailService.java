@@ -38,7 +38,7 @@ public class ResendEmailService {
 
     public void sendOtp(String toEmail, String otp, String fullName) {
         String name = (fullName == null || fullName.isBlank()) ? "there" : fullName.trim().split("\\s+")[0];
-        String subject = "NetWorld verification code: " + otp;
+        String subject = "NetWorld verification code";
         String text = "Hi " + name + ",\n\nYour NetWorld verification code is " + otp
                 + ". It is valid for 5 minutes.\n\nIf you did not request this, ignore this mail.";
 
