@@ -190,10 +190,16 @@ function Register() {
     setCooldown(0);
   };
 
-  const errMsg = (error, fallback) =>
-    error.response?.data?.error ||
-    error.response?.data?.message ||
-    fallback;
+  const errMsg = (error, fallback) => {
+    const data = error.response?.data;
+    // Jakarta @Valid failures come as { message: "Validation failed", errors: { field: msg } }.
+    // Flatten so the user sees the real reason instead of a generic message.
+    if (data?.errors && typeof data.errors === "object") {
+      const first = Object.values(data.errors).find(Boolean);
+      if (first) return first;
+    }
+    return data?.error || data?.message || fallback;
+  };
 
   const handleSendOtp = async (isResend = false) => {
     try {
@@ -366,6 +372,22 @@ function Register() {
       authLogin();
       navigate("/contacts", { replace: true });
     } catch (error) {
+      const fieldErrors = error.response?.data?.errors;
+      if (fieldErrors && typeof fieldErrors === "object") {
+        // Show each backend validation error inline on its field.
+        // Backend calls it fullName, the form field is named "name".
+        const entries = Object.entries(fieldErrors).map(([name, msg]) => [
+          name.toLowerCase() === "fullname" ? "name" : name,
+          msg,
+        ]);
+        form.setFields(entries.map(([name, msg]) => ({ name, errors: [msg] })));
+        const firstMsg = entries.map(([, msg]) => msg).find(Boolean) || "Validation failed!";
+        message.error(firstMsg);
+        const names = entries.map(([n]) => n.toLowerCase());
+        if (names.some((n) => ["phone", "email", "name", "fullname"].includes(n))) setStep(1);
+        else if (names.includes("birthdate")) form.setFieldsValue({ birthDate: undefined });
+        return;
+      }
       const msg = errMsg(error, "Registration failed!");
       message.error(msg);
       const lower = msg.toLowerCase();
