@@ -31,7 +31,7 @@ public class RegisterRequest {
 
     // Optional: when provided must be a past date (validated in service
     // together with the 150-year sanity bound).
-    @Past(message = "Birth date must be in the past")
+    @PastOrPresent(message = "Birth date must be in the past")
     private java.time.LocalDate birthDate;
 
     public String getUsername() { return username; }

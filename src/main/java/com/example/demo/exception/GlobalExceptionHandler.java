@@ -33,8 +33,8 @@ public class GlobalExceptionHandler {
 
         if (ex.getRootCause() != null) {
             String root = ex.getRootCause().getMessage();
-            if (root.contains("uk_contact_phone")) msg = "Phone already exists";
-            if (root.contains("uk_contact_email")) msg = "Email already exists";
+            if (root.contains("uk_contact_phone") || root.contains("uk_users_phone")) msg = "Phone already exists";
+            if (root.contains("uk_contact_email") || root.contains("uk_users_email")) msg = "Email already exists";
         }
 
         return ResponseEntity.badRequest()
