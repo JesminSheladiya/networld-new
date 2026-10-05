@@ -15,6 +15,21 @@ export const register = async (username, email, phone, password, fullName, gende
   return data;
 };
 
+export const requestOtp = async (email) => {
+  const { data } = await http.post(`${API_BASE}/auth/request-otp`, { email });
+  return data;
+};
+
+export const verifyOtp = async (email, otp) => {
+  const { data } = await http.post(`${API_BASE}/auth/verify-otp`, { email, otp });
+  return data;
+};
+
+export const resendOtp = async (email) => {
+  const { data } = await http.post(`${API_BASE}/auth/resend-otp`, { email });
+  return data;
+};
+
 export const login = async (identifier, password) => {
   const { data } = await http.post(`${API_BASE}/auth/login`,
     { identifier, password });
@@ -43,6 +58,20 @@ export const deleteAccount = async () => {
 export const checkUsernameAvailable = async (username) => {
   const { data } = await http.get(`${API_BASE}/auth/username-available`, {
     params: { username },
+  });
+  return data;
+};
+
+export const checkEmailAvailable = async (email) => {
+  const { data } = await http.get(`${API_BASE}/auth/email-available`, {
+    params: { email },
+  });
+  return data;
+};
+
+export const checkPhoneAvailable = async (phone) => {
+  const { data } = await http.get(`${API_BASE}/auth/phone-available`, {
+    params: { phone },
   });
   return data;
 };
