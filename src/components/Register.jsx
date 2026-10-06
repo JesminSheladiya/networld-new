@@ -615,6 +615,8 @@ function Register() {
                 </Tooltip>
               )}
 
+              {/* OTP boxes + Verify: hidden until Send OTP succeeds */}
+              {(otpSent || otpVerified) && (
               <div className="auth-otp">
                 <div className="auth-otp-row">
                   <div className="auth-otp-boxes" onPaste={handleOtpPaste}>
@@ -663,7 +665,10 @@ function Register() {
                   </div>
                 )}
               </div>
+              )}
 
+              {/* Next: hidden until Verify OTP succeeds */}
+              {otpVerified && (
               <Form.Item className="auth-field auth-submit">
                 <div className="auth-nav-end">
                   <Tooltip
@@ -672,18 +677,14 @@ function Register() {
                         ? "This phone is already registered"
                         : emailStatus === "taken"
                           ? "This email is already registered"
-                          : !otpVerified
-                            ? !otpSent
-                              ? "Send OTP first"
-                              : "Verify OTP first"
-                            : ""
+                          : ""
                     }
                   >
                     <span className="auth-tip-inline">
                       <button
                         type="button"
                         className="pf-primary-btn auth-next-btn"
-                        disabled={!otpVerified || phoneStatus === "taken" || emailStatus === "taken"}
+                        disabled={phoneStatus === "taken" || emailStatus === "taken"}
                         onClick={handleNext}
                       >
                         Next
@@ -692,6 +693,7 @@ function Register() {
                   </Tooltip>
                 </div>
               </Form.Item>
+              )}
             </>
           )}
 
