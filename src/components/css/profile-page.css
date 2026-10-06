@@ -1250,6 +1250,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
 .pf-danger-actions-row .pf-ghost-btn {
   height: 36px;
   flex-shrink: 0;
+  margin-top: 0;
 }
 
 /* Acknowledge checkbox on the delete page */

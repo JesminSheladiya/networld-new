@@ -665,7 +665,7 @@ function Register() {
               </div>
 
               <Form.Item className="auth-field auth-submit">
-                <div className="auth-nav-row auth-nav-end">
+                <div className="auth-nav-end">
                   <Tooltip
                     title={
                       phoneStatus === "taken"

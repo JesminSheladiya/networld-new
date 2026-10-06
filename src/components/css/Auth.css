@@ -356,7 +356,10 @@
 }
 
 .auth-otp {
-  margin-bottom: 12px;
+  background: linear-gradient(45deg, #0e1c38, #0d1e46);
+  border: 1px solid rgb(32 58 95);
+  border-radius: 15px;
+  padding: 8px;
 }
 
 .auth-otp-row {
@@ -419,8 +422,8 @@
   font-size: 17px;
   font-weight: 800;
   color: #f1f5f9;
-  background: #0d1424;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: #0a0f1e;
+  border: 1px solid rgb(32 79 171);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -447,10 +450,10 @@
   width: 100%;
   justify-content: center;
   white-space: nowrap;
-  margin-bottom: 12px;
 }
 
 .pf-primary-btn.auth-next-btn {
+  width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -458,6 +461,7 @@
   flex: 0 0 auto;
   height: 36px;
   padding: 0 22px;
+  margin-top: 20px;
   font-size: 13px;
   border-radius: 9px;
 }
@@ -539,6 +543,10 @@
 
   .auth-otp-row {
     flex-wrap: wrap;
+  }
+
+  .auth-otp-boxes {
+    gap: 6px;
   }
 
   .auth-otp-verify-btn {
