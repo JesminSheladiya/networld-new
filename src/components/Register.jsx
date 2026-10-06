@@ -30,6 +30,9 @@ function Register() {
 
   // ── Step wizard ──
   const [step, setStep] = useState(1);
+  // Step-1 fields unmount on step 2 (values drop out of `vals`), so keep
+  // a snapshot taken at Next — onFinish reads step-1 data from here.
+  const [step1Data, setStep1Data] = useState({ name: "", phone: "", email: "" });
 
   // ── OTP state (6 boxes, same 44px height as all inputs) ──
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
@@ -295,10 +298,20 @@ function Register() {
   };
 
   const handleNext = async () => {
+    console.log('[Register] handleNext called', { step, otpVerified, otpSent });
     try {
-      const v = await form.validateFields(["name", "phone", "email"]);
+      // Get email directly from form since it may be disabled after OTP verification
+      const email = (form.getFieldValue("email") || "").trim();
+      console.log('[Register] handleNext email from form:', email);
+      const v = await form.validateFields(["name", "phone"]);
       if (!v.name || v.name.trim().split(/\s+/).length < 2) {
         message.error("Please enter at least 2 words (First Last)!");
+        return;
+      }
+      // Validate email format manually since field may be disabled
+      if (!email || !isEmailFormatOk(email)) {
+        form.setFields([{ name: "email", errors: ["Please enter a valid email!"] }]);
+        message.error("Please enter a valid email!");
         return;
       }
       // Instant checks — surface taken numbers/emails here, not only on Register.
@@ -320,6 +333,11 @@ function Register() {
         message.error("Please verify email OTP first!");
         return;
       }
+      setStep1Data({
+        name: (v.name || "").trim(),
+        phone: (v.phone || "").trim(),
+        email,
+      });
       setStep(2);
     } catch {
       // antd shows field errors inline
@@ -327,6 +345,7 @@ function Register() {
   };
 
   const onFinish = async (vals) => {
+    console.log('[Register] onFinish called', { vals, otpVerified, step, usernameStatus, emailStatus, phoneStatus, registerReady: Boolean(vals?.username?.trim() && vals?.password && vals?.confirmPassword && vals?.gender) });
     if (!otpVerified) {
       message.error("Please verify email OTP first!");
       setStep(1);
@@ -350,14 +369,24 @@ function Register() {
       setStep(1);
       return;
     }
+    // Step-1 fields are unmounted on step 2, so they are missing from
+    // `vals` — read them from the snapshot (form store as fallback).
+    const email = (form.getFieldValue("email") || step1Data.email || "").trim();
+    const name = (vals.name || step1Data.name || "").trim();
+    const phone = vals.phone || step1Data.phone || "";
+    if (!name || name.split(/\s+/).length < 2 || !phone || !email) {
+      message.error("Step-1 details are missing — please go back and fill them again.");
+      setStep(1);
+      return;
+    }
     setLoading(true);
     try {
       const data = await register(
         username,
-        (vals.email || "").trim(),
-        vals.phone,
+        email,
+        phone,
         vals.password,
-        vals.name.trim(),
+        name,
         vals.gender,
         toBirthDateParam(vals.birthDate)
       );
