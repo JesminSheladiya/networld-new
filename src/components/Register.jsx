@@ -30,6 +30,9 @@ function Register() {
 
   // ── Step wizard ──
   const [step, setStep] = useState(1);
+  // Step-1 fields unmount on step 2 (values drop out of `vals`), so keep
+  // a snapshot taken at Next — onFinish reads step-1 data from here.
+  const [step1Data, setStep1Data] = useState({ name: "", phone: "", email: "" });
 
   // ── OTP state (6 boxes, same 44px height as all inputs) ──
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
@@ -330,6 +333,11 @@ function Register() {
         message.error("Please verify email OTP first!");
         return;
       }
+      setStep1Data({
+        name: (v.name || "").trim(),
+        phone: (v.phone || "").trim(),
+        email,
+      });
       setStep(2);
     } catch {
       // antd shows field errors inline
@@ -361,16 +369,24 @@ function Register() {
       setStep(1);
       return;
     }
-    // Get email from form directly since disabled fields are not in vals
-    const email = (form.getFieldValue("email") || "").trim();
+    // Step-1 fields are unmounted on step 2, so they are missing from
+    // `vals` — read them from the snapshot (form store as fallback).
+    const email = (form.getFieldValue("email") || step1Data.email || "").trim();
+    const name = (vals.name || step1Data.name || "").trim();
+    const phone = vals.phone || step1Data.phone || "";
+    if (!name || name.split(/\s+/).length < 2 || !phone || !email) {
+      message.error("Step-1 details are missing — please go back and fill them again.");
+      setStep(1);
+      return;
+    }
     setLoading(true);
     try {
       const data = await register(
         username,
         email,
-        vals.phone,
+        phone,
         vals.password,
-        vals.name.trim(),
+        name,
         vals.gender,
         toBirthDateParam(vals.birthDate)
       );
