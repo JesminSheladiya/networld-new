@@ -18,6 +18,50 @@ const { Title } = Typography;
 const USERNAME_RE = /^(?!\.)(?!.*\.$)[a-z0-9._]+$/;
 const isUsernameFormatOk = (v) => !!v && v.length <= 30 && USERNAME_RE.test(v);
 const isEmailFormatOk = (v) => !!v && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim());
+
+// Disposable / temporary mail providers — must stay in sync with backend
+// AuthService.DISPOSABLE_DOMAINS. Subdomains count too.
+const DISPOSABLE_DOMAINS = new Set([
+  "mailinator.com", "mailinator.net", "mailinator.org", "mailinater.com",
+  "yopmail.com", "yopmail.fr", "yopmail.net", "youmailr.com", "yopmali.com",
+  "tempmail.com", "temp-mail.org", "temp-mail.io", "tempail.com", "tempmailo.com",
+  "tempmail.net", "tmpmail.org", "tmpmail.net",
+  "10minutemail.com", "10minutemail.net", "10minutemail.org",
+  "guerrillamail.com", "guerrillamail.net", "guerrillamail.org", "guerrillamail.de",
+  "trashmail.com", "trashmail.net", "trashmail.org", "trashemail.com",
+  "throwawaymail.com", "throwawayemail.com", "throwaway.email",
+  "mohmal.com", "maildrop.cc", "getnada.com", "sharklasers.com",
+  "dispostable.com", "fakeinbox.com", "fakemail.net", "fakemailgenerator.com",
+  "emailondeck.com", "emailtemporaneo.com", "emailtemporal.org",
+  "mintemail.com", "mytempemail.com", "mytrashmail.com",
+  "no-spam.ws", "nospam.ze.tc", "objectmail.com",
+  "proxymail.eu", "rcpt.at", "recode.me", "spam4.me", "spambox.us",
+  "spamfree24.com", "spamfree24.de", "spamgourmet.com",
+  "tempemail.com", "tempemail.net", "temporaryemail.net",
+  "temporarioemail.com", "tmail.ws", "tmails.net",
+  "via.tokyo.jp", "wetaskiwin.com", "whyspam.me", "willselfdestruct.com",
+  "yahooo.com", "zetmail.com", "zoemail.com", "0-mail.com",
+  "0815.ru", "1secmail.com", "1secmail.net", "1secmail.org",
+  "e4ward.com", "easytrashmail.com", "emkei.cf", "emkei.ml",
+  "filzmail.com", "getairmail.com", "inboxbear.com",
+  "incognitomail.com", "ishikawa.com", "jetable.org",
+  "mailcatch.com", "mailnesia.com", "mailtemp.info",
+  "mailsac.com", "mailslapping.com", "mailtemp.net",
+  "hudzer.com", "flakeian.com", "temp-mail.org",
+  "opayq.com", "qipmail.com", "s0ny.net", "slopsbox.com",
+  "superrito.com", "teleworm.us", "tempinbox.com",
+]);
+const DISPOSABLE_MSG = "Temporary email addresses are not allowed. Please use a permanent email.";
+const isDisposableEmail = (v) => {
+  const s = (v || "").trim().toLowerCase();
+  const at = s.lastIndexOf("@");
+  if (at < 0) return false;
+  const domain = s.slice(at + 1);
+  for (const d of DISPOSABLE_DOMAINS) {
+    if (domain === d || domain.endsWith("." + d)) return true;
+  }
+  return false;
+};
 const isPhoneFormatOk = (v) => !!v && /^[0-9]{10}$/.test((v || "").trim());
 
 function Register() {
@@ -105,6 +149,11 @@ function Register() {
     }
     if (!v || !isEmailFormatOk(v)) {
       setEmailStatus(null);
+      return;
+    }
+    if (isDisposableEmail(v)) {
+      setEmailStatus(null);
+      form.setFields([{ name: "email", errors: [DISPOSABLE_MSG] }]);
       return;
     }
     setEmailStatus("checking");
@@ -211,6 +260,11 @@ function Register() {
         message.error("Please enter a valid email!");
         return;
       }
+      if (isDisposableEmail(email)) {
+        form.setFields([{ name: "email", errors: [DISPOSABLE_MSG] }]);
+        message.error(DISPOSABLE_MSG);
+        return;
+      }
       if (emailStatus === "taken") {
         form.setFields([{ name: "email", errors: ["Email already exists. Please login."] }]);
         message.error("Email already exists. Please login.");
@@ -221,13 +275,16 @@ function Register() {
         return;
       }
       setSendLoading(true);
-      if (isResend) {
-        await resendOtp(email.trim());
-        message.success("OTP resent to your email.");
-      } else {
-        await requestOtp(email.trim());
-        message.success("OTP sent to your email.");
+      // The button shows "Sending..." until Resend confirms delivery.
+      // Success popup + OTP boxes only when the mail was actually accepted.
+      const res = isResend
+        ? await resendOtp(email.trim())
+        : await requestOtp(email.trim());
+      if (res?.delivered === false) {
+        message.error("Email could not be delivered. Please check the address and try again.");
+        return;
       }
+      message.success(isResend ? "OTP resent to your email." : "OTP sent to your email.");
       if (!isResend) {
         setOtpDigits(["", "", "", "", "", ""]);
         setOtpVerified(false);
@@ -239,7 +296,7 @@ function Register() {
       if (error?.errorFields) return; // antd validation, message shown inline
       const msg = errMsg(error, "Failed to send OTP!");
       message.error(msg);
-      if (/already exists|already sent|please login/i.test(msg)) {
+      if (/already exists|already sent|please login|temporary|disposable/i.test(msg)) {
         form.setFields([{ name: "email", errors: [msg] }]);
       }
     } finally {
@@ -281,6 +338,10 @@ function Register() {
       message.error("Please enter a valid email first!");
       return;
     }
+    if (isDisposableEmail(email)) {
+      message.error(DISPOSABLE_MSG);
+      return;
+    }
     if (!otpComplete) {
       message.error("Please enter the 6-digit OTP!");
       return;
@@ -312,6 +373,11 @@ function Register() {
       if (!email || !isEmailFormatOk(email)) {
         form.setFields([{ name: "email", errors: ["Please enter a valid email!"] }]);
         message.error("Please enter a valid email!");
+        return;
+      }
+      if (isDisposableEmail(email)) {
+        form.setFields([{ name: "email", errors: [DISPOSABLE_MSG] }]);
+        message.error(DISPOSABLE_MSG);
         return;
       }
       // Instant checks — surface taken numbers/emails here, not only on Register.
@@ -549,6 +615,7 @@ function Register() {
                   {
                     validator: (_, value) => {
                       if (!value || !isEmailFormatOk(value)) return Promise.resolve();
+                      if (isDisposableEmail(value)) return Promise.reject(DISPOSABLE_MSG);
                       if (otpVerified) return Promise.resolve();
                       if (emailStatus === "taken")
                         return Promise.reject("Email already exists. Please login.");
@@ -589,18 +656,20 @@ function Register() {
                   title={
                     !otpSent && !isEmailFormatOk(emailValue || "")
                       ? "Type your email first"
-                      : emailStatus === "taken"
-                        ? "This email is already registered"
-                        : otpSent && cooldown > 0
-                          ? `Wait ${cooldown}s to resend`
-                          : ""
+                      : isDisposableEmail(emailValue || "")
+                        ? "Temporary emails are not allowed"
+                        : emailStatus === "taken"
+                          ? "This email is already registered"
+                          : otpSent && cooldown > 0
+                            ? `Wait ${cooldown}s to resend`
+                            : ""
                   }
                 >
                   <span className="auth-tip-full">
                     <button
                       type="button"
                       className="pf-primary-btn auth-otp-send-btn auth-send-full"
-                      disabled={sendLoading || emailStatus === "taken" || (!otpSent && !isEmailFormatOk(emailValue || "")) || (otpSent && cooldown > 0)}
+                      disabled={sendLoading || emailStatus === "taken" || (!otpSent && (!isEmailFormatOk(emailValue || "") || isDisposableEmail(emailValue || ""))) || (otpSent && cooldown > 0)}
                       onClick={() => handleSendOtp(otpSent)}
                     >
                       {sendLoading
@@ -731,6 +800,9 @@ function Register() {
                 )}
                 {(usernameValue || "").trim() !== "" && usernameStatus === "available" && (
                   <div className="auth-username-status auth-ok">✓ Username available</div>
+                )}
+                {(usernameValue || "").trim() !== "" && usernameStatus === "taken" && (
+                  <div className="auth-username-status auth-err">Username already taken.</div>
                 )}
                 {showSuggestDrop && (
                   <div className="auth-suggest-drop">

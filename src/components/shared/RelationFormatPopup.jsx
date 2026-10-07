@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Modal, Button, message } from "antd";
+import { Modal, Button } from "antd";
 import { useAuth } from "../../context/AuthContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import "./RelationFormatPopup.css";
@@ -34,8 +34,6 @@ function RelationFormatPopup() {
   const handleSave = () => {
     setFormat(picked);
     closePicker();
-    const labels = { english: "English", indian: "Indian" };
-    message.success(`Relation display set to ${labels[picked]}`);
   };
 
   return (

@@ -1,5 +1,7 @@
-import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { message } from 'antd';
 import { api } from '../Services/networld';
+import { updateProfile } from '../Services/authService';
 import { useAuth } from './AuthContext';
 import { STORAGE_KEYS } from '../constants';
 
@@ -18,19 +20,47 @@ const normalizeFormat = (f) => (f == null ? null : (f === 'indian' ? 'indian' : 
 const RelationDisplayContext = createContext(null);
 
 export function RelationDisplayProvider({ children }) {
-  const { isAuthenticated } = useAuth();
-  const [format, setFormatState] = useState(() => normalizeFormat(localStorage.getItem(STORAGE_KEY)));
+  const { isAuthenticated, user, patchUser } = useAuth();
+  // Server (DB) is the source of truth; device localStorage is only the
+  // legacy fallback. Popup appears only when neither has a choice.
+  const [format, setFormatState] = useState(() =>
+    normalizeFormat(user?.relationFormat ?? localStorage.getItem(STORAGE_KEY)));
   const [master, setMaster] = useState({});
   const [masterLower, setMasterLower] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
+  const pushedLocalRef = useRef(false);
 
-  // Logout clears the choice so the popup shows again on next login
+  // Logout clears local state; next login re-syncs from the server, so a
+  // saved choice never pops up again (any device/browser).
   useEffect(() => {
     if (!isAuthenticated) {
       setFormatState(null);
       setPickerOpen(false);
+      pushedLocalRef.current = false;
     }
   }, [isAuthenticated]);
+
+  // Server wins; a legacy local-only choice is pushed to the DB once.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const server = normalizeFormat(user?.relationFormat ?? null);
+    if (server) {
+      try { localStorage.setItem(STORAGE_KEY, server); } catch { /* ignore */ }
+      setFormatState((prev) => (prev === server ? prev : server));
+      return;
+    }
+    const local = normalizeFormat(localStorage.getItem(STORAGE_KEY));
+    if (local) {
+      setFormatState((prev) => (prev === local ? prev : local));
+      if (!pushedLocalRef.current) {
+        pushedLocalRef.current = true;
+        updateProfile({ relationFormat: local })
+          .catch(() => { pushedLocalRef.current = false; });
+      }
+    } else {
+      setFormatState((prev) => (prev === null ? prev : null));
+    }
+  }, [isAuthenticated, user?.relationFormat]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -52,11 +82,23 @@ export function RelationDisplayProvider({ children }) {
       .catch(() => {});
   }, [isAuthenticated]);
 
+  // Optimistic local update + DB persist (own row, allowlisted
+  // server-side). On failure the choice is rolled back so the popup
+  // reappears instead of silently diverging from the server.
   const setFormat = useCallback((f) => {
     const norm = normalizeFormat(f);
-    localStorage.setItem(STORAGE_KEY, norm);
+    if (!norm) return;
+    try { localStorage.setItem(STORAGE_KEY, norm); } catch { /* ignore */ }
     setFormatState(norm);
-  }, []);
+    if (isAuthenticated) {
+      patchUser({ relationFormat: norm });
+      updateProfile({ relationFormat: norm }).catch(() => {
+        try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+        setFormatState(null);
+        message.error("Could not save display preference, try again");
+      });
+    }
+  }, [isAuthenticated, patchUser]);
 
   const relName = useCallback((name) => {
     if (!name) return name;
