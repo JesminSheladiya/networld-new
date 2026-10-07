@@ -1,60 +1,133 @@
 package com.example.demo.service;
 
+import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
+// OTP mail sender. Primary path is SMTP (e.g. Gmail + App Password —
+// delivers to ANY address). Resend stays as fallback when SMTP is not
+// configured (note: Resend's test domain only delivers to the account
+// owner's own email). With neither configured, dev mode logs the OTP.
 @Service
-public class ResendEmailService {
+public class OtpMailService {
 
-    private static final Logger log = LoggerFactory.getLogger(ResendEmailService.class);
+    private static final Logger log = LoggerFactory.getLogger(OtpMailService.class);
     private static final String RESEND_API = "https://api.resend.com/emails";
 
-    private final String apiKey;
-    private final String from;
+    private final String resendKey;
+    private final String resendFrom;
+    private final String smtpHost;
+    private final int smtpPort;
+    private final String smtpUser;
+    private final String smtpPass;
+    private final String smtpFrom;
     private final RestTemplate http = new RestTemplate();
 
-    public ResendEmailService(
-            @Value("${resend.api.key:}") String apiKey,
-            @Value("${resend.from:onboarding@resend.dev}") String from) {
-        this.apiKey = apiKey == null ? "" : apiKey.trim();
-        this.from = from;
+    public OtpMailService(
+            @Value("${resend.api.key:}") String resendKey,
+            @Value("${resend.from:onboarding@resend.dev}") String resendFrom,
+            @Value("${mail.smtp.host:}") String smtpHost,
+            @Value("${mail.smtp.port:587}") int smtpPort,
+            @Value("${mail.smtp.username:}") String smtpUser,
+            @Value("${mail.smtp.password:}") String smtpPass,
+            @Value("${mail.smtp.from:}") String smtpFrom) {
+        this.resendKey = resendKey == null ? "" : resendKey.trim();
+        this.resendFrom = resendFrom;
+        this.smtpHost = smtpHost == null ? "" : smtpHost.trim();
+        this.smtpPort = smtpPort;
+        this.smtpUser = smtpUser == null ? "" : smtpUser.trim();
+        this.smtpPass = smtpPass == null ? "" : smtpPass;
+        this.smtpFrom = smtpFrom == null ? "" : smtpFrom.trim();
+        if (smtpConfigured()) {
+            System.out.println("OTP mail via SMTP " + smtpHost + " as " + smtpUser);
+        } else if (resendConfigured()) {
+            System.out.println("OTP mail via Resend (test domain delivers to account email only)");
+        } else {
+            System.out.println("WARN: no mail sender configured — OTPs will only be logged, not emailed.");
+        }
     }
 
+    public boolean smtpConfigured() {
+        return !smtpHost.isBlank() && !smtpUser.isBlank() && !smtpPass.isBlank();
+    }
+
+    public boolean resendConfigured() {
+        return !resendKey.isBlank();
+    }
+
+    // Kept for compatibility — prefer isConfigured() checks below.
     public boolean isConfigured() {
-        return !apiKey.isBlank();
+        return smtpConfigured() || resendConfigured();
     }
 
     public void sendOtpAsync(String toEmail, String otp, String fullName) {
         CompletableFuture.runAsync(() -> sendOtp(toEmail, otp, fullName));
     }
 
-    public void sendOtp(String toEmail, String otp, String fullName) {
+    // Synchronous send — returns true only when the mail was accepted
+    // (or dev mode with no sender, where the OTP goes to logs instead).
+    // Callers use this to report real delivery status instead of assuming it.
+    public boolean sendOtp(String toEmail, String otp, String fullName) {
         String name = (fullName == null || fullName.isBlank()) ? "there" : fullName.trim().split("\\s+")[0];
         String subject = "NetWorld verification code";
         String text = "Hi " + name + ",\n\nYour NetWorld verification code is " + otp
                 + ". It is valid for 5 minutes.\n\nIf you did not request this, ignore this mail.";
         String html = buildOtpHtml(escapeHtml(name), escapeHtml(otp));
 
-        if (!isConfigured()) {
-            // Dev mode: no API key configured — skip sending, log OTP instead.
-            // Never log OTPs in production.
-            log.warn("RESEND_API_KEY missing — skipping mail to {}. OTP={}", toEmail, otp);
-            return;
+        if (smtpConfigured()) return sendViaSmtp(toEmail, subject, text, html);
+        if (resendConfigured()) return sendViaResend(toEmail, subject, text, html);
+        // Dev mode: no sender configured — skip sending, log OTP instead.
+        // Never log OTPs in production.
+        log.warn("No mail sender configured — skipping mail to {}. OTP={}", toEmail, otp);
+        return true;
+    }
+
+    private boolean sendViaSmtp(String toEmail, String subject, String text, String html) {
+        try {
+            JavaMailSenderImpl sender = new JavaMailSenderImpl();
+            sender.setHost(smtpHost);
+            sender.setPort(smtpPort);
+            sender.setUsername(smtpUser);
+            sender.setPassword(smtpPass);
+            Properties props = sender.getJavaMailProperties();
+            props.put("mail.transport.protocol", "smtp");
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.starttls.enable", "true");
+            props.put("mail.smtp.connectiontimeout", "8000");
+            props.put("mail.smtp.timeout", "15000");
+            MimeMessage msg = sender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(msg, true, "UTF-8");
+            helper.setFrom(smtpFrom.isBlank() ? smtpUser : smtpFrom);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(text, html);
+            sender.send(msg);
+            return true;
+        } catch (Exception e) {
+            // Never fail registration because of a mail error — the user can resend.
+            log.error("SMTP error for {}: {}", toEmail, e.getMessage());
+            return false;
         }
+    }
+
+    private boolean sendViaResend(String toEmail, String subject, String text, String html) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey);
+            headers.setBearerAuth(resendKey);
             Map<String, Object> body = Map.of(
-                    "from", from,
+                    "from", resendFrom,
                     "to", List.of(toEmail),
                     "subject", subject,
                     "text", text,
@@ -63,10 +136,13 @@ public class ResendEmailService {
             ResponseEntity<String> res = http.postForEntity(RESEND_API, req, String.class);
             if (!res.getStatusCode().is2xxSuccessful()) {
                 log.error("Resend failed for {}: {}", toEmail, res.getBody());
+                return false;
             }
+            return true;
         } catch (Exception e) {
             // Never fail registration because of a mail error — the user can resend.
             log.error("Resend error for {}: {}", toEmail, e.getMessage());
+            return false;
         }
     }
 

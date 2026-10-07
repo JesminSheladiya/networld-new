@@ -24,7 +24,7 @@ public class AuthService {
     private final UsernameChangeHistoryRepository history;
     private final UserRelationRepository relations;
     private final ContactRepository contacts;
-    private final ResendEmailService mailer;
+    private final OtpMailService mailer;
     private final EmailOtpRepository pendingOtps;
     private final boolean otpTestMode;
     // Test-hook storage (active only when OTP_TEST_MODE=true): email -> plain OTP.
@@ -47,9 +47,10 @@ public class AuthService {
                        UsernameChangeHistoryRepository history,
                        UserRelationRepository relations,
                        ContactRepository contacts,
-                       ResendEmailService mailer,
+                       OtpMailService mailer,
                        EmailOtpRepository pendingOtps,
-                       @org.springframework.beans.factory.annotation.Value("${app.otp.test-mode:false}") boolean otpTestMode) {
+                       @org.springframework.beans.factory.annotation.Value("${app.otp.test-mode:false}") boolean otpTestMode,
+                       @org.springframework.beans.factory.annotation.Value("${app.disposable-list.url:https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf}") String disposableListUrl) {
         this.users   = users;
         this.encoder = encoder;
         this.jwt     = jwt;
@@ -63,17 +64,125 @@ public class AuthService {
         if (otpTestMode) {
             System.out.println("WARN: OTP_TEST_MODE=true — /api/auth/test-otp enabled. NEVER use in production.");
         }
+        System.out.println("Disposable-domain list loaded: " + DISPOSABLE_DOMAINS.size() + " domains.");
+        refreshDisposableListAsync(disposableListUrl);
     }
 
     private static final java.util.regex.Pattern EMAIL_PATTERN =
             java.util.regex.Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+
+    // Disposable / temporary mail providers — loaded from the bundled
+    // disposable-domains.txt (seeded from the community-maintained
+    // disposable-email-domains list) and refreshed from its upstream URL
+    // on startup, so newly rotated temp-mail domains get picked up.
+    // Subdomains count too (e.g. xyz.mailinator.com).
+    private static final java.util.Set<String> DISPOSABLE_DOMAINS =
+            java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+
+    // Deliverability cache: domain -> has MX (or A fallback) record.
+    private static final java.util.concurrent.ConcurrentHashMap<String, Boolean> MX_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    static {
+        try (java.io.InputStream in =
+                     AuthService.class.getResourceAsStream("/disposable-domains.txt")) {
+            if (in != null) loadDomainLines(
+                    new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception ignored) {
+            // Fall through to the hardcoded fallback below.
+        }
+        if (DISPOSABLE_DOMAINS.isEmpty()) {
+            DISPOSABLE_DOMAINS.addAll(java.util.Set.of(
+                    "mailinator.com", "yopmail.com", "tempmail.com", "temp-mail.org",
+                    "10minutemail.com", "guerrillamail.com", "trashmail.com",
+                    "hudzer.com", "flakeian.com"));
+        }
+    }
+
+    private static void loadDomainLines(java.io.Reader r) throws java.io.IOException {
+        try (java.io.BufferedReader br = new java.io.BufferedReader(r)) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.trim().toLowerCase();
+                if (!line.isEmpty() && !line.startsWith("#")) DISPOSABLE_DOMAINS.add(line);
+            }
+        }
+    }
+
+    // Refresh the list from upstream in the background on startup.
+    // Offline / slow network just keeps the bundled list — never blocks boot.
+    private void refreshDisposableListAsync(String url) {
+        if (url == null || url.isBlank()) return;
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection)
+                        new java.net.URL(url).openConnection();
+                c.setConnectTimeout(5000);
+                c.setReadTimeout(15000);
+                try (java.io.InputStream in = c.getInputStream()) {
+                    int before = DISPOSABLE_DOMAINS.size();
+                    loadDomainLines(new java.io.InputStreamReader(
+                            in, java.nio.charset.StandardCharsets.UTF_8));
+                    System.out.println("Disposable-domain list refreshed: "
+                            + before + " -> " + DISPOSABLE_DOMAINS.size());
+                }
+            } catch (Exception e) {
+                System.out.println("Disposable-list refresh skipped (using bundled list): "
+                        + e.getMessage());
+            }
+        });
+    }
+
+    static boolean isDisposableEmail(String normalizedEmail) {
+        int at = normalizedEmail.lastIndexOf('@');
+        if (at < 0) return false;
+        String domain = normalizedEmail.substring(at + 1).toLowerCase();
+        for (String d : DISPOSABLE_DOMAINS) {
+            if (domain.equals(d) || domain.endsWith("." + d)) return true;
+        }
+        return false;
+    }
 
     static String normalizeEmail(String email) {
         if (email == null) throw new RuntimeException("Email is required");
         String v = email.trim().toLowerCase();
         if (!EMAIL_PATTERN.matcher(v).matches())
             throw new RuntimeException("Please enter a valid email");
+        if (isDisposableEmail(v))
+            throw new RuntimeException("Temporary email addresses are not allowed. Please use a permanent email.");
+        String domain = v.substring(v.lastIndexOf('@') + 1);
+        if (!domainAcceptsMail(domain))
+            throw new RuntimeException("This email domain does not accept mail. Please check the address.");
         return v;
+    }
+
+    // True when the domain has an MX record (or an A record fallback per
+    // RFC 5321) — i.e. mail to it is at least routable. Results are cached
+    // per process. Random gibberish domains fail here even if they are not
+    // on any disposable list.
+    static boolean domainAcceptsMail(String domain) {
+        return MX_CACHE.computeIfAbsent(domain, d -> {
+            try {
+                java.util.Hashtable<String, String> env = new java.util.Hashtable<>();
+                env.put("java.naming.factory.initial", "com.sun.jndi.dns.DnsContextFactory");
+                env.put("com.sun.jndi.dns.timeout.initial", "2000");
+                env.put("com.sun.jndi.dns.timeout.retries", "1");
+                javax.naming.directory.DirContext ctx =
+                        new javax.naming.directory.InitialDirContext(env);
+                try {
+                    javax.naming.directory.Attributes mx =
+                            ctx.getAttributes(d, new String[]{"MX"});
+                    if (mx.get("MX") != null) return true;
+                    javax.naming.directory.Attributes a =
+                            ctx.getAttributes(d, new String[]{"A"});
+                    return a.get("A") != null;
+                } finally {
+                    ctx.close();
+                }
+            } catch (Exception e) {
+                return false;
+            }
+        });
     }
 
     // Step 1 of registration: email-only OTP. No account is created here.
@@ -101,8 +210,16 @@ public class AuthService {
         String otp = newOtp(p);
         pendingOtps.save(p);
         if (otpTestMode) testOtpCodes.put(email, otp);
-        mailer.sendOtpAsync(email, otp, null);
-        return java.util.Map.of("message", "OTP sent to your email.", "email", email);
+        // Synchronous: report real delivery status so the client only shows
+        // success after Resend accepted the mail. On failure clear otpSentAt
+        // so an immediate retry is not blocked by the resend cooldown.
+        boolean delivered = mailer.sendOtp(email, otp, null);
+        if (!delivered) {
+            p.setOtpSentAt(null);
+            pendingOtps.save(p);
+        }
+        return java.util.Map.of("message", "OTP sent to your email.", "email", email,
+                "delivered", delivered);
     }
 
     // Verify Step-1 OTP. Checks the pending table first, then falls back to
@@ -224,8 +341,13 @@ public class AuthService {
                 u.setOtpAttempts(0);
                 u.setOtpSentAt(java.time.Instant.now());
                 users.save(u);
-                mailer.sendOtpAsync(email, otp, u.getFullName());
-                return java.util.Map.of("message", "OTP resent to your email.", "email", email);
+                boolean delivered = mailer.sendOtp(email, otp, u.getFullName());
+                if (!delivered) {
+                    u.setOtpSentAt(null);
+                    users.save(u);
+                }
+                return java.util.Map.of("message", "OTP resent to your email.", "email", email,
+                        "delivered", delivered);
             }
             throw new RuntimeException("No OTP request found. Please send OTP first.");
         }
@@ -239,8 +361,13 @@ public class AuthService {
         String otp = newOtp(p);
         pendingOtps.save(p);
         if (otpTestMode) testOtpCodes.put(email, otp);
-        mailer.sendOtpAsync(email, otp, null);
-        return java.util.Map.of("message", "OTP resent to your email.", "email", email);
+        boolean delivered = mailer.sendOtp(email, otp, null);
+        if (!delivered) {
+            p.setOtpSentAt(null);
+            pendingOtps.save(p);
+        }
+        return java.util.Map.of("message", "OTP resent to your email.", "email", email,
+                "delivered", delivered);
     }
 
     // Test hook — works only when OTP_TEST_MODE=true, otherwise behaves as not found.
@@ -394,15 +521,11 @@ public class AuthService {
     }
 
     // Instant availability for register Step-1 — same idea as username.
-    // Invalid format returns false (caller shows format error, not taken).
+    // Taken returns false; bad format / disposable throws so the caller
+    // can show the real message instead of a misleading "taken".
     public boolean isEmailAvailable(String rawEmail) {
         if (rawEmail == null || rawEmail.isBlank()) return false;
-        String v;
-        try {
-            v = normalizeEmail(rawEmail);
-        } catch (RuntimeException e) {
-            return false;
-        }
+        String v = normalizeEmail(rawEmail);
         return !users.existsByEmail(v);
     }
 
