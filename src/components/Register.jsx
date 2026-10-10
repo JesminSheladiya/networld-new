@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Form, Input, Card, message, Typography, Select, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faEnvelope } from "@fortawesome/free-regular-svg-icons";
-import { faAt, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { faAt, faEye, faEyeSlash, faBriefcase } from "@fortawesome/free-solid-svg-icons";
 import { LockOutlined, PhoneOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { register, checkUsernameAvailable, checkEmailAvailable, checkPhoneAvailable, suggestUsernames, updateProfile, requestOtp, verifyOtp, resendOtp } from "../Services/authService";
@@ -63,6 +63,7 @@ const isDisposableEmail = (v) => {
   return false;
 };
 const isPhoneFormatOk = (v) => !!v && /^[0-9]{10}$/.test((v || "").trim());
+const OCCUPATION_MAX = 60;
 
 function Register() {
   const [loading, setLoading] = useState(false);
@@ -108,7 +109,8 @@ function Register() {
     values?.username?.trim() &&
     values?.password &&
     values?.confirmPassword &&
-    values?.gender
+    values?.gender &&
+    values?.occupation?.trim()
   );
 
   // Live username availability + IG-style suggestions dropdown (debounced).
@@ -454,7 +456,8 @@ function Register() {
         vals.password,
         name,
         vals.gender,
-        toBirthDateParam(vals.birthDate)
+        toBirthDateParam(vals.birthDate),
+        (vals.occupation || "").trim()
       );
       // Set contact info private by default after registration
       try {
@@ -896,6 +899,32 @@ function Register() {
                     { value: "M", label: "Male" },
                     { value: "F", label: "Female" },
                   ]}
+                />
+              </Form.Item>
+
+              <Form.Item
+                className="auth-field"
+                name="occupation"
+                normalize={(v) =>
+                  v
+                    ? v
+                      .replace(/^\s+/, "")
+                      .replace(/\s+/g, " ")
+                      .replace(/(^|\s)([a-z])/g, (m, sp, ch) => sp + ch.toUpperCase())
+                    : v
+                }
+                rules={[
+                  { required: true, message: "Please enter occupation!" },
+                  { max: OCCUPATION_MAX, message: `Max ${OCCUPATION_MAX} characters!` },
+                ]}
+              >
+                <Input
+                  className="auth-input"
+                  prefix={<FontAwesomeIcon icon={faBriefcase} className="auth-input-icon" />}
+                  placeholder="Occupation / Business / Job"
+                  size="large"
+                  autoComplete="organization-title"
+                  maxLength={OCCUPATION_MAX}
                 />
               </Form.Item>
 
