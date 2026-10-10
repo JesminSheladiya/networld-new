@@ -1,5 +1,9 @@
 HELP.md
 target/
+# Local-only Spring overrides (real secrets per PC — NEVER commit).
+# Each PC keeps its own src/main/resources/application-local.properties
+# (see application.properties header). This file is never pushed/pulled.
+**/application-local.properties
 .mvn/wrapper/maven-wrapper.jar
 *.log
 .DS_Store
