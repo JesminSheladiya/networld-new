@@ -316,6 +316,7 @@ public class AuthService {
         u.setOccupation(validateOccupation(req.getOccupation()));
         u.setGender(req.getGender());
         u.setBirthDate(validateBirthDate(req.getBirthDate()));
+        u.setRelationFormat(normalizeRelationFormat(req.getRelationFormat()));
         u.setEmailVerified(true);
         users.save(u);
         pendingOtps.deleteByEmail(email);
@@ -463,6 +464,13 @@ public class AuthService {
             u.setHideConnections(req.getHideConnections());
         if (req.getHideContactInfo() != null)
             u.setHideContactInfo(req.getHideContactInfo());
+
+        if (req.getRelationFormat() != null) {
+            String fmt = normalizeRelationFormat(req.getRelationFormat());
+            if (fmt == null)
+                throw new RuntimeException("relationFormat must be 'english' or 'indian'");
+            u.setRelationFormat(fmt);
+        }
 
         if (req.getNewPassword() != null && !req.getNewPassword().isBlank()) {
             if (req.getCurrentPassword() == null || req.getCurrentPassword().isBlank())
@@ -621,7 +629,8 @@ public class AuthService {
                 u.getOccupation(),
                 u.getHideCover(),
                 u.getHideConnections(),
-                u.getHideContactInfo()
+                u.getHideContactInfo(),
+                u.getRelationFormat()
         );
     }
 
@@ -685,6 +694,17 @@ public class AuthService {
         if (!password.matches("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z\\d]).+$"))
             throw new RuntimeException("Password must contain a letter, a number and a symbol");
         return password;
+    }
+
+    // Relation display language: 'english' | 'indian'. Null stays null
+    // (never chose); anything else throws via callers that require non-null.
+    static String normalizeRelationFormat(String v) {
+        if (v == null) return null;
+        String s = v.trim().toLowerCase();
+        if (s.isEmpty()) return null;
+        if (s.equals("indian")) return "indian";
+        if (s.equals("english")) return "english";
+        return null;
     }
 
     // Shared birth-date validation (register + profile update): optional,

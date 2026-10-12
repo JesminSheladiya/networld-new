@@ -34,6 +34,9 @@ public class RegisterRequest {
     @PastOrPresent(message = "Birth date must be in the past")
     private java.time.LocalDate birthDate;
 
+    // Optional relation display language: 'english' | 'indian'.
+    private String relationFormat;
+
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
@@ -57,5 +60,8 @@ public class RegisterRequest {
 
     public java.time.LocalDate getBirthDate() { return birthDate; }
     public void setBirthDate(java.time.LocalDate birthDate) { this.birthDate = birthDate; }
+
+    public String getRelationFormat() { return relationFormat; }
+    public void setRelationFormat(String relationFormat) { this.relationFormat = relationFormat; }
 }
 

@@ -81,6 +81,11 @@ public class User implements UserDetails {
     @Column(name = "otp_sent_at")
     private java.time.Instant otpSentAt;
 
+    // Relation display language: 'english' | 'indian'. Null = never chose
+    // (legacy rows + fresh registers before the onboarding popup).
+    @Column(name = "relation_format", length = 10)
+    private String relationFormat;
+
     public User() {}
 
     public Long getId() { return id; }
@@ -179,4 +184,7 @@ public class User implements UserDetails {
 
     public java.time.Instant getOtpSentAt() { return otpSentAt; }
     public void setOtpSentAt(java.time.Instant otpSentAt) { this.otpSentAt = otpSentAt; }
+
+    public String getRelationFormat() { return relationFormat; }
+    public void setRelationFormat(String relationFormat) { this.relationFormat = relationFormat; }
 }

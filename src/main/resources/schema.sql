@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
     hide_connections BOOLEAN,
     hide_contact_info BOOLEAN,
     role      VARCHAR(50) NOT NULL DEFAULT 'USER',
+    relation_format VARCHAR(10),
     email_verified BOOLEAN NOT NULL DEFAULT FALSE,
     otp_hash VARCHAR(120),
     otp_expiry TIMESTAMPTZ,
@@ -41,6 +42,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_hash VARCHAR(120);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expiry TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_attempts INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_sent_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS relation_format VARCHAR(10);
 -- Legacy rows (created before OTP existed) count as verified.
 UPDATE users SET email_verified = TRUE WHERE otp_hash IS NULL AND otp_sent_at IS NULL AND email_verified = FALSE;
 

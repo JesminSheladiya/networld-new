@@ -17,6 +17,7 @@ public class UpdateProfileRequest {
     private Boolean hideCover;
     private Boolean hideConnections;
     private Boolean hideContactInfo;
+    private String relationFormat;
 
 
     public String getUsername()        { return username; }
@@ -66,4 +67,7 @@ public class UpdateProfileRequest {
 
     public Boolean getHideContactInfo()       { return hideContactInfo; }
     public void setHideContactInfo(Boolean v) { this.hideContactInfo = v; }
+
+    public String getRelationFormat()       { return relationFormat; }
+    public void setRelationFormat(String v) { this.relationFormat = v; }
 }

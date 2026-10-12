@@ -17,6 +17,7 @@ public class AuthResponse {
     private Boolean hideCover;
     private Boolean hideConnections;
     private Boolean hideContactInfo;
+    private String relationFormat;
 
     public AuthResponse(String token, String username, String email,
                         String phone, String fullName, Long id, String profilePicture,
@@ -24,7 +25,8 @@ public class AuthResponse {
                         String gender, java.time.LocalDate birthDate, String bio,
                         String occupation,
                         Boolean hideCover,
-                        Boolean hideConnections, Boolean hideContactInfo) {
+                        Boolean hideConnections, Boolean hideContactInfo,
+                        String relationFormat) {
         this.token    = token;
         this.username = username;
         this.email    = email;
@@ -40,6 +42,7 @@ public class AuthResponse {
         this.hideCover = hideCover;
         this.hideConnections = hideConnections;
         this.hideContactInfo = hideContactInfo;
+        this.relationFormat = relationFormat;
     }
 
     public String getToken()    { return token; }
@@ -57,4 +60,5 @@ public class AuthResponse {
     public Boolean getHideCover() { return hideCover; }
     public Boolean getHideConnections() { return hideConnections; }
     public Boolean getHideContactInfo() { return hideContactInfo; }
+    public String getRelationFormat() { return relationFormat; }
 }
