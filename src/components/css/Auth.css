@@ -160,6 +160,17 @@
   margin-bottom: 0 !important;
 }
 
+/* Forgot-password link row (login page, right after the login button) */
+.auth-forgot-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 10px 2px 0;
+}
+
+.auth-forgot-row .auth-switch-link {
+  font-size: 13px;
+}
+
 /* Footer */
 .auth-footer {
   text-align: center;

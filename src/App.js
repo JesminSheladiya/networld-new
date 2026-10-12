@@ -8,6 +8,7 @@ import './components/css/app-shell.css';
 import { networldTheme } from './theme';
 import Login from './components/Login';
 import Register from './components/Register';
+import ForgotPassword from './components/ForgotPassword';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { RelationDisplayProvider } from './context/RelationDisplayContext';
 import RelationFormatPopup from './components/shared/RelationFormatPopup';
@@ -59,6 +60,16 @@ function AppRoutes() {
             <Navigate to="/contacts" replace />
           ) : (
             <Register onRegisterSuccess={() => { /* handled by context */ }} />
+          )
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          isAuthenticated ? (
+            <Navigate to="/contacts" replace />
+          ) : (
+            <ForgotPassword />
           )
         }
       />

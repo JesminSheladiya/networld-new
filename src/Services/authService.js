@@ -30,6 +30,16 @@ export const resendOtp = async (email) => {
   return data;
 };
 
+export const forgotRequest = async (email) => {
+  const { data } = await http.post(`${API_BASE}/auth/forgot-password/request`, { email });
+  return data;
+};
+
+export const forgotReset = async (email, otp, newPassword) => {
+  const { data } = await http.post(`${API_BASE}/auth/forgot-password/reset`, { email, otp, newPassword });
+  return data;
+};
+
 export const login = async (identifier, password) => {
   const { data } = await http.post(`${API_BASE}/auth/login`,
     { identifier, password });
@@ -50,8 +60,13 @@ export const fetchUser = async () => {
   return data;
 };
 
-export const deleteAccount = async () => {
-  const { data } = await http.delete(`${API_BASE}/auth/me`);
+export const deleteAccount = async (otp) => {
+  const { data } = await http.delete(`${API_BASE}/auth/me`, { data: { otp } });
+  return data;
+};
+
+export const requestDeleteOtp = async () => {
+  const { data } = await http.post(`${API_BASE}/auth/delete-account/request`, {});
   return data;
 };
 

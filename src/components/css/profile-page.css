@@ -1264,6 +1264,75 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
   display: block;
 }
 
+/* OTP row on the delete page: compact boxes + status line. */
+.pf-danger-form .auth-otp .auth-otp-foot {
+  margin-top: 8px;
+}
+
+/* Text left, boxes right inside the delete-page OTP card. Stacks on small screens. */
+.pf-danger-otp-flex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pf-danger-otp-flex .pf-danger-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.pf-danger-otp-side {
+  flex: 0 0 300px;
+  width: 300px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.pf-danger-otp-side .auth-otp-foot {
+  margin-top: 6px;
+}
+
+.auth-otp-err {
+  color: #f87171;
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .pf-danger-otp-flex {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pf-danger-otp-side {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+}
+
+/* Send OTP button embedded inside the username input (suffix). */
+.pf-inline-otp-btn {
+  height: 30px;
+  padding: 0 14px;
+  font-size: 12px;
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+
+.pf-break-any {
+  overflow-wrap: anywhere;
+}
+
+/* Smaller OTP boxes on the delete page (auth pages keep full-width boxes). */
+.pf-danger-form .auth-otp-boxes {
+  max-width: 300px;
+  gap: 6px;
+}
+
 .pf-danger-check .ant-checkbox-wrapper {
   color: #e2e8f0;
   font-size: 13px;

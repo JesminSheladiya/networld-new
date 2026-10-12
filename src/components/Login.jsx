@@ -115,6 +115,12 @@ function Login() {
               {loading ? "Logging in..." : "Login"}
             </button>
           </Form.Item>
+
+          <div className="auth-forgot-row">
+            <button type="button" className="auth-switch-link" onClick={() => navigate("/forgot-password", { replace: true })}>
+              Forgot password?
+            </button>
+          </div>
         </Form>
 
         <div className="auth-footer">
