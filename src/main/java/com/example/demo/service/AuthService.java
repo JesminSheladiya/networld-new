@@ -3,12 +3,15 @@ package com.example.demo.service;
 import com.example.demo.dto.*;
 import com.example.demo.model.EmailOtpVerification;
 import com.example.demo.model.User;
+import com.example.demo.model.UserSession;
 import com.example.demo.repository.ContactRepository;
 import com.example.demo.repository.EmailOtpRepository;
 import com.example.demo.repository.UserRelationRepository;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.UserSessionRepository;
 import com.example.demo.repository.UsernameChangeHistoryRepository;
 import com.example.demo.security.JwtUtil;
+import com.example.demo.util.HashUtil;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +29,7 @@ public class AuthService {
     private final ContactRepository contacts;
     private final OtpMailService mailer;
     private final EmailOtpRepository pendingOtps;
+    private final UserSessionRepository sessions;
     private final boolean otpTestMode;
     // Test-hook storage (active only when OTP_TEST_MODE=true): email -> plain OTP.
     // Always empty in production — plain OTPs are never persisted.
@@ -49,6 +53,7 @@ public class AuthService {
                        ContactRepository contacts,
                        OtpMailService mailer,
                        EmailOtpRepository pendingOtps,
+                       UserSessionRepository sessions,
                        @org.springframework.beans.factory.annotation.Value("${app.otp.test-mode:false}") boolean otpTestMode,
                        @org.springframework.beans.factory.annotation.Value("${app.disposable-list.url:https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf}") String disposableListUrl) {
         this.users   = users;
@@ -60,6 +65,7 @@ public class AuthService {
         this.contacts  = contacts;
         this.mailer  = mailer;
         this.pendingOtps = pendingOtps;
+        this.sessions = sessions;
         this.otpTestMode = otpTestMode;
         if (otpTestMode) {
             System.out.println("WARN: OTP_TEST_MODE=true — /api/auth/test-otp enabled. NEVER use in production.");
@@ -288,7 +294,7 @@ public class AuthService {
     }
 
     // Step 2 of registration: requires a verified Step-1 OTP. Returns token.
-    public AuthResponse register(RegisterRequest req) {
+    public AuthResponse register(RegisterRequest req, String deviceName, String userAgent, String ipAddress) {
         String email = normalizeEmail(req.getEmail());
         EmailOtpVerification p = pendingOtps.findByEmail(email).orElse(null);
         boolean verified = p != null && Boolean.TRUE.equals(p.getVerified())
@@ -321,7 +327,7 @@ public class AuthService {
         pendingOtps.deleteByEmail(email);
         if (otpTestMode) testOtpCodes.remove(email);
 
-        return buildResponse(u);
+        return buildResponseWithSession(u, req.getDeviceName(), userAgent, ipAddress);
     }
 
     public java.util.Map<String, Object> resendOtp(String rawEmail) {
@@ -440,7 +446,7 @@ public class AuthService {
         return java.util.Map.of("message", "Password reset successful. Please login.");
     }
 
-    public AuthResponse login(LoginRequest req) {
+    public AuthResponse login(LoginRequest req, String deviceName, String userAgent, String ipAddress) {
         User u = users.findByIdentifier(req.getIdentifier())
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
 
@@ -458,7 +464,7 @@ public class AuthService {
             users.save(u);
         }
 
-        return buildResponse(u);
+        return buildResponseWithSession(u, req.getDeviceName(), userAgent, ipAddress);
     }
 
     public AuthResponse updateProfile(String email, UpdateProfileRequest req) {
@@ -547,6 +553,56 @@ public class AuthService {
         return buildResponse(u);
     }
 
+    // ── Login sessions ─────────────────────────────────────────────
+    // One row per device; deleting a row revokes that login instantly.
+
+    public java.util.List<java.util.Map<String, Object>> listSessions(String email, String currentHash) {
+        User u = users.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        java.util.List<java.util.Map<String, Object>> out = new java.util.ArrayList<>();
+        for (UserSession s : sessions.findByUserOrderByLastActiveAtDesc(u)) {
+            java.util.Map<String, Object> m = new java.util.HashMap<>();
+            m.put("id", s.getId());
+            m.put("deviceInfo", s.getDeviceInfo());
+            m.put("deviceName", s.getDeviceName());
+            m.put("ipAddress", s.getIpAddress());
+            m.put("createdAt", s.getCreatedAt() == null ? null : s.getCreatedAt().toString());
+            m.put("lastActiveAt", s.getLastActiveAt() == null ? null : s.getLastActiveAt().toString());
+            m.put("expiresAt", s.getExpiresAt() == null ? null : s.getExpiresAt().toString());
+            m.put("current", currentHash != null && currentHash.equals(s.getTokenHash()));
+            out.add(m);
+        }
+        return out;
+    }
+
+    public void revokeSession(String email, Long sessionId) {
+        User u = users.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        UserSession s = sessions.findByIdAndUser(sessionId, u)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+        sessions.delete(s);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public int revokeAllSessions(String email) {
+        User u = users.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return sessions.deleteByUser(u);
+    }
+
+    // Best-effort single-device logout — never throws.
+    @org.springframework.transaction.annotation.Transactional
+    public void logoutSession(String email, String tokenHash) {
+        if (email == null || tokenHash == null) return;
+        try {
+            User u = users.findByEmail(email).orElse(null);
+            if (u == null) return;
+            sessions.findByTokenHash(tokenHash).ifPresent(sessions::delete);
+        } catch (Exception ignored) {
+            // Logout must never fail the client.
+        }
+    }
+
     // Full account wipe: every relation row touching the user (either side,
     // any status), their address-book contacts and username history, then
     // the user row itself. Other users' address-book snapshots stay untouched.
@@ -598,6 +654,7 @@ public class AuthService {
         relations.deleteAllInvolving(u);
         contacts.deleteByUser(u);
         history.deleteByUser(u);
+        try { sessions.deleteByUser(u); } catch (Exception ignored) {}
         try { pendingOtps.deleteByEmail(email); } catch (Exception ignored) {}
         if (otpTestMode) testOtpCodes.remove(email);
         users.delete(u);
@@ -714,8 +771,64 @@ public class AuthService {
     }
 
     public AuthResponse buildResponse(User u) {
+        // Echo the live session's token — never re-mint here. Re-minting on
+        // every /me call (polling + user actions run concurrently) could hand
+        // two live tokens to one session row and desync it. Fresh tokens are
+        // minted only at login / registration (see buildResponseWithSession).
+        return authResponseOf(u, currentRequestToken());
+    }
+
+    // Fresh login / registration: mint a token and register its session row.
+    // The client sends its own display name ("Chrome · Windows"); older
+    // clients fall back to server-side UA parsing.
+    private AuthResponse buildResponseWithSession(User u, String deviceName, String userAgent, String ipAddress) {
         UserDetails d = uds.loadUserByUsername(u.getEmail());
-        String token  = jwt.generateToken(d);
+        String token = jwt.generateToken(d);
+        java.time.Instant now = java.time.Instant.now();
+        UserSession s = new UserSession();
+        s.setUser(u);
+        s.setTokenHash(HashUtil.sha256Hex(token));
+        s.setDeviceInfo(truncate(userAgent, 255));
+        s.setDeviceName(displayDeviceName(deviceName, userAgent));
+        s.setIpAddress(ipAddress);
+        s.setCreatedAt(now);
+        s.setLastActiveAt(now);
+        s.setExpiresAt(now.plusMillis(jwt.getExpirationMs()));
+        sessions.save(s);
+        return authResponseOf(u, token);
+    }
+
+    static String truncate(String v, int max) {
+        if (v == null) return null;
+        return v.length() > max ? v.substring(0, max) : v;
+    }
+
+    // Client display name wins; otherwise "Browser · OS" from the UA.
+    static String displayDeviceName(String deviceName, String userAgent) {
+        if (deviceName != null && !deviceName.isBlank()) {
+            String v = deviceName.trim();
+            return v.length() > 100 ? v.substring(0, 100) : v;
+        }
+        String ua = userAgent == null ? "" : userAgent;
+        String browser = null;
+        if (ua.matches("(?i).*edg/[\\d.]+.*")) browser = "Edge";
+        else if (ua.matches("(?i).*(opr/|opera).*")) browser = "Opera";
+        else if (ua.matches("(?i).*chrome/[\\d.]+.*") && !ua.matches("(?i).*edg.*")) browser = "Chrome";
+        else if (ua.matches("(?i).*firefox/[\\d.]+.*")) browser = "Firefox";
+        else if (ua.matches("(?i).*safari/[\\d.]+.*") && !ua.matches("(?i).*chrome.*")) browser = "Safari";
+        String os = null;
+        if (ua.matches("(?i).*android.*")) os = "Android";
+        else if (ua.matches("(?i).*(iphone|ipad|ipod).*")) os = "iOS";
+        else if (ua.matches("(?i).*windows.*")) os = "Windows";
+        else if (ua.matches("(?i).*mac os.*")) os = "macOS";
+        else if (ua.matches("(?i).*linux.*")) os = "Linux";
+        String name = ((browser == null ? "" : browser)
+                + (browser != null && os != null ? " · " : "")
+                + (os == null ? "" : os)).trim();
+        return name.isEmpty() ? "Unknown device" : name;
+    }
+
+    private AuthResponse authResponseOf(User u, String token) {
         return new AuthResponse(
                 token,
                 u.getDisplayName(),
@@ -734,6 +847,30 @@ public class AuthService {
                 u.getHideContactInfo(),
                 u.getRelationFormat()
         );
+    }
+
+    // Raw bearer token of the current request (null when absent).
+    static String currentRequestToken() {
+        try {
+            org.springframework.web.context.request.RequestAttributes attrs =
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra) {
+                String h = sra.getRequest().getHeader("Authorization");
+                if (h != null && h.startsWith("Bearer ")) {
+                    String t = h.substring(7).trim();
+                    if (!t.isEmpty()) return t;
+                }
+            }
+        } catch (Exception ignored) {
+            // No request context (jobs/tests) — no token to echo.
+        }
+        return null;
+    }
+
+    // SHA-256 of the current request's bearer token (null when absent).
+    static String currentRequestTokenHash() {
+        String t = currentRequestToken();
+        return t == null ? null : HashUtil.sha256Hex(t);
     }
 
     // Full name: trimmed, single spaces, first letter of every word

@@ -43,6 +43,31 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expiry TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_attempts INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_sent_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS relation_format VARCHAR(10);
+
+-- USER SESSIONS TABLE (one row per active login; deleting a row revokes it)
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT NOT NULL,
+    token_hash      VARCHAR(64) NOT NULL,
+    device_info     VARCHAR(255),
+    device_name     VARCHAR(100),
+    ip_address      VARCHAR(64),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_active_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at      TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uk_user_sessions_token UNIQUE (token_hash),
+    CONSTRAINT fk_us_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
+-- Backfill for databases created before sessions existed.
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS user_id BIGINT;
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS token_hash VARCHAR(64);
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS device_info VARCHAR(255);
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS ip_address VARCHAR(64);
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ;
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ;
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS device_name VARCHAR(100);
 -- Legacy rows (created before OTP existed) count as verified.
 UPDATE users SET email_verified = TRUE WHERE otp_hash IS NULL AND otp_sent_at IS NULL AND email_verified = FALSE;
 

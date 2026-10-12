@@ -47,6 +47,14 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", "Try again", "exceptionClass", ex.getClass().getName()));
     }
 
+    // Bad credentials / dead sessions — the client wipes local auth on 401.
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<?> handleBadCredentials(org.springframework.security.authentication.BadCredentialsException ex) {
+        String msg = ex.getMessage() != null ? ex.getMessage() : "Unauthorized";
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("message", msg, "error", msg));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntime(RuntimeException ex) {
         ex.printStackTrace(); // Print to console logs

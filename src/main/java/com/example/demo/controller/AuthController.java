@@ -19,8 +19,9 @@ public class AuthController {
     public AuthController(AuthService auth, UserRepository users) { this.auth = auth; this.users = users; }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
-        return ResponseEntity.ok(auth.register(req));
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req,
+                                      jakarta.servlet.http.HttpServletRequest http) {
+        return ResponseEntity.ok(auth.register(req, req.getDeviceName(), userAgentOf(http), ipOf(http)));
     }
 
     @PostMapping("/verify-otp")
@@ -55,13 +56,84 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
-        return ResponseEntity.ok(auth.login(req));
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req,
+                                   jakarta.servlet.http.HttpServletRequest http) {
+        return ResponseEntity.ok(auth.login(req, req.getDeviceName(), userAgentOf(http), ipOf(http)));
+    }
+
+    // Revoke only the calling device's session (best-effort — always 200).
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@AuthenticationPrincipal UserDetails userDetails,
+                                    jakarta.servlet.http.HttpServletRequest http) {
+        String email = userDetails == null ? null : userDetails.getUsername();
+        auth.logoutSession(email, bearerHash(http));
+        return ResponseEntity.ok(java.util.Map.of("message", "Logged out"));
+    }
+
+    @GetMapping("/sessions")
+    public ResponseEntity<?> sessions(
+            @AuthenticationPrincipal UserDetails userDetails,
+            jakarta.servlet.http.HttpServletRequest http) {
+        return ResponseEntity.ok(auth.listSessions(emailOf(userDetails), bearerHash(http)));
+    }
+
+    @DeleteMapping("/sessions/{id}")
+    public ResponseEntity<?> revokeSession(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable("id") Long id) {
+        auth.revokeSession(emailOf(userDetails), id);
+        return ResponseEntity.ok(java.util.Map.of("message", "Session revoked"));
+    }
+
+    // Log out everywhere, including this device.
+    @DeleteMapping("/sessions")
+    public ResponseEntity<?> revokeAllSessions(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        int n = auth.revokeAllSessions(emailOf(userDetails));
+        return ResponseEntity.ok(java.util.Map.of("message", "All sessions revoked", "revoked", n));
+    }
+
+    // Authenticated endpoints sit under permitAll /api/auth/**, so a dead
+    // token arrives here with no principal instead of a 403 — turn that
+    // into a 401 the client handles (wipes local auth, back to login).
+    private static String emailOf(UserDetails userDetails) {
+        if (userDetails == null)
+            throw new org.springframework.security.authentication.BadCredentialsException(
+                    "Session expired. Please login again.");
+        return userDetails.getUsername();
+    }
+
+    private static String bearerHash(jakarta.servlet.http.HttpServletRequest http) {
+        String h = http.getHeader("Authorization");
+        if (h != null && h.startsWith("Bearer ")) {
+            String t = h.substring(7).trim();
+            if (!t.isEmpty()) return com.example.demo.util.HashUtil.sha256Hex(t);
+        }
+        return null;
+    }
+
+    private static String deviceOf(jakarta.servlet.http.HttpServletRequest http) {
+        String ua = http.getHeader("User-Agent");
+        if (ua == null || ua.isBlank()) return "Unknown device";
+        return ua.length() > 255 ? ua.substring(0, 255) : ua;
+    }
+
+    private static String userAgentOf(jakarta.servlet.http.HttpServletRequest http) {
+        String ua = http.getHeader("User-Agent");
+        if (ua == null || ua.isBlank()) return null;
+        return ua.length() > 255 ? ua.substring(0, 255) : ua;
+    }
+
+    private static String ipOf(jakarta.servlet.http.HttpServletRequest http) {
+        String fwd = http.getHeader("X-Forwarded-For");
+        if (fwd != null && !fwd.isBlank()) return fwd.split(",")[0].trim();
+        String ip = http.getRemoteAddr();
+        return ip == null ? "Unknown" : ip;
     }
 
     @GetMapping("/me")
     public ResponseEntity<?> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
-        User u = users.findByEmail(userDetails.getUsername())
+        User u = users.findByEmail(emailOf(userDetails))
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return ResponseEntity.ok(auth.buildResponse(u));
     }
@@ -70,13 +142,13 @@ public class AuthController {
     public ResponseEntity<?> updateProfile(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody UpdateProfileRequest req) {
-        return ResponseEntity.ok(auth.updateProfile(userDetails.getUsername(), req));
+        return ResponseEntity.ok(auth.updateProfile(emailOf(userDetails), req));
     }
 
     @PostMapping("/delete-account/request")
     public ResponseEntity<?> deleteAccountRequest(
             @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(auth.deleteAccountRequest(userDetails.getUsername()));
+        return ResponseEntity.ok(auth.deleteAccountRequest(emailOf(userDetails)));
     }
 
     @DeleteMapping("/me")
@@ -84,7 +156,7 @@ public class AuthController {
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody(required = false) java.util.Map<String, String> body) {
         String otp = body == null ? null : body.get("otp");
-        auth.deleteAccount(userDetails.getUsername(), otp);
+        auth.deleteAccount(emailOf(userDetails), otp);
         return ResponseEntity.ok(java.util.Map.of("message", "Account deleted"));
     }
 
@@ -123,6 +195,6 @@ public class AuthController {
     @GetMapping("/username-change-info")
     public ResponseEntity<?> usernameChangeInfo(
             @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(auth.usernameChangeInfo(userDetails.getUsername()));
+        return ResponseEntity.ok(auth.usernameChangeInfo(emailOf(userDetails)));
     }
 }

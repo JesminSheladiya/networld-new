@@ -37,6 +37,10 @@ public class RegisterRequest {
     // Optional relation display language: 'english' | 'indian'.
     private String relationFormat;
 
+    // Optional display name for this login's device ("Chrome · Windows"),
+    // computed by the client. Never validated — informational only.
+    private String deviceName;
+
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
@@ -63,5 +67,8 @@ public class RegisterRequest {
 
     public String getRelationFormat() { return relationFormat; }
     public void setRelationFormat(String relationFormat) { this.relationFormat = relationFormat; }
+
+    public String getDeviceName() { return deviceName; }
+    public void setDeviceName(String deviceName) { this.deviceName = deviceName; }
 }
 
