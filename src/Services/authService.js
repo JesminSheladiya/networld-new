@@ -60,8 +60,13 @@ export const fetchUser = async () => {
   return data;
 };
 
-export const deleteAccount = async () => {
-  const { data } = await http.delete(`${API_BASE}/auth/me`);
+export const deleteAccount = async (otp) => {
+  const { data } = await http.delete(`${API_BASE}/auth/me`, { data: { otp } });
+  return data;
+};
+
+export const requestDeleteOtp = async () => {
+  const { data } = await http.post(`${API_BASE}/auth/delete-account/request`, {});
   return data;
 };
 
