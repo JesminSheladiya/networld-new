@@ -30,6 +30,16 @@ export const resendOtp = async (email) => {
   return data;
 };
 
+export const forgotRequest = async (email) => {
+  const { data } = await http.post(`${API_BASE}/auth/forgot-password/request`, { email });
+  return data;
+};
+
+export const forgotReset = async (email, otp, newPassword) => {
+  const { data } = await http.post(`${API_BASE}/auth/forgot-password/reset`, { email, otp, newPassword });
+  return data;
+};
+
 export const login = async (identifier, password) => {
   const { data } = await http.post(`${API_BASE}/auth/login`,
     { identifier, password });
