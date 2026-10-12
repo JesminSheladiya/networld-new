@@ -5,10 +5,13 @@ import './App.css';
 import './components/css/discover-pages.css';
 import './components/css/contacts-page.css';
 import './components/css/app-shell.css';
+import './components/css/offline-overlay.css';
 import { networldTheme } from './theme';
 import Login from './components/Login';
 import Register from './components/Register';
 import ForgotPassword from './components/ForgotPassword';
+import Seo from './components/Seo';
+import OfflineOverlay from './components/shared/OfflineOverlay';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { RelationDisplayProvider } from './context/RelationDisplayContext';
 import RelationFormatPopup from './components/shared/RelationFormatPopup';
@@ -20,6 +23,7 @@ const UserConnectionsPage = lazy(() => import('./components/contacts/UserConnect
 const ProfilePage = lazy(() => import('./components/profile/ProfilePage'));
 const EditProfilePage = lazy(() => import('./components/profile/EditProfilePage'));
 const DeleteAccountPage = lazy(() => import('./components/profile/DeleteAccountPage'));
+const SessionsPage = lazy(() => import('./components/profile/SessionsPage'));
 const FindPeoplePage = lazy(() => import('./components/discover/FindPeoplePage'));
 const RequestsPage = lazy(() => import('./components/discover/RequestsPage'));
 const SuggestionsPage = lazy(() => import('./components/discover/SuggestionsPage'));
@@ -80,6 +84,7 @@ function AppRoutes() {
           <Route path="/contacts/:username" element={<ContactDetailPage />} />
           <Route path="/contacts/:username/connections" element={<UserConnectionsPage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
+          <Route path="/profile/sessions" element={<SessionsPage />} />
           <Route path="/profile/delete" element={<DeleteAccountPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/discover/find" element={<FindPeoplePage />} />
@@ -99,11 +104,13 @@ function App() {
       <AuthProvider>
         <RelationDisplayProvider>
           <BrowserRouter>
+            <Seo />
             <Suspense fallback={<PageLoader />}>
               <AppRoutes />
             </Suspense>
           </BrowserRouter>
           <RelationFormatPopup />
+          <OfflineOverlay />
         </RelationDisplayProvider>
       </AuthProvider>
     </ConfigProvider>

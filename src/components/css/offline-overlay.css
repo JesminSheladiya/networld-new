@@ -1,0 +1,73 @@
+/* ============================================================
+   Offline overlay — full-screen takeover when network is down
+   ============================================================ */
+.nw-offline-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(1200px 700px at 50% -10%, #0d1630 0%, #060b18 55%, #04070f 100%);
+}
+
+.nw-offline-card {
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(16, 26, 48, 0.62) 0%, rgba(13, 21, 38, 0.55) 100%);
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  padding: 32px 24px 28px;
+}
+
+.nw-offline-icon {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(37, 99, 235, 0.15));
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7dd3fc;
+  font-size: 28px;
+}
+
+.nw-offline-slash {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  height: 3px;
+  border-radius: 2px;
+  background: #f87171;
+  transform: rotate(-45deg);
+  box-shadow: 0 0 12px rgba(248, 113, 113, 0.6);
+}
+
+.nw-offline-title {
+  color: #f1f5f9;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  margin: 0 0 10px;
+}
+
+.nw-offline-text {
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+.nw-offline-retry {
+  width: 100%;
+  justify-content: center;
+}

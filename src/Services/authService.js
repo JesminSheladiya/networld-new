@@ -70,6 +70,21 @@ export const requestDeleteOtp = async () => {
   return data;
 };
 
+export const getSessions = async () => {
+  const { data } = await http.get(`${API_BASE}/auth/sessions`);
+  return data;
+};
+
+export const revokeSession = async (id) => {
+  const { data } = await http.delete(`${API_BASE}/auth/sessions/${id}`);
+  return data;
+};
+
+export const revokeAllSessions = async () => {
+  const { data } = await http.delete(`${API_BASE}/auth/sessions`);
+  return data;
+};
+
 export const checkUsernameAvailable = async (username) => {
   const { data } = await http.get(`${API_BASE}/auth/username-available`, {
     params: { username },
@@ -114,6 +129,16 @@ export const getUser = () => {
 };
 export const getToken = () => localStorage.getItem(STORAGE_KEYS.TOKEN);
 export const logout = () => {
+  try {
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (token) {
+      // Fire-and-forget with an explicit header: the shared interceptor
+      // reads storage asynchronously, so pass the token directly before wiping it.
+      http.post(`${API_BASE}/auth/logout`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+  } catch { /* ignore — local wipe below always runs */ }
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.USER);
 };

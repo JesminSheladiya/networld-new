@@ -1202,6 +1202,134 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
   width: 100%;
 }
 
+/* ── Active sessions page ─────────────────────────────────────────── */
+.pf-sessions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.pf-sessions-wipe {
+  height: 34px;
+  padding: 0 16px;
+  font-size: 12.5px;
+  flex-shrink: 0;
+}
+
+.pf-sessions-sub {
+  margin: 0;
+  padding: 0 24px;
+  color: #8b98ad;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.pf-sessions-loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0 24px;
+}
+
+.pf-sessions-empty {
+  padding: 24px;
+  color: #8b98ad;
+  font-size: 13.5px;
+  text-align: center;
+}
+
+.pf-sessions-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pf-session-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0d1424;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.pf-session-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7dd3fc;
+  font-size: 16px;
+}
+
+.pf-session-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pf-session-name {
+  color: #f1f5f9;
+  font-size: 13.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pf-session-current {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 20px;
+  padding: 1px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pf-session-meta {
+  color: #8b98ad;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.pf-session-dim {
+  color: #64748b;
+}
+
+.pf-session-revoke {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+@media (max-width: 400px) {
+  .pf-session-row {
+    flex-wrap: wrap;
+  }
+  .pf-session-revoke {
+    width: 100%;
+  }
+}
+
 .pf-danger-body {
   padding: 10px 0 22px;
   display: flex;
