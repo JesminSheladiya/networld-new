@@ -12,6 +12,11 @@ export const STORAGE_KEYS = Object.freeze({
 // Cross-tab auth broadcast channel
 export const AUTH_CHANNEL = "networld-auth";
 
+// Set in sessionStorage right after a fresh registration — the relation
+// language onboarding popup shows ONLY when this flag is present.
+// Normal logins never set it, so they never trigger the popup.
+export const JUST_REGISTERED_KEY = "nw-just-registered";
+
 // HTTP
 export const HTTP_TIMEOUT_MS = 15000;
 

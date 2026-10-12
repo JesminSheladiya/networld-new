@@ -8,9 +8,9 @@ function persistSession(data) {
   localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data));
 }
 
-export const register = async (username, email, phone, password, fullName, gender, birthDate) => {
+export const register = async (username, email, phone, password, fullName, gender, birthDate, occupation) => {
   const { data } = await http.post(`${API_BASE}/auth/register`,
-    { username, email, phone, password, fullName, gender, birthDate });
+    { username, email, phone, password, fullName, gender, birthDate, occupation });
   persistSession(data);
   return data;
 };
