@@ -467,7 +467,7 @@ function Register() {
         console.warn("Could not set default privacy:", e);
       }
       message.success(`Welcome, ${(data.fullName || "").trim().split(/\s+/)[0] || data.username}! Registration successful.`);
-      authLogin();
+      authLogin({ fresh: true });
       navigate("/contacts", { replace: true });
     } catch (error) {
       const fieldErrors = error.response?.data?.errors;

@@ -18,11 +18,15 @@ const OPTIONS = [
 ];
 
 function RelationFormatPopup() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isFreshRegister } = useAuth();
   const { hasChosen, setFormat, pickerOpen, closePicker, format } = useRelationDisplay();
   const [picked, setPicked] = useState("indian");
 
-  const open = (isAuthenticated && !hasChosen) || pickerOpen;
+  // Onboarding popup shows ONLY right after registration (isFreshRegister)
+  // when the DB has no saved choice yet. Normal logins never trigger it —
+  // they silently fall back to English. Manual picker still works anytime.
+  const onboardingOpen = !!(isAuthenticated && isFreshRegister && !hasChosen);
+  const open = onboardingOpen || pickerOpen;
 
   useEffect(() => {
     if (open) setPicked(format);

@@ -1,19 +1,41 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { getToken, getUser, logout as authLogout } from '../Services/authService';
 import { fetchUser as fetchUserApi } from '../Services/authService';
-import { AUTH_CHANNEL, STORAGE_KEYS, USER_POLL_INTERVAL_MS } from '../constants';
+import { AUTH_CHANNEL, STORAGE_KEYS, USER_POLL_INTERVAL_MS, JUST_REGISTERED_KEY } from '../constants';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!getToken());
   const [user, setUser] = useState(() => getUser());
+  // True only in the tab/session right after a fresh registration.
+  // Normal logins never set it — so the language popup shows once.
+  const [isFreshRegister, setIsFreshRegister] = useState(() => {
+    try { return sessionStorage.getItem(JUST_REGISTERED_KEY) === '1'; } catch { return false; }
+  });
   const pollIntervalRef = useRef(null);
   const broadcastChannelRef = useRef(null);
 
-  const login = useCallback(() => {
+  const markFreshRegister = useCallback(() => {
+    try { sessionStorage.setItem(JUST_REGISTERED_KEY, '1'); } catch { /* ignore */ }
+    setIsFreshRegister(true);
+  }, []);
+
+  const clearFreshRegister = useCallback(() => {
+    try { sessionStorage.removeItem(JUST_REGISTERED_KEY); } catch { /* ignore */ }
+    setIsFreshRegister(false);
+  }, []);
+
+  const login = useCallback(({ fresh = false } = {}) => {
     setIsAuthenticated(true);
     setUser(getUser());
+    if (fresh) {
+      try { sessionStorage.setItem(JUST_REGISTERED_KEY, '1'); } catch { /* ignore */ }
+      setIsFreshRegister(true);
+    } else {
+      try { sessionStorage.removeItem(JUST_REGISTERED_KEY); } catch { /* ignore */ }
+      setIsFreshRegister(false);
+    }
   }, []);
 
   const updateUser = useCallback(async () => {
@@ -43,6 +65,8 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     authLogout();
     localStorage.removeItem(STORAGE_KEYS.RELATION_FORMAT);
+    try { sessionStorage.removeItem(JUST_REGISTERED_KEY); } catch { /* ignore */ }
+    setIsFreshRegister(false);
     setIsAuthenticated(false);
     setUser({});
     if (pollIntervalRef.current) {
@@ -141,7 +165,10 @@ export function AuthProvider({ children }) {
       updateUser,
       patchUser,
       broadcastUserUpdate,
-      broadcastLogout
+      broadcastLogout,
+      isFreshRegister,
+      markFreshRegister,
+      clearFreshRegister
     }}>
       {children}
     </AuthContext.Provider>

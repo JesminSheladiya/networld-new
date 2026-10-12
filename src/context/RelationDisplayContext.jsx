@@ -20,7 +20,7 @@ const normalizeFormat = (f) => (f == null ? null : (f === 'indian' ? 'indian' : 
 const RelationDisplayContext = createContext(null);
 
 export function RelationDisplayProvider({ children }) {
-  const { isAuthenticated, user, patchUser } = useAuth();
+  const { isAuthenticated, user, patchUser, isFreshRegister, clearFreshRegister } = useAuth();
   // Server (DB) is the source of truth; device localStorage is only the
   // legacy fallback. Popup appears only when neither has a choice.
   const [format, setFormatState] = useState(() =>
@@ -41,12 +41,18 @@ export function RelationDisplayProvider({ children }) {
   }, [isAuthenticated]);
 
   // Server wins; a legacy local-only choice is pushed to the DB once.
+  // NOTE: a null server value does NOT trigger any popup here — the
+  // onboarding popup is gated on isFreshRegister (register flow only).
+  // Login with no saved choice silently uses English until the user
+  // changes it via the manual picker.
   useEffect(() => {
     if (!isAuthenticated) return;
     const server = normalizeFormat(user?.relationFormat ?? null);
     if (server) {
       try { localStorage.setItem(STORAGE_KEY, server); } catch { /* ignore */ }
       setFormatState((prev) => (prev === server ? prev : server));
+      // Choice is persisted — fresh-register onboarding is done.
+      if (clearFreshRegister) clearFreshRegister();
       return;
     }
     const local = normalizeFormat(localStorage.getItem(STORAGE_KEY));
@@ -90,6 +96,7 @@ export function RelationDisplayProvider({ children }) {
     if (!norm) return;
     try { localStorage.setItem(STORAGE_KEY, norm); } catch { /* ignore */ }
     setFormatState(norm);
+    if (clearFreshRegister) clearFreshRegister();
     if (isAuthenticated) {
       patchUser({ relationFormat: norm });
       updateProfile({ relationFormat: norm }).catch(() => {
@@ -98,7 +105,7 @@ export function RelationDisplayProvider({ children }) {
         message.error("Could not save display preference, try again");
       });
     }
-  }, [isAuthenticated, patchUser]);
+  }, [isAuthenticated, patchUser, clearFreshRegister]);
 
   const relName = useCallback((name) => {
     if (!name) return name;
