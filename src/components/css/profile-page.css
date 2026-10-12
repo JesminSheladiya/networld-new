@@ -1325,6 +1325,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
   .pf-session-row {
     flex-wrap: wrap;
   }
+
   .pf-session-revoke {
     width: 100%;
   }
@@ -1459,6 +1460,32 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
 .pf-danger-form .auth-otp-boxes {
   max-width: 300px;
   gap: 6px;
+}
+
+/* ── Delete page on mobile ─────────────────────────────────────────
+   - iOS auto-zooms on focus when input text < 16px: bump delete inputs.
+   - Tighter inline OTP button so the username field keeps room.
+   - Action buttons share the row or stack instead of overflowing. */
+@media (max-width: 480px) {
+
+  .pf-danger-form .auth-input.ant-input-affix-wrapper,
+  .pf-danger-form .auth-input.ant-input {
+    font-size: 16px;
+  }
+
+  .pf-inline-otp-btn {
+    padding: 0 10px;
+  }
+
+  .pf-danger-actions-row {
+    flex-wrap: wrap;
+  }
+
+  .pf-danger-actions-row .pf-ghost-btn,
+  .pf-danger-actions-row .pf-danger-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
 }
 
 .pf-danger-check .ant-checkbox-wrapper {

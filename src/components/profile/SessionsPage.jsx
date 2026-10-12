@@ -4,6 +4,7 @@ import { Spin, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faDesktop, faMobileScreen, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { getSessions, revokeSession, revokeAllSessions } from "../../Services/authService";
+import { parseDevice } from "../../utils/deviceUtils";
 import { useAuth } from "../../context/AuthContext";
 import ConfirmPopup from "../shared/ConfirmPopup";
 import "../css/profile-page.css";
@@ -11,23 +12,10 @@ import "../css/profile-page.css";
 // Devices logged in to this account. Revoking a row kills that login's
 // token at its next API call; wiping all (including this device) logs out
 // everywhere.
-function parseDevice(ua = "") {
-  const s = ua || "";
-  const isMobile = /mobile|android|iphone|ipod/i.test(s);
-  const browser =
-    /edg\/([\d.]+)/i.test(s) ? "Edge" :
-    /opr\/|opera/i.test(s) ? "Opera" :
-    /chrome\/([\d.]+)/i.test(s) && !/edg/i.test(s) ? "Chrome" :
-    /firefox\/([\d.]+)/i.test(s) ? "Firefox" :
-    /safari\/([\d.]+)/i.test(s) && !/chrome/i.test(s) ? "Safari" : null;
-  const os =
-    /android/i.test(s) ? "Android" :
-    /iphone|ipad|ipod/i.test(s) ? "iOS" :
-    /windows/i.test(s) ? "Windows" :
-    /mac os/i.test(s) ? "macOS" :
-    /linux/i.test(s) ? "Linux" : null;
-  const name = [browser, os].filter(Boolean).join(" · ") || "Unknown device";
-  return { name, isMobile };
+function displayDevice(s) {
+  const fallback = parseDevice(s?.deviceInfo);
+  const name = (s?.deviceName || "").trim() || fallback.name;
+  return { name, isMobile: fallback.isMobile };
 }
 
 function timeAgo(iso) {
@@ -144,7 +132,7 @@ function SessionsPage() {
         ) : (
           <ul className="pf-sessions-list">
             {sessions.map((s) => {
-              const dev = parseDevice(s.deviceInfo);
+              const dev = displayDevice(s);
               return (
                 <li key={s.id} className="pf-session-row">
                   <span className="pf-session-icon">

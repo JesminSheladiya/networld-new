@@ -1,6 +1,7 @@
 import { http } from "./https";
 import { STORAGE_KEYS } from "../constants";
 import { API_BASE } from "./apiBase";
+import { getDeviceName } from "../utils/deviceUtils";
 
 function persistSession(data) {
   if (!data) return;
@@ -10,7 +11,7 @@ function persistSession(data) {
 
 export const register = async (username, email, phone, password, fullName, gender, birthDate, occupation) => {
   const { data } = await http.post(`${API_BASE}/auth/register`,
-    { username, email, phone, password, fullName, gender, birthDate, occupation });
+    { username, email, phone, password, fullName, gender, birthDate, occupation, deviceName: await getDeviceName() });
   persistSession(data);
   return data;
 };
@@ -42,7 +43,7 @@ export const forgotReset = async (email, otp, newPassword) => {
 
 export const login = async (identifier, password) => {
   const { data } = await http.post(`${API_BASE}/auth/login`,
-    { identifier, password });
+    { identifier, password, deviceName: await getDeviceName() });
   persistSession(data);
   return data;
 };
