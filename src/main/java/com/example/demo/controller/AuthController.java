@@ -44,6 +44,16 @@ public class AuthController {
         return ResponseEntity.ok(auth.resendOtp(body.get("email")));
     }
 
+    @PostMapping("/forgot-password/request")
+    public ResponseEntity<?> forgotRequest(@RequestBody java.util.Map<String, String> body) {
+        return ResponseEntity.ok(auth.forgotRequest(body.get("email")));
+    }
+
+    @PostMapping("/forgot-password/reset")
+    public ResponseEntity<?> forgotReset(@Valid @RequestBody ForgotResetRequest req) {
+        return ResponseEntity.ok(auth.forgotReset(req.getEmail(), req.getOtp(), req.getNewPassword()));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
         return ResponseEntity.ok(auth.login(req));

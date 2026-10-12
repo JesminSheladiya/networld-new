@@ -380,6 +380,65 @@ public class AuthService {
         return code;
     }
 
+    // ── Forgot password ──────────────────────────────────────────────
+    // Step 1: send a reset OTP to an existing account. Reuses the pending
+    // OTP table so the existing /verify-otp endpoint can confirm it.
+    public java.util.Map<String, Object> forgotRequest(String rawEmail) {
+        String email = normalizeEmail(rawEmail);
+        User u = users.findByEmail(email).orElse(null);
+        if (u == null)
+            throw new RuntimeException("No account found with this email.");
+        EmailOtpVerification p = pendingOtps.findByEmail(email).orElseGet(() -> {
+            EmailOtpVerification n = new EmailOtpVerification();
+            n.setEmail(email);
+            return n;
+        });
+        if (p.getOtpSentAt() != null && java.time.Instant.now().isBefore(
+                p.getOtpSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS))) {
+            throw new RuntimeException("Please wait a minute before resending OTP.");
+        }
+        String otp = newOtp(p);
+        pendingOtps.save(p);
+        if (otpTestMode) testOtpCodes.put(email, otp);
+        boolean delivered = mailer.sendOtp(email, otp, u.getFullName());
+        if (!delivered) {
+            p.setOtpSentAt(null);
+            pendingOtps.save(p);
+        }
+        return java.util.Map.of("message", "OTP sent to your email.", "email", email,
+                "delivered", delivered);
+    }
+
+    // Step 2: verify OTP + set a new password. Accepts either a previously
+    // verified OTP (via /verify-otp, valid 30 min) or a fresh OTP in one call.
+    public java.util.Map<String, Object> forgotReset(String rawEmail, String otp, String newPassword) {
+        String email = normalizeEmail(rawEmail);
+        User u = users.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No account found with this email."));
+        EmailOtpVerification p = pendingOtps.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No OTP request found. Please send OTP first."));
+        boolean preVerified = Boolean.TRUE.equals(p.getVerified())
+                && p.getVerifiedAt() != null && java.time.Instant.now().isBefore(
+                        p.getVerifiedAt().plus(VERIFIED_VALID_MINUTES, java.time.temporal.ChronoUnit.MINUTES));
+        if (!preVerified) {
+            checkOtp(p.getOtpHash(), p.getOtpExpiry(), p.getOtpAttempts(), otp);
+            if (!encoder.matches(otp, p.getOtpHash())) {
+                p.setOtpAttempts((p.getOtpAttempts() == null ? 0 : p.getOtpAttempts()) + 1);
+                pendingOtps.save(p);
+                throw new RuntimeException("Invalid OTP.");
+            }
+        }
+        u.setPassword(encoder.encode(validateNewPassword(newPassword)));
+        // Invalidate any login OTP state on the user row (legacy fallback).
+        u.setOtpHash(null);
+        u.setOtpExpiry(null);
+        u.setOtpAttempts(0);
+        users.save(u);
+        try { pendingOtps.deleteByEmail(email); } catch (Exception ignored) {}
+        if (otpTestMode) testOtpCodes.remove(email);
+        return java.util.Map.of("message", "Password reset successful. Please login.");
+    }
+
     public AuthResponse login(LoginRequest req) {
         User u = users.findByIdentifier(req.getIdentifier())
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
