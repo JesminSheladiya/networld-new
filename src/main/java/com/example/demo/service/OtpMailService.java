@@ -75,18 +75,28 @@ public class OtpMailService {
         CompletableFuture.runAsync(() -> sendOtp(toEmail, otp, fullName));
     }
 
+    public void sendOtpAsync(String toEmail, String otp, String fullName, OtpPurpose purpose) {
+        CompletableFuture.runAsync(() -> sendOtp(toEmail, otp, fullName, purpose));
+    }
+
+    // Kept for compatibility — registration wording.
+    public boolean sendOtp(String toEmail, String otp, String fullName) {
+        return sendOtp(toEmail, otp, fullName, OtpPurpose.REGISTRATION);
+    }
+
     // Synchronous send — returns true only when the mail was accepted
     // (or dev mode with no sender, where the OTP goes to logs instead).
     // Callers use this to report real delivery status instead of assuming it.
-    public boolean sendOtp(String toEmail, String otp, String fullName) {
+    public boolean sendOtp(String toEmail, String otp, String fullName, OtpPurpose purpose) {
         String name = (fullName == null || fullName.isBlank()) ? "there" : fullName.trim().split("\\s+")[0];
-        String subject = "NetWorld verification code";
-        String text = "Hi " + name + ",\n\nYour NetWorld verification code is " + otp
-                + ". It is valid for 5 minutes.\n\nIf you did not request this, ignore this mail.";
-        String html = buildOtpHtml(escapeHtml(name), escapeHtml(otp));
+        OtpMail mail = OtpMail.forPurpose(purpose == null ? OtpPurpose.REGISTRATION : purpose);
+        String text = "Hi " + name + ",\n\n" + mail.bodyPrefix + " Your NetWorld verification code is " + otp
+                + ". It is valid for 5 minutes.\n\n" + mail.notice;
+        String html = buildOtpHtml(escapeHtml(name), escapeHtml(otp), escapeHtml(mail.heading),
+                escapeHtml(mail.bodyPrefix), escapeHtml(mail.notice));
 
-        if (smtpConfigured()) return sendViaSmtp(toEmail, subject, text, html);
-        if (resendConfigured()) return sendViaResend(toEmail, subject, text, html);
+        if (smtpConfigured()) return sendViaSmtp(toEmail, mail.subject, text, html);
+        if (resendConfigured()) return sendViaResend(toEmail, mail.subject, text, html);
         // Dev mode: no sender configured — skip sending, log OTP instead.
         // Never log OTPs in production.
         log.warn("No mail sender configured — skipping mail to {}. OTP={}", toEmail, otp);
@@ -146,6 +156,52 @@ public class OtpMailService {
         }
     }
 
+    // What the OTP is for — each purpose gets its own subject and wording
+    // so register / forgot-password / delete mails never look the same.
+    public enum OtpPurpose {
+        REGISTRATION,
+        PASSWORD_RESET,
+        ACCOUNT_DELETION
+    }
+
+    private static final class OtpMail {
+        final String subject;
+        final String heading;
+        final String bodyPrefix;
+        final String notice;
+
+        OtpMail(String subject, String heading, String bodyPrefix, String notice) {
+            this.subject = subject;
+            this.heading = heading;
+            this.bodyPrefix = bodyPrefix;
+            this.notice = notice;
+        }
+
+        static OtpMail forPurpose(OtpPurpose purpose) {
+            switch (purpose) {
+                case PASSWORD_RESET:
+                    return new OtpMail(
+                            "Reset your NetWorld password",
+                            "Password reset",
+                            "We received a request to reset the password for your NetWorld account.",
+                            "If you did not request a password reset, ignore this mail — your password stays unchanged.");
+                case ACCOUNT_DELETION:
+                    return new OtpMail(
+                            "Confirm NetWorld account deletion",
+                            "Confirm account deletion",
+                            "We received a request to permanently delete your NetWorld account. Use the code below to confirm it is really you.",
+                            "If you did not request this, ignore this mail — your account stays safe.");
+                case REGISTRATION:
+                default:
+                    return new OtpMail(
+                            "Verify your NetWorld email",
+                            "Verify your email",
+                            "Thanks for joining NetWorld! Use the code below to verify your email address.",
+                            "If you did not request this, you can safely ignore this mail.");
+            }
+        }
+    }
+
     private static String escapeHtml(String s) {
         return s.replace("&", "&amp;").replace("<", "&lt;")
                 .replace(">", "&gt;").replace("\"", "&quot;");
@@ -153,7 +209,7 @@ public class OtpMailService {
 
     // Branded OTP mail — table layout + inline CSS for email-client compatibility.
     // Plain-text version stays as fallback (added alongside in the API body).
-    private static String buildOtpHtml(String name, String otp) {
+    private static String buildOtpHtml(String name, String otp, String heading, String message, String notice) {
         return "<!DOCTYPE html><html><body style=\"margin:0;padding:0;background-color:#0b1120;\">"
                 + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#0b1120;padding:32px 16px;\">"
                 + "<tr><td align=\"center\">"
@@ -162,10 +218,11 @@ public class OtpMailService {
                 + "<tr><td align=\"center\" style=\"padding:28px 24px 8px;\">"
                 + "<div style=\"display:inline-block;width:48px;height:48px;line-height:48px;border-radius:14px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#ffffff;font-family:Arial,sans-serif;font-size:24px;font-weight:bold;text-align:center;\">N</div>"
                 + "<div style=\"margin-top:10px;color:#f1f5f9;font-family:Arial,sans-serif;font-size:20px;font-weight:bold;\">NetWorld</div>"
+                + "<div style=\"margin-top:4px;color:#7dd3fc;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;\">" + heading + "</div>"
                 + "</td></tr>"
                 // Greeting + message
                 + "<tr><td style=\"padding:12px 32px 0;color:#cbd5e1;font-family:Arial,sans-serif;font-size:15px;line-height:22px;\">"
-                + "Hi " + name + ",<br><br>Your NetWorld verification code is:"
+                + "Hi " + name + ",<br><br>" + message + "<br>Your NetWorld verification code is:"
                 + "</td></tr>"
                 // Highlighted OTP box
                 + "<tr><td align=\"center\" style=\"padding:20px 32px;\">"
@@ -176,7 +233,7 @@ public class OtpMailService {
                 + "</td></tr>"
                 // Footer note
                 + "<tr><td style=\"padding:0 32px 28px;color:#64748b;font-family:Arial,sans-serif;font-size:13px;line-height:19px;\">"
-                + "If you did not request this code, you can safely ignore this mail."
+                + notice
                 + "</td></tr>"
                 + "</table>"
                 + "<div style=\"margin-top:16px;color:#475569;font-family:Arial,sans-serif;font-size:12px;\">© NetWorld</div>"

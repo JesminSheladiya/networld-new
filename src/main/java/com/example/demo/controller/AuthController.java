@@ -73,10 +73,18 @@ public class AuthController {
         return ResponseEntity.ok(auth.updateProfile(userDetails.getUsername(), req));
     }
 
+    @PostMapping("/delete-account/request")
+    public ResponseEntity<?> deleteAccountRequest(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(auth.deleteAccountRequest(userDetails.getUsername()));
+    }
+
     @DeleteMapping("/me")
     public ResponseEntity<?> deleteAccount(
-            @AuthenticationPrincipal UserDetails userDetails) {
-        auth.deleteAccount(userDetails.getUsername());
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String otp = body == null ? null : body.get("otp");
+        auth.deleteAccount(userDetails.getUsername(), otp);
         return ResponseEntity.ok(java.util.Map.of("message", "Account deleted"));
     }
 

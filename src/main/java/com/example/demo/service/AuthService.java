@@ -222,36 +222,35 @@ public class AuthService {
                 "delivered", delivered);
     }
 
-    // Verify Step-1 OTP. Checks the pending table first, then falls back to
-    // new-flow User rows (accounts created via /register before this split).
+    // Verify an OTP code. The presented code is ALWAYS checked against the
+    // live hash — a previously verified row never confirms a different code,
+    // and a missing OTP never verifies (no verified-user shortcut).
     public java.util.Map<String, Object> verifyOtp(String rawEmail, String otp) {
         String email = normalizeEmail(rawEmail);
         EmailOtpVerification p = pendingOtps.findByEmail(email).orElse(null);
         if (p != null) {
-            if (Boolean.TRUE.equals(p.getVerified())) {
-                return java.util.Map.of("verified", true, "email", email);
-            }
             checkOtp(p.getOtpHash(), p.getOtpExpiry(), p.getOtpAttempts(), otp);
             if (!encoder.matches(otp, p.getOtpHash())) {
                 p.setOtpAttempts((p.getOtpAttempts() == null ? 0 : p.getOtpAttempts()) + 1);
                 pendingOtps.save(p);
                 throw new RuntimeException("Invalid OTP.");
             }
+            // Hash is deliberately retained (not nulled): the terminal action
+            // (register / reset / delete) re-checks the same code, so a stale
+            // verified row can never authorize a code nobody typed.
             p.setVerified(true);
             p.setVerifiedAt(java.time.Instant.now());
-            p.setOtpHash(null);
-            p.setOtpExpiry(null);
             p.setOtpAttempts(0);
             pendingOtps.save(p);
             if (otpTestMode) testOtpCodes.remove(email);
             return java.util.Map.of("verified", true, "email", email);
         }
-        // Fallback: User row created via /register with embedded OTP.
+        // Fallback: legacy User row with an embedded not-yet-consumed OTP.
+        // No hash anywhere means no pending OTP — never confirm.
         User u = users.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("No OTP request found. Please send OTP first."));
-        if (Boolean.TRUE.equals(u.getEmailVerified())) {
-            return java.util.Map.of("verified", true, "email", email);
-        }
+        if (u.getOtpHash() == null)
+            throw new RuntimeException("No OTP request found. Please send OTP first.");
         checkOtp(u.getOtpHash(), u.getOtpExpiry(), u.getOtpAttempts(), otp);
         if (!encoder.matches(otp, u.getOtpHash())) {
             u.setOtpAttempts((u.getOtpAttempts() == null ? 0 : u.getOtpAttempts()) + 1);
@@ -400,7 +399,8 @@ public class AuthService {
         String otp = newOtp(p);
         pendingOtps.save(p);
         if (otpTestMode) testOtpCodes.put(email, otp);
-        boolean delivered = mailer.sendOtp(email, otp, u.getFullName());
+        boolean delivered = mailer.sendOtp(email, otp, u.getFullName(),
+                OtpMailService.OtpPurpose.PASSWORD_RESET);
         if (!delivered) {
             p.setOtpSentAt(null);
             pendingOtps.save(p);
@@ -409,24 +409,25 @@ public class AuthService {
                 "delivered", delivered);
     }
 
-    // Step 2: verify OTP + set a new password. Accepts either a previously
-    // verified OTP (via /verify-otp, valid 30 min) or a fresh OTP in one call.
+    // Step 2: verify OTP + set a new password. The verify step must be done
+    // AND the same code presented again — a stale verified row never
+    // authorizes a code nobody typed.
     public java.util.Map<String, Object> forgotReset(String rawEmail, String otp, String newPassword) {
         String email = normalizeEmail(rawEmail);
         User u = users.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("No account found with this email."));
         EmailOtpVerification p = pendingOtps.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("No OTP request found. Please send OTP first."));
-        boolean preVerified = Boolean.TRUE.equals(p.getVerified())
+        boolean fresh = Boolean.TRUE.equals(p.getVerified())
                 && p.getVerifiedAt() != null && java.time.Instant.now().isBefore(
                         p.getVerifiedAt().plus(VERIFIED_VALID_MINUTES, java.time.temporal.ChronoUnit.MINUTES));
-        if (!preVerified) {
-            checkOtp(p.getOtpHash(), p.getOtpExpiry(), p.getOtpAttempts(), otp);
-            if (!encoder.matches(otp, p.getOtpHash())) {
-                p.setOtpAttempts((p.getOtpAttempts() == null ? 0 : p.getOtpAttempts()) + 1);
-                pendingOtps.save(p);
-                throw new RuntimeException("Invalid OTP.");
-            }
+        if (!fresh)
+            throw new RuntimeException("Please verify email OTP first.");
+        checkOtp(p.getOtpHash(), p.getOtpExpiry(), p.getOtpAttempts(), otp);
+        if (!encoder.matches(otp, p.getOtpHash())) {
+            p.setOtpAttempts((p.getOtpAttempts() == null ? 0 : p.getOtpAttempts()) + 1);
+            pendingOtps.save(p);
+            throw new RuntimeException("Invalid OTP.");
         }
         u.setPassword(encoder.encode(validateNewPassword(newPassword)));
         // Invalidate any login OTP state on the user row (legacy fallback).
@@ -549,14 +550,56 @@ public class AuthService {
     // Full account wipe: every relation row touching the user (either side,
     // any status), their address-book contacts and username history, then
     // the user row itself. Other users' address-book snapshots stay untouched.
-    @org.springframework.transaction.annotation.Transactional
-    public void deleteAccount(String email) {
+    // Requires a fresh OTP sent to the account email (see deleteAccountRequest).
+    public java.util.Map<String, Object> deleteAccountRequest(String email) {
         User u = users.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        EmailOtpVerification p = pendingOtps.findByEmail(email).orElseGet(() -> {
+            EmailOtpVerification n = new EmailOtpVerification();
+            n.setEmail(email);
+            return n;
+        });
+        if (p.getOtpSentAt() != null && java.time.Instant.now().isBefore(
+                p.getOtpSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS))) {
+            throw new RuntimeException("Please wait a minute before resending OTP.");
+        }
+        String otp = newOtp(p);
+        pendingOtps.save(p);
+        if (otpTestMode) testOtpCodes.put(email, otp);
+        boolean delivered = mailer.sendOtp(email, otp, u.getFullName(),
+                OtpMailService.OtpPurpose.ACCOUNT_DELETION);
+        if (!delivered) {
+            p.setOtpSentAt(null);
+            pendingOtps.save(p);
+        }
+        return java.util.Map.of("message", "OTP sent to your email.", "email", email,
+                "delivered", delivered);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteAccount(String email, String otp) {
+        User u = users.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        EmailOtpVerification p = pendingOtps.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No OTP request found. Please send OTP first."));
+        // The verify step must be done AND the same code presented again —
+        // a stale verified row never authorizes a code nobody typed.
+        boolean fresh = Boolean.TRUE.equals(p.getVerified())
+                && p.getVerifiedAt() != null && java.time.Instant.now().isBefore(
+                        p.getVerifiedAt().plus(VERIFIED_VALID_MINUTES, java.time.temporal.ChronoUnit.MINUTES));
+        if (!fresh)
+            throw new RuntimeException("Please verify email OTP first.");
+        checkOtp(p.getOtpHash(), p.getOtpExpiry(), p.getOtpAttempts(), otp);
+        if (!encoder.matches(otp, p.getOtpHash())) {
+            p.setOtpAttempts((p.getOtpAttempts() == null ? 0 : p.getOtpAttempts()) + 1);
+            pendingOtps.save(p);
+            throw new RuntimeException("Invalid OTP.");
+        }
         relations.deleteAllInvolving(u);
         contacts.deleteByUser(u);
         history.deleteByUser(u);
         try { pendingOtps.deleteByEmail(email); } catch (Exception ignored) {}
+        if (otpTestMode) testOtpCodes.remove(email);
         users.delete(u);
     }
 
