@@ -68,6 +68,51 @@ ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ;
 ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ;
 ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS device_name VARCHAR(100);
+
+-- ══════════════════════════════════════════════════════════════════
+-- 10M-USER PERFORMANCE INDEXES
+-- Every hot query path is covered below. All statements are IF NOT EXISTS
+-- so every reboot is safe (missing indexes get created, present ones skip).
+--
+-- NOTE for a live table that already holds millions of rows: plain
+-- CREATE INDEX takes a write lock while building. For zero-downtime
+-- deploys, run the same definitions once with CONCURRENTLY during a
+-- maintenance window instead, e.g.:
+--   CREATE INDEX CONCURRENTLY idx_ur_from_status
+--   ON user_relations(from_user_id, status);
+-- ══════════════════════════════════════════════════════════════════
+
+-- Trigram support for %search% matching (Find People, discover search).
+-- Needs a privileged role once; on managed Postgres (RDS/Cloud SQL)
+-- enable pg_trgm from the console instead if this line fails.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- users: case-insensitive username lookups (login identifier + availability).
+CREATE INDEX IF NOT EXISTS idx_users_username_lower ON users (LOWER(username));
+
+-- users: global %LIKE% search (Find People page) via trigram. Expression
+-- indexes match the actual query shape: LOWER(col) LIKE LOWER('%q%').
+CREATE INDEX IF NOT EXISTS idx_users_fullname_trgm ON users USING gin (LOWER(full_name) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_users_username_trgm ON users USING gin (LOWER(username) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_users_email_trgm ON users USING gin (LOWER(email) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_users_phone_trgm ON users USING gin (LOWER(phone) gin_trgm_ops);
+
+-- contact: every query is scoped to one user's address book.
+CREATE INDEX IF NOT EXISTS idx_contact_user ON contact(user_id);
+CREATE INDEX IF NOT EXISTS idx_contact_relation ON contact(relation_id);
+
+-- user_relations: every list starts from from_user_id + status
+-- (connections, paged, counts, search). Composite order matters.
+CREATE INDEX IF NOT EXISTS idx_ur_from_status ON user_relations(from_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_ur_to_status ON user_relations(to_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_ur_relation ON user_relations(relation_id);
+CREATE INDEX IF NOT EXISTS idx_ur_status ON user_relations(status);
+
+-- username_change_history: rolling 7-day window count + earliest lookup.
+CREATE INDEX IF NOT EXISTS idx_unch_user_changed ON username_change_history(user_id, changed_at DESC);
+
+-- relations: case-insensitive name lookup (tiny table, free to index).
+CREATE INDEX IF NOT EXISTS idx_relations_name_lower ON relations (LOWER(relation_name));
 -- Legacy rows (created before OTP existed) count as verified.
 UPDATE users SET email_verified = TRUE WHERE otp_hash IS NULL AND otp_sent_at IS NULL AND email_verified = FALSE;
 
