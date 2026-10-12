@@ -1,3 +1,7 @@
-# https://www.robotstxt.org/robotstxt.html
+# NetWorld robots.txt — https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+
+# Sitemap: add the absolute URL once the production domain is known, e.g.
+# Sitemap: https://networld.com/sitemap.xml
+# (Or set REACT_APP_SITE_URL at build time — see src/seo.js.)

@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Dropdown, Avatar } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBell, faLightbulb, faCircleUser } from "@fortawesome/free-regular-svg-icons";
-import { faUsers, faMagnifyingGlass, faArrowRightFromBracket, faLanguage } from "@fortawesome/free-solid-svg-icons";
+import { faUsers, faMagnifyingGlass, faArrowRightFromBracket, faLanguage, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "../../context/AuthContext";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import { api } from "../../Services/networld";
@@ -141,6 +141,10 @@ function ProfileMenu() {
                     <button className="nw-profile-action" onClick={() => { openPicker(); closeDropdown(); }}>
                       <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faLanguage} /></span>
                       <span>Relation Display</span>
+                    </button>
+                    <button className="nw-profile-action" onClick={() => { closeDropdown(); navigate("/profile/sessions"); }}>
+                      <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faShieldHalved} /></span>
+                      <span>Sessions</span>
                     </button>
                   </div>
                   <div className="nw-profile-divider" />

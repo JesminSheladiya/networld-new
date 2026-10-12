@@ -1,6 +1,7 @@
 import { http } from "./https";
 import { STORAGE_KEYS } from "../constants";
 import { API_BASE } from "./apiBase";
+import { getDeviceName } from "../utils/deviceUtils";
 
 function persistSession(data) {
   if (!data) return;
@@ -10,7 +11,7 @@ function persistSession(data) {
 
 export const register = async (username, email, phone, password, fullName, gender, birthDate, occupation) => {
   const { data } = await http.post(`${API_BASE}/auth/register`,
-    { username, email, phone, password, fullName, gender, birthDate, occupation });
+    { username, email, phone, password, fullName, gender, birthDate, occupation, deviceName: await getDeviceName() });
   persistSession(data);
   return data;
 };
@@ -42,7 +43,7 @@ export const forgotReset = async (email, otp, newPassword) => {
 
 export const login = async (identifier, password) => {
   const { data } = await http.post(`${API_BASE}/auth/login`,
-    { identifier, password });
+    { identifier, password, deviceName: await getDeviceName() });
   persistSession(data);
   return data;
 };
@@ -67,6 +68,21 @@ export const deleteAccount = async (otp) => {
 
 export const requestDeleteOtp = async () => {
   const { data } = await http.post(`${API_BASE}/auth/delete-account/request`, {});
+  return data;
+};
+
+export const getSessions = async () => {
+  const { data } = await http.get(`${API_BASE}/auth/sessions`);
+  return data;
+};
+
+export const revokeSession = async (id) => {
+  const { data } = await http.delete(`${API_BASE}/auth/sessions/${id}`);
+  return data;
+};
+
+export const revokeAllSessions = async () => {
+  const { data } = await http.delete(`${API_BASE}/auth/sessions`);
   return data;
 };
 
@@ -114,6 +130,16 @@ export const getUser = () => {
 };
 export const getToken = () => localStorage.getItem(STORAGE_KEYS.TOKEN);
 export const logout = () => {
+  try {
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (token) {
+      // Fire-and-forget with an explicit header: the shared interceptor
+      // reads storage asynchronously, so pass the token directly before wiping it.
+      http.post(`${API_BASE}/auth/logout`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+  } catch { /* ignore — local wipe below always runs */ }
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.USER);
 };
