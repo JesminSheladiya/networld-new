@@ -79,8 +79,11 @@ public class ContactController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ContactDTO> getContactById(@PathVariable Long id) {
-        return contactService.getContactById(id)
+    public ResponseEntity<ContactDTO> getContactById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = getCurrentUser(userDetails);
+        return contactService.getContactById(id, user)
                 .map(contact -> ResponseEntity.ok(ContactMapper.toDTO(contact)))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -97,17 +100,22 @@ public class ContactController {
     @PostMapping("/{id}/upload-picture")
     public ResponseEntity<?> uploadPicture(
             @PathVariable Long id,
-            @RequestBody java.util.Map<String, String> body) {
+            @RequestBody java.util.Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = getCurrentUser(userDetails);
         String base64 = body.get("imageBase64");
         if (base64 == null || base64.isBlank())
             return ResponseEntity.badRequest().body("Image data required!");
-        ContactDTO updated = contactService.uploadProfilePicture(id, base64);
+        ContactDTO updated = contactService.uploadProfilePicture(id, base64, user);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}/remove-picture")
-    public ResponseEntity<?> removePicture(@PathVariable Long id) {
-        ContactDTO updated = contactService.removeProfilePicture(id);
+    public ResponseEntity<?> removePicture(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = getCurrentUser(userDetails);
+        ContactDTO updated = contactService.removeProfilePicture(id, user);
         return ResponseEntity.ok(updated);
     }
 
@@ -125,8 +133,10 @@ public class ContactController {
     @PutMapping("/{id}")
     public ResponseEntity<ContactDTO> updateContact(
             @PathVariable Long id,
-            @Valid @RequestBody ContactDTO dto) {
-        Contact updated = contactService.updateContact(id, dto)
+            @Valid @RequestBody ContactDTO dto,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = getCurrentUser(userDetails);
+        Contact updated = contactService.updateContact(id, dto, user)
                 .orElseThrow(() -> new RuntimeException("Contact not found"));
         ContactDTO responseDto = ContactMapper.toDTO(updated);
         if (updated.getRelation() != null) {
@@ -136,8 +146,11 @@ public class ContactController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteContact(@PathVariable Long id) {
-        contactService.deleteContact(id);
+    public ResponseEntity<Void> deleteContact(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = getCurrentUser(userDetails);
+        contactService.deleteContact(id, user);
         return ResponseEntity.noContent().build();
     }
 

@@ -6,8 +6,8 @@ import jakarta.persistence.*;
 @Table(
         name = "contact",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_contact_phone", columnNames = "phone"),
-                @UniqueConstraint(name = "uk_contact_email", columnNames = "email")
+                @UniqueConstraint(name = "uk_contact_user_phone", columnNames = {"user_id", "phone"}),
+                @UniqueConstraint(name = "uk_contact_user_email", columnNames = {"user_id", "email"})
         }
 )
 public class Contact {
@@ -18,10 +18,10 @@ public class Contact {
 
     private String name;
 
-    @Column(nullable = false, updatable = false)  // unique + not editable
+    @Column(nullable = false, updatable = false) // identity — immutable after creation
     private String phone;
 
-    @Column(nullable = false) // unique
+    @Column(nullable = false, updatable = false) // identity — immutable after creation
     private String email;
 
     @Column(name = "profile_picture")
@@ -45,7 +45,9 @@ public class Contact {
 
     public void setRelationId(Long relationId) {
         if (relationId != null) {
-            this.relation = new Relation();
+            Relation r = new Relation();
+            r.setId(relationId);
+            this.relation = r;
         } else {
             this.relation = null;
         }

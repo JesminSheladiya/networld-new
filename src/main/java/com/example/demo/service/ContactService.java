@@ -12,6 +12,7 @@ import com.example.demo.repository.RelationRepository;
 import com.example.demo.repository.UserRelationRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -37,19 +38,31 @@ public class ContactService {
         this.userRelationRepository = userRelationRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<Contact> getAllContacts(User user) {
         return contactRepository.findByUser(user);
     }
 
+    @Transactional(readOnly = true)
     public Page<Contact> getAllContacts(User user, Pageable pageable) {
         return contactRepository.findByUser(user, pageable);
     }
 
-    public Optional<Contact> getContactById(Long id) {
-        return contactRepository.findById(id);
+    @Transactional(readOnly = true)
+    public Optional<Contact> getContactById(Long id, User user) {
+        return contactRepository.findByIdAndUser(id, user);
     }
 
+    @Transactional
     public Contact saveContact(ContactDTO dto, User currentUser) {
+        if (dto.getPhone() != null
+                && contactRepository.existsByUserAndPhone(currentUser, dto.getPhone())) {
+            throw new RuntimeException("Phone number already exists!");
+        }
+        if (dto.getEmail() != null
+                && contactRepository.existsByUserAndEmail(currentUser, dto.getEmail())) {
+            throw new RuntimeException("Email already exists!");
+        }
         Contact contact = ContactMapper.toEntity(dto);
         contact.setUser(currentUser);
 
@@ -89,18 +102,18 @@ public class ContactService {
         return saved;
     }
 
-    public Optional<Contact> updateContact(Long id, ContactDTO dto) {
-        return contactRepository.findById(id).map(contact -> {
-            if (contactRepository.existsByPhoneAndIdNot(dto.getPhone(), id)) {
-                throw new RuntimeException("Phone number already exists!");
+    @Transactional
+    public Optional<Contact> updateContact(Long id, ContactDTO dto, User user) {
+        return contactRepository.findByIdAndUser(id, user).map(contact -> {
+            // Phone / email are identity fields — immutable after creation.
+            if (dto.getPhone() != null && !dto.getPhone().equals(contact.getPhone())) {
+                throw new RuntimeException("Phone cannot be changed!");
             }
-            if (contactRepository.existsByEmailAndIdNot(dto.getEmail(), id)) {
-                throw new RuntimeException("Email already exists!");
+            if (dto.getEmail() != null && !dto.getEmail().equalsIgnoreCase(contact.getEmail())) {
+                throw new RuntimeException("Email cannot be changed!");
             }
 
             contact.setName(dto.getName());
-            contact.setPhone(dto.getPhone());
-            contact.setEmail(dto.getEmail());
 
             if (dto.getProfilePicture() != null) {
                 contact.setProfilePicture(
@@ -120,10 +133,12 @@ public class ContactService {
         });
     }
 
-    public void deleteContact(Long id) {
-        contactRepository.deleteById(id);
+    @Transactional
+    public boolean deleteContact(Long id, User user) {
+        return contactRepository.deleteByIdAndUser(id, user) > 0;
     }
 
+    @Transactional(readOnly = true)
     public Page<Contact> searchContacts(String name, String phone, String email,
                                         Long relationId, User user, Pageable pageable) {
         Specification<Contact> spec = ContactSpecification.buildSpec(name, phone, email, relationId)
@@ -131,16 +146,18 @@ public class ContactService {
         return contactRepository.findAll(spec, pageable);
     }
 
-    public ContactDTO uploadProfilePicture(Long contactId, String base64Image) {
-        Contact contact = contactRepository.findById(contactId)
+    @Transactional
+    public ContactDTO uploadProfilePicture(Long contactId, String base64Image, User user) {
+        Contact contact = contactRepository.findByIdAndUser(contactId, user)
                 .orElseThrow(() -> new RuntimeException("Contact not found"));
         contact.setProfilePicture(base64Image);
         contactRepository.save(contact);
         return ContactMapper.toDTO(contact);
     }
 
-    public ContactDTO removeProfilePicture(Long contactId) {
-        Contact contact = contactRepository.findById(contactId)
+    @Transactional
+    public ContactDTO removeProfilePicture(Long contactId, User user) {
+        Contact contact = contactRepository.findByIdAndUser(contactId, user)
                 .orElseThrow(() -> new RuntimeException("Contact not found"));
         contact.setProfilePicture(null);
         contactRepository.save(contact);
