@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Spin, Button, Tooltip, message, Avatar } from "antd";
+import { Virtuoso } from "react-virtuoso";
+import { Spin, Button, Tooltip, message, Avatar, Pagination } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBell } from "@fortawesome/free-regular-svg-icons";
 import { faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
@@ -10,23 +11,133 @@ import { getInverseRelation } from "../../utils/relationUtils";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";
-import { avatarColorFor } from "../../constants";
+import { avatarColorFor, formatCount, MQ_COMPACT } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
+
+// Memoized rows — same markup as before. Virtuoso mounts only the visible
+// window (contacts-page pattern), so long lists never grow the DOM.
+const PendingRow = memo(function PendingRow({ p, rel, avColor, reason, onOpen, onAccept, onDecline }) {
+  return (
+    <div
+      className="nw-req-row"
+      onClick={() => onOpen(p)}
+      title="View profile"
+      style={{ cursor: "pointer" }}
+    >
+      <div className="nw-req-left">
+        <Avatar
+          size={40}
+          src={toDataUrl(p.suggestedUserProfilePic)}
+          style={{
+            backgroundColor: p.suggestedUserProfilePic ? "transparent" : avColor,
+            fontSize: 15,
+            fontWeight: 700,
+            color: "#fff",
+            flexShrink: 0,
+          }}
+        >
+          {!(p.suggestedUserProfilePic) && (p.suggestedUserName || "?").charAt(0).toUpperCase()}
+        </Avatar>
+        <div className="nw-find-info">
+          <div className="nw-find-name">{p.suggestedUserName}</div>
+          <div className="nw-find-email">{p.suggestedUserUsername ? `@${p.suggestedUserUsername.toLowerCase()}` : (!p.contactInfoHidden ? p.suggestedUserEmail : "—")}</div>
+          <div className="nw-find-reason">{reason}</div>
+        </div>
+      </div>
+      <div className="nw-req-right">
+        <RelationChip relation={rel} style={{ fontSize: 11 }} />
+        <div className="nw-req-actions" onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Decline">
+            <button className="nw-act-btn nw-act-decline" onClick={() => onDecline(p.pendingRelationId)}>
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </Tooltip>
+          <Tooltip title="Accept">
+            <button className="nw-act-btn nw-act-accept" onClick={() => onAccept(p.pendingRelationId)}>
+              <FontAwesomeIcon icon={faCheck} />
+            </button>
+          </Tooltip>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const SentRow = memo(function SentRow({ p, rel, avColor, reason, onOpen, onCancel }) {
+  return (
+    <div
+      className="nw-req-row"
+      onClick={() => onOpen(p)}
+      title="View profile"
+      style={{ cursor: "pointer" }}
+    >
+      <div className="nw-req-left">
+        <Avatar
+          size={40}
+          src={toDataUrl(p.suggestedUserProfilePic)}
+          style={{
+            backgroundColor: p.suggestedUserProfilePic ? "transparent" : avColor,
+            fontSize: 15,
+            fontWeight: 700,
+            color: "#fff",
+            flexShrink: 0,
+          }}
+        >
+          {!(p.suggestedUserProfilePic) && (p.suggestedUserName || "?").charAt(0).toUpperCase()}
+        </Avatar>
+        <div className="nw-find-info">
+          <div className="nw-find-name">{p.suggestedUserName}</div>
+          <div className="nw-find-email">{p.suggestedUserUsername ? `@${p.suggestedUserUsername.toLowerCase()}` : (!p.contactInfoHidden ? p.suggestedUserEmail : "—")}</div>
+          <div className="nw-find-reason">{reason}</div>
+        </div>
+      </div>
+      <div className="nw-req-right">
+        <RelationChip relation={rel} style={{ fontSize: 11 }} />
+        <div className="nw-req-actions" onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Cancel request">
+            <button className="nw-act-btn nw-act-decline" onClick={() => onCancel(p.pendingRelationId)}>
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </Tooltip>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 function RequestsPage() {
   const navigate = useNavigate();
+  const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
   const [tab, setTab] = useState("received");
   const [pending, setPending] = useState([]);
+  const [pendingTotal, setPendingTotal] = useState(0);
+  const [pendingPage, setPendingPage] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [declineId, setDeclineId] = useState(null);
   const [sent, setSent] = useState([]);
+  const [sentTotal, setSentTotal] = useState(0);
+  const [sentPage, setSentPage] = useState(0);
   const [sentLoading, setSentLoading] = useState(false);
+  const [sentLoadingMore, setSentLoadingMore] = useState(false);
   const [cancelId, setCancelId] = useState(null);
   const { bump, key: refreshKey, setPendingCount } = useRefresh();
   const { relName, relCategory } = useRelationDisplay();
   const chipsRef = useRef(null);
   const chipRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
+  const abortPendingRef = useRef(null);
+  const abortSentRef = useRef(null);
+  const pendingReqRef = useRef(0);
+  const sentReqRef = useRef(0);
+  const PAGE_SIZE = 50;
+
+  useEffect(() => {
+    const mq = window.matchMedia(MQ_COMPACT);
+    const onChange = (e) => setIsCompact(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   // "X wants to add you as their <Relation>" → relation in chosen language
   const formatReason = (reason) => {
@@ -51,37 +162,97 @@ function RequestsPage() {
   const categoryLabel = (key) =>
     key === "inlaws" ? "In-Laws" : key === "family" ? "Family" : key === "others" ? "Others" : "All";
 
-  const fetchPending = useCallback(async () => {
-    setLoading(true);
+  // Contacts-page pattern per tab: replace on page 0, append after.
+  const fetchPending = async (pageNum, append = false) => {
+    const id = ++pendingReqRef.current;
+    if (abortPendingRef.current) abortPendingRef.current.abort();
+    const ctrl = new AbortController();
+    abortPendingRef.current = ctrl;
+    if (!append) setLoading(true);
     try {
-      const res = await api.pending();
-      const data = res.data || [];
-      setPending(data);
-      setPendingCount(data.length);
-    } catch {
-      setPending([]);
-      setPendingCount(0);
+      const res = await api.pending(pageNum, PAGE_SIZE, ctrl.signal);
+      if (id !== pendingReqRef.current) return;
+      const data = res.data?.content || [];
+      const total = res.data?.totalElements ?? data.length;
+      setPending((prev) => (append ? [...prev, ...data] : data));
+      setPendingTotal(total);
+      setPendingCount(total);
+    } catch (e) {
+      if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
+      if (!append && id === pendingReqRef.current) {
+        setPending([]);
+        setPendingTotal(0);
+        setPendingCount(0);
+      }
     } finally {
-      setLoading(false);
+      if (!append && id === pendingReqRef.current) setLoading(false);
     }
-  }, [setPendingCount]);
+  };
 
-  const fetchSent = useCallback(async () => {
-    setSentLoading(true);
+  const fetchSent = async (pageNum, append = false) => {
+    const id = ++sentReqRef.current;
+    if (abortSentRef.current) abortSentRef.current.abort();
+    const ctrl = new AbortController();
+    abortSentRef.current = ctrl;
+    if (!append) setSentLoading(true);
     try {
-      const res = await api.sent();
-      setSent(res.data || []);
-    } catch {
-      setSent([]);
+      const res = await api.sent(pageNum, PAGE_SIZE, ctrl.signal);
+      if (id !== sentReqRef.current) return;
+      const data = res.data?.content || [];
+      setSent((prev) => (append ? [...prev, ...data] : data));
+      setSentTotal(res.data?.totalElements ?? data.length);
+    } catch (e) {
+      if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
+      if (!append && id === sentReqRef.current) {
+        setSent([]);
+        setSentTotal(0);
+      }
     } finally {
-      setSentLoading(false);
+      if (!append && id === sentReqRef.current) setSentLoading(false);
     }
-  }, []);
+  };
+
+  // Mount + refresh: immediate page-0 loads for both tabs.
+  useEffect(() => {
+    setLoadingMore(false);
+    setSentLoadingMore(false);
+    setPendingPage(0);
+    setSentPage(0);
+    fetchPending(0, false);
+    fetchSent(0, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey, isCompact]);
 
   useEffect(() => {
-    fetchPending();
-    fetchSent();
-  }, [refreshKey, fetchPending, fetchSent]);
+    if (pendingPage === 0) return;
+    if (isCompact) setLoadingMore(true);
+    fetchPending(pendingPage, isCompact).finally(() => setLoadingMore(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPage]);
+
+  useEffect(() => {
+    if (sentPage === 0) return;
+    if (isCompact) setSentLoadingMore(true);
+    fetchSent(sentPage, isCompact).finally(() => setSentLoadingMore(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentPage]);
+
+  const pendingHasMore = pending.length < pendingTotal;
+  const sentHasMore = sent.length < sentTotal;
+
+  const loadMorePending = useCallback(() => {
+    if (isCompact && pendingHasMore && !loading && !loadingMore) {
+      setPendingPage((p) => p + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCompact, pendingHasMore, loading, loadingMore]);
+
+  const loadMoreSent = useCallback(() => {
+    if (isCompact && sentHasMore && !sentLoading && !sentLoadingMore) {
+      setSentPage((p) => p + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCompact, sentHasMore, sentLoading, sentLoadingMore]);
 
   // Sliding pill indicator — same segmented control as Contacts tabs.
   useEffect(() => {
@@ -96,15 +267,17 @@ function RequestsPage() {
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, [tab, pending.length, sent.length]);
+  }, [tab, pendingTotal, sentTotal]);
 
   const refreshAll = () => {
-    fetchPending();
-    fetchSent();
+    setPendingPage(0);
+    setSentPage(0);
+    fetchPending(0, false);
+    fetchSent(0, false);
   };
 
   // Instagram-style: open anyone's profile from a result row.
-  const openProfile = (p) => {
+  const openProfile = useCallback((p) => {
     const contact = {
       key: p.suggestedUserEmail,
       name: p.suggestedUserName || "",
@@ -128,7 +301,7 @@ function RequestsPage() {
       `/contacts/${encodeURIComponent(p.suggestedUserUsername || p.suggestedUserEmail)}`,
       { state: { contact } }
     );
-  };
+  }, [navigate]);
 
   const accept = async (id) => {
     const item = pending.find((x) => x.pendingRelationId === id);
@@ -136,31 +309,29 @@ function RequestsPage() {
       await api.accept(id);
       const inv = getInverseRelation(item?.inferredRelation, item?.suggestedUserGender) || "";
       const cat = categoryOfRelation(inv);
-      fetchPending();
       bump();
       message.success(`Accepted — added to ${categoryLabel(cat)}`);
       navigate("/contacts", { state: { category: cat } });
     } catch (e) {
       message.error(e?.response?.data?.message || "Could not accept request");
-      fetchPending();
+      bump();
     }
   };
 
   const decline = async (id) => {
     try {
       await api.decline(id);
-      fetchPending();
       bump();
     } catch (e) {
       message.error(e?.response?.data?.message || "Could not decline request");
-      fetchPending();
+      bump();
     }
   };
 
   // Sent tab: open the recipient's profile (shows the "Request Sent" chip —
   // the seed carries pending:"sent" so the strip is correct instantly, and
   // the detail refetch keeps it via search-users).
-  const openSentProfile = (p) => {
+  const openSentProfile = useCallback((p) => {
     const contact = {
       key: p.suggestedUserEmail,
       name: p.suggestedUserName || "",
@@ -184,19 +355,49 @@ function RequestsPage() {
       `/contacts/${encodeURIComponent(p.suggestedUserUsername || p.suggestedUserEmail)}`,
       { state: { contact } }
     );
-  };
+  }, [navigate]);
 
   const cancelSent = async (id) => {
     try {
       await api.cancel(id);
-      fetchSent();
       bump();
       message.success("Request cancelled");
     } catch (e) {
       message.error(e?.response?.data?.message || "Could not cancel request");
-      fetchSent();
+      bump();
     }
   };
+
+  const renderPendingRow = useCallback(
+    (_index, p) => (
+      <PendingRow
+        p={p}
+        rel={getInverseRelation(p.inferredRelation, p.suggestedUserGender)?.toLowerCase() || ""}
+        avColor={avatarColorFor(p.suggestedUserName)}
+        reason={formatReason(p.reason)}
+        onOpen={openProfile}
+        onAccept={accept}
+        onDecline={setDeclineId}
+      />
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [openProfile]
+  );
+
+  const renderSentRow = useCallback(
+    (_index, p) => (
+      <SentRow
+        p={p}
+        rel={(p.inferredRelation || "").toLowerCase()}
+        avColor={avatarColorFor(p.suggestedUserName)}
+        reason={formatSentReason(p.reason)}
+        onOpen={openSentProfile}
+        onCancel={setCancelId}
+      />
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [openSentProfile]
+  );
 
   const isReceived = tab === "received";
   const busy = isReceived ? loading : sentLoading;
@@ -231,7 +432,7 @@ function RequestsPage() {
               onClick={() => setTab("received")}
             >
               Received
-              <span className="nw-chip-count">{pending.length}</span>
+              <span className="nw-chip-count" title={pendingTotal}>{formatCount(pendingTotal)}</span>
             </button>
             <button
               role="tab"
@@ -241,7 +442,7 @@ function RequestsPage() {
               onClick={() => setTab("sent")}
             >
               Sent
-              <span className="nw-chip-count">{sent.length}</span>
+              <span className="nw-chip-count" title={sentTotal}>{formatCount(sentTotal)}</span>
             </button>
           </div>
         </div>
@@ -249,9 +450,9 @@ function RequestsPage() {
 
       <div className="nw-discover-panel">
         {isReceived ? (
-          loading ? (
+          loading && pending.length === 0 ? (
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading requests...</span></div>
-        ) : pending.length === 0 ? (
+        ) : pendingTotal === 0 ? (
           <div className="nw-state-box">
             <FontAwesomeIcon icon={faBell} style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">No pending requests</span>
@@ -259,61 +460,54 @@ function RequestsPage() {
           </div>
         ) : (
           <div className="nw-discover-list">
-            <div className="nw-discover-label">Requests · {pending.length}</div>
-            {pending.map((p, i) => {
-              const rel = getInverseRelation(p.inferredRelation, p.suggestedUserGender)?.toLowerCase() || "";
-              const avColor = avatarColorFor(p.suggestedUserName);
-              return (
-                <div
-                  className="nw-req-row"
-                  key={i}
-                  onClick={() => openProfile(p)}
-                  title="View profile"
-                  style={{ cursor: "pointer" }}
-                >
-                  <div className="nw-req-left">
-                    <Avatar
-                      size={40}
-                      src={toDataUrl(p.suggestedUserProfilePic)}
-                      style={{
-                        backgroundColor: p.suggestedUserProfilePic ? "transparent" : avColor,
-                        fontSize: 15,
-                        fontWeight: 700,
-                        color: "#fff",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {!(p.suggestedUserProfilePic) && (p.suggestedUserName || "?").charAt(0).toUpperCase()}
-                    </Avatar>
-                    <div className="nw-find-info">
-                      <div className="nw-find-name">{p.suggestedUserName}</div>
-                      <div className="nw-find-email">{p.suggestedUserUsername ? `@${p.suggestedUserUsername.toLowerCase()}` : (!p.contactInfoHidden ? p.suggestedUserEmail : "—")}</div>
-                      <div className="nw-find-reason">{formatReason(p.reason)}</div>
-                    </div>
-                  </div>
-                  <div className="nw-req-right">
-                    <RelationChip relation={rel} style={{ fontSize: 11 }} />
-                    <div className="nw-req-actions" onClick={(e) => e.stopPropagation()}>
-                      <Tooltip title="Decline">
-                        <button className="nw-act-btn nw-act-decline" onClick={() => setDeclineId(p.pendingRelationId)}>
-                          <FontAwesomeIcon icon={faXmark} />
-                        </button>
-                      </Tooltip>
-                      <Tooltip title="Accept">
-                        <button className="nw-act-btn nw-act-accept" onClick={() => accept(p.pendingRelationId)}>
-                          <FontAwesomeIcon icon={faCheck} />
-                        </button>
-                      </Tooltip>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            <div className="nw-discover-label">Requests · <span title={pendingTotal}>{formatCount(pendingTotal)}</span></div>
+            {isCompact ? (
+              <Virtuoso
+                useWindowScroll
+                data={pending}
+                endReached={loadMorePending}
+                overscan={360}
+                itemContent={renderPendingRow}
+              />
+            ) : (
+              pending.map((p) => (
+                <PendingRow
+                  key={p.pendingRelationId ?? p.suggestedUserEmail}
+                  p={p}
+                  rel={getInverseRelation(p.inferredRelation, p.suggestedUserGender)?.toLowerCase() || ""}
+                  avColor={avatarColorFor(p.suggestedUserName)}
+                  reason={formatReason(p.reason)}
+                  onOpen={openProfile}
+                  onAccept={accept}
+                  onDecline={setDeclineId}
+                />
+              ))
+            )}
+            {isCompact && (loadingMore ? (
+              <div className="nw-list-loader">
+                <Spin size="small" />
+                <span>Loading more requests...</span>
+              </div>
+            ) : (
+              !pendingHasMore && <div className="nw-list-end">No more requests</div>
+            ))}
+            {!isCompact && pendingTotal > PAGE_SIZE && (
+              <div className="nw-table-pagination">
+                <Pagination
+                  current={pendingPage + 1}
+                  pageSize={PAGE_SIZE}
+                  total={pendingTotal}
+                  showSizeChanger={false}
+                  size="small"
+                  onChange={(pg) => setPendingPage(pg - 1)}
+                />
+              </div>
+            )}
           </div>
         )
-        ) : sentLoading ? (
+        ) : sentLoading && sent.length === 0 ? (
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading sent requests...</span></div>
-        ) : sent.length === 0 ? (
+        ) : sentTotal === 0 ? (
           <div className="nw-state-box">
             <FontAwesomeIcon icon={faBell} style={{ fontSize: 42, color: "#475569" }} />
             <span className="nw-state-text">No sent requests</span>
@@ -321,51 +515,48 @@ function RequestsPage() {
           </div>
         ) : (
           <div className="nw-discover-list">
-            <div className="nw-discover-label">Sent · {sent.length}</div>
-            {sent.map((p, i) => {
-              const rel = (p.inferredRelation || "").toLowerCase();
-              const avColor = avatarColorFor(p.suggestedUserName);
-              return (
-                <div
-                  className="nw-req-row"
-                  key={i}
-                  onClick={() => openSentProfile(p)}
-                  title="View profile"
-                  style={{ cursor: "pointer" }}
-                >
-                  <div className="nw-req-left">
-                    <Avatar
-                      size={40}
-                      src={toDataUrl(p.suggestedUserProfilePic)}
-                      style={{
-                        backgroundColor: p.suggestedUserProfilePic ? "transparent" : avColor,
-                        fontSize: 15,
-                        fontWeight: 700,
-                        color: "#fff",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {!(p.suggestedUserProfilePic) && (p.suggestedUserName || "?").charAt(0).toUpperCase()}
-                    </Avatar>
-                    <div className="nw-find-info">
-                      <div className="nw-find-name">{p.suggestedUserName}</div>
-                      <div className="nw-find-email">{p.suggestedUserUsername ? `@${p.suggestedUserUsername.toLowerCase()}` : (!p.contactInfoHidden ? p.suggestedUserEmail : "—")}</div>
-                      <div className="nw-find-reason">{formatSentReason(p.reason)}</div>
-                    </div>
-                  </div>
-                  <div className="nw-req-right">
-                    <RelationChip relation={rel} style={{ fontSize: 11 }} />
-                    <div className="nw-req-actions" onClick={(e) => e.stopPropagation()}>
-                      <Tooltip title="Cancel request">
-                        <button className="nw-act-btn nw-act-decline" onClick={() => setCancelId(p.pendingRelationId)}>
-                          <FontAwesomeIcon icon={faXmark} />
-                        </button>
-                      </Tooltip>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            <div className="nw-discover-label">Sent · <span title={sentTotal}>{formatCount(sentTotal)}</span></div>
+            {isCompact ? (
+              <Virtuoso
+                useWindowScroll
+                data={sent}
+                endReached={loadMoreSent}
+                overscan={360}
+                itemContent={renderSentRow}
+              />
+            ) : (
+              sent.map((p) => (
+                <SentRow
+                  key={p.pendingRelationId ?? p.suggestedUserEmail}
+                  p={p}
+                  rel={(p.inferredRelation || "").toLowerCase()}
+                  avColor={avatarColorFor(p.suggestedUserName)}
+                  reason={formatSentReason(p.reason)}
+                  onOpen={openSentProfile}
+                  onCancel={setCancelId}
+                />
+              ))
+            )}
+            {isCompact && (sentLoadingMore ? (
+              <div className="nw-list-loader">
+                <Spin size="small" />
+                <span>Loading more requests...</span>
+              </div>
+            ) : (
+              !sentHasMore && <div className="nw-list-end">No more requests</div>
+            ))}
+            {!isCompact && sentTotal > PAGE_SIZE && (
+              <div className="nw-table-pagination">
+                <Pagination
+                  current={sentPage + 1}
+                  pageSize={PAGE_SIZE}
+                  total={sentTotal}
+                  showSizeChanger={false}
+                  size="small"
+                  onChange={(pg) => setSentPage(pg - 1)}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

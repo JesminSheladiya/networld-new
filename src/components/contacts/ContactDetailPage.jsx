@@ -4,7 +4,7 @@ import { Spin } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
 import { api } from "../../Services/networld";
-import { mapConnectionToContact, matchesContactSlug, seedMatchesSlug } from "../../utils/contactMapper";
+import { matchesContactSlug, seedMatchesSlug } from "../../utils/contactMapper";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useRefresh } from "../shared/RefreshContext";
 import { useAuth } from "../../context/AuthContext";
@@ -55,23 +55,35 @@ function ContactDetailPage() {
     }
     (async () => {
       try {
-        const res = await api.connections();
-        if (cancelled) return;
-        const found = (res.data || []).find((c) => matchesContactSlug(c, slug));
-        if (found) {
-          setContact(mapConnectionToContact(found, 0));
-          setFresh(true);
+        // Email first: seed, else a bounded connection lookup, else the
+        // typeahead (direct-URL opens for strangers). Lists never ship
+        // covers, so the full data — including cover — comes from ONE small
+        // profile request instead of a heavy list download.
+        const urlSeed = location.state?.contact;
+        let em = seedMatchesSlug(urlSeed, slug) ? urlSeed.email || "" : "";
+        if (!em) {
+          const res = await api.connectionsPaged(0, 5, slug, "all", [], null, false);
+          if (cancelled) return;
+          const found = (res.data?.content || []).find((c) => matchesContactSlug(c, slug));
+          em = found ? found.suggestedUserEmail || "" : "";
+          if (!em) {
+            const r2 = await api.searchUsers(slug);
+            if (cancelled) return;
+            const list = r2.data || [];
+            const exactSlug =
+              list.find((u) => (u.username || "").toLowerCase() === slug.toLowerCase()) ||
+              list.find((u) => u.email === slug);
+            em = exactSlug?.email || "";
+          }
+        }
+        if (!em) {
+          if (!seedMatchesSlug(location.state?.contact, slug)) setContact(null);
           return;
         }
-        // Not a connection — resolve any app user so profiles open from
-        // Find/Requests/Suggestions too (Instagram-style public profile).
-        const r2 = await api.searchUsers(slug);
+        const pf = await api.profileOf(em);
         if (cancelled) return;
-        const list = r2.data || [];
-        const exact =
-          list.find((u) => (u.username || "").toLowerCase() === slug.toLowerCase()) ||
-          list.find((u) => u.email === slug);
-        if (exact) {
+        const exact = pf.data;
+        if (exact && (exact.email || exact.username)) {
           setContact({
             key: 0,
             name: exact.name || "",
@@ -82,7 +94,7 @@ function ContactDetailPage() {
             coverImage: toDataUrl(exact.coverImage || null),
               coverHidden: !!exact.coverHidden,
               relation: exact.relationName || exact.inferredRelation || "",
-            relationId: null,
+            relationId: exact.relationId ?? null,
             pending: exact.pending || null,
             pendingRelationId:
               exact.pendingRelationId ??

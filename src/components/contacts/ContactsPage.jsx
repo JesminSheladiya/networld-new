@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, memo } from "react";
+import { Virtuoso } from "react-virtuoso";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Input, Spin, Avatar, Empty, Tooltip, Pagination, Modal, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -9,7 +10,7 @@ import { mapConnectionToContact as mapContact } from "../../utils/contactMapper"
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
-import { DEFAULT_PAGE_SIZE, MQ_COMPACT, MQ_NARROW, PAGE_SIZE_OPTIONS, SEARCH_DEBOUNCE_MS, avatarColorFor } from "../../constants";
+import { DEFAULT_PAGE_SIZE, MQ_COMPACT, MQ_NARROW, PAGE_SIZE_OPTIONS, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 
 const CATEGORIES = [
@@ -18,6 +19,70 @@ const CATEGORIES = [
   { key: "inlaws", label: "In-Laws" },
   { key: "others", label: "Others" },
 ];
+
+// Memoized row — Virtuoso mounts only the visible window, so a 10k list
+// never grows the DOM and every append stays as fast as the first one.
+// Markup + classes are identical to the plain list (no fixed-height box,
+// page scrolls normally).
+const ContactRow = memo(function ContactRow({ rec, onOpen, onPhoto, onEdit }) {
+  return (
+    <div
+      className="nw-contact-row"
+      onClick={() => onOpen(rec)}
+      title={`View ${rec.name}'s profile`}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter") onOpen(rec); }}
+    >
+      <span
+        className="nw-contact-avatar"
+        onClick={(e) => {
+          if (rec.profilePicture) {
+            e.stopPropagation();
+            onPhoto(rec);
+          }
+        }}
+        style={{ cursor: rec.profilePicture ? "pointer" : "default" }}
+        title={rec.profilePicture ? "View photo" : undefined}
+      >
+        <Avatar
+          size={44}
+          src={toDataUrl(rec.profilePicture)}
+          style={{
+            backgroundColor: rec.profilePicture ? "transparent" : avatarColorFor(rec.name),
+            fontSize: 17,
+            fontWeight: 700,
+            color: "#fff",
+            flexShrink: 0,
+          }}
+        >
+          {!(rec.profilePicture) && (rec.name || "?")?.charAt(0).toUpperCase()}
+        </Avatar>
+      </span>
+      <span className="nw-contact-info">
+        <span className="nw-contact-name">{rec.name}</span>
+        <span className="nw-contact-sub">
+          {rec.username ? `@${rec.username.toLowerCase()}` : (rec.phone || "—")}
+        </span>
+      </span>
+      <span className="nw-contact-right">
+        <RelationChip relation={rec.relation} style={{ flexShrink: 0, fontSize: 11 }} />
+        <span className="nw-contact-actions" onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Edit relation">
+            <button
+              className="nw-icon-btn"
+              aria-label={`Edit relation with ${rec.name}`}
+              onClick={() => onEdit(rec)}
+            >
+              <FontAwesomeIcon icon={faPenToSquare} />
+            </button>
+          </Tooltip>
+        </span>
+      </span>
+      <FontAwesomeIcon icon={faChevronRight} className="nw-contact-chevron" />
+    </div>
+  );
+});
 
 function ContactsPage() {
   const navigate = useNavigate();
@@ -49,7 +114,6 @@ function ContactsPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sortParam, setSortParam] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const loaderRef = useRef(null);
   const chipsRef = useRef(null);
   const chipRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
@@ -112,20 +176,27 @@ function ContactsPage() {
   // Server list: paging + category + relations + sort all in backend.
   // reqIdRef drops stale responses (fast filter changes must not overwrite newer results).
   const reqIdRef = useRef(0);
+  // Abort stale in-flight list requests: reqIdRef discards responses, but
+  // without abort the server still executes every discarded keystroke query.
+  const abortRef = useRef(null);
   const fetchList = async (pageNum, append = false) => {
     const id = ++reqIdRef.current;
+    if (abortRef.current) abortRef.current.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     if (!append) setLoading(true);
     try {
       // Desktop searches name/username/mobile, mobile only name/username
       // (server-side via includePhone — keeps paging + counts consistent).
       const res = await api.connectionsPaged(
-        pageNum, pageSize, searchText, category, selectedRelations, sortParam, !isCompact
+        pageNum, pageSize, searchText, category, selectedRelations, sortParam, !isCompact, ctrl.signal
       );
       if (id !== reqIdRef.current) return; // stale — a newer request is in flight
       const mapped = res.data.content.map(mapContact);
       setDataSource((prev) => (append ? [...prev, ...mapped] : mapped));
       setTotalItems(res.data.totalElements);
-    } catch {
+    } catch (e) {
+      if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
       if (!append && id === reqIdRef.current) {
         setDataSource([]);
         setTotalItems(0);
@@ -135,9 +206,6 @@ function ContactsPage() {
     }
   };
 
-  // Latest page value for timeouts (avoids stale closures)
-  const pageRef = useRef(page);
-  useEffect(() => { pageRef.current = page; }, [page]);
   // Skip only the very first mount fetch (reset effect below does it)
   const firstMountRef = useRef(true);
   // True while the reset effect's own page-0 fetch is authoritative,
@@ -147,14 +215,21 @@ function ContactsPage() {
   // Reset + load first page when anything filter-ish changes.
   // Always fetches page 0 directly: on mobile the page effect skips page 0,
   // so delegating via setPage(0) alone would leave the stale list in place.
+  // Only keystroke search waits out the debounce — mount, tab switches,
+  // filters and sort fetch immediately (the connections list style: no
+  // blank 350ms wait on entry).
+  const prevSearchRef = useRef(searchText);
   useEffect(() => {
+    const searchChanged = prevSearchRef.current !== searchText;
+    prevSearchRef.current = searchText;
+    const delay = firstMountRef.current ? 0 : (searchChanged ? SEARCH_DEBOUNCE_MS : 0);
     const handler = setTimeout(() => {
       setLoadingMore(false);
       firstMountRef.current = false;
       resetFetchRef.current = true;
       setPage(0);
       fetchList(0, false);
-    }, SEARCH_DEBOUNCE_MS);
+    }, delay);
     return () => clearTimeout(handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText, category, selectedRelations, pageSize, sortParam, refreshKey, isCompact]);
@@ -180,13 +255,20 @@ function ContactsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  // Server counts for tabs/dropdown + relation options for filters
+  // Server counts for tabs/dropdown + relation options for filters.
+  // Mount fires immediately with the list; only keystroke search is
+  // debounced (same rhythm as the list fetch above).
+  const prevCountSearchRef = useRef(searchText);
   useEffect(() => {
+    const ctrl = new AbortController();
+    const searchChanged = prevCountSearchRef.current !== searchText;
+    prevCountSearchRef.current = searchText;
+    const delay = searchChanged ? SEARCH_DEBOUNCE_MS : 0;
     const handler = setTimeout(async () => {
       try {
         const [cRes, rRes] = await Promise.all([
-          api.connectionCounts(searchText, !isCompact),
-          api.connectionRelations(searchText, !isCompact),
+          api.connectionCounts(searchText, !isCompact, ctrl.signal),
+          api.connectionRelations(searchText, !isCompact, ctrl.signal),
         ]);
         setCounts({
           all: cRes.data?.all ?? 0,
@@ -195,12 +277,13 @@ function ContactsPage() {
           others: cRes.data?.others ?? 0,
         });
         setRelationOptions(rRes.data || []);
-      } catch {
+      } catch (e) {
+        if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
         setCounts({ all: 0, family: 0, inlaws: 0, others: 0 });
         setRelationOptions([]);
       }
-    }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(handler);
+    }, delay);
+    return () => { clearTimeout(handler); ctrl.abort(); };
   }, [searchText, refreshKey, isCompact]);
 
   // Switching tabs starts a fresh filter context (stale relation sub-filter
@@ -214,24 +297,30 @@ function ContactsPage() {
   const filtered = dataSource;
   const hasMore = dataSource.length < totalItems;
 
-  // Mobile: infinite scroll sentinel
-  useEffect(() => {
-    if (!isCompact || !hasMore) return;
-    const el = loaderRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loading && !loadingMore) setPage((p) => p + 1);
-      },
-      { rootMargin: "240px" }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [isCompact, hasMore, dataSource.length, loading, loadingMore]);
+  // Compact: next page loads automatically as the end approaches
+  // (endReached chains while the user scrolls — no waiting at the bottom).
+  // Single trigger: the old sentinel observer is gone, so a page can never
+  // be requested twice / skipped by two racing triggers.
+  const loadMoreCompact = useCallback(() => {
+    if (isCompact && hasMore && !loading && !loadingMore) setPage((p) => p + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCompact, hasMore, loading, loadingMore]);
 
-  const openContact = (rec) => {
+  const openContact = useCallback((rec) => {
     navigate(`/contacts/${encodeURIComponent(rec.username || rec.email)}`, { state: { contact: rec } });
-  };
+  }, [navigate]);
+
+  const openPhoto = useCallback(
+    (rec) => setViewer({ pic: toDataUrl(rec.profilePicture), name: rec.name }),
+    []
+  );
+
+  const renderCompactRow = useCallback(
+    (_index, rec) => (
+      <ContactRow rec={rec} onOpen={openContact} onPhoto={openPhoto} onEdit={setEditingContact} />
+    ),
+    [openContact, openPhoto]
+  );
 
   // Same sort options on every screen (no phone sorts — numbers hidden).
   const sortOptions = [
@@ -248,7 +337,7 @@ function ContactsPage() {
           <h1 className="nw-page-title">My Contacts</h1>
           <p className="nw-page-subtitle">
             {totalItems > 0
-              ? `${totalItems} ${totalItems === 1 ? "person" : "people"} in your network`
+              ? `${formatCount(totalItems)} ${totalItems === 1 ? "person" : "people"} in your network`
               : "People connected with you"}
           </p>
         </div>
@@ -284,7 +373,7 @@ function ContactsPage() {
               onChange={(v) => changeCategory(v)}
               options={visibleCategories.map((c) => ({
                 value: c.key,
-                label: `${c.label} (${counts[c.key] ?? 0})`,
+                label: `${c.label} (${formatCount(counts[c.key] ?? 0)})`,
               }))}
             />
           ) : (
@@ -301,7 +390,7 @@ function ContactsPage() {
                   onClick={() => changeCategory(c.key)}
                 >
                   {c.label}
-                  <span className="nw-chip-count">{counts[c.key]}</span>
+                  <span className="nw-chip-count" title={counts[c.key]}>{formatCount(counts[c.key])}</span>
                 </button>
               ))}
             </div>
@@ -363,7 +452,10 @@ function ContactsPage() {
         )}
       </div>
 
-      {loading ? (
+      {/* Full-screen spinner only when there is nothing to show yet —
+          refetches (tab switch, filter, pull of page 0) keep the old rows on
+          screen like the connections list, instead of blanking every time. */}
+      {loading && filtered.length === 0 ? (
         <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading contacts...</span></div>
       ) : filtered.length === 0 ? (
         <div className="nw-discover-panel nw-table-empty">
@@ -383,7 +475,21 @@ function ContactsPage() {
         </div>
       ) : (
         <div className="nw-discover-panel">
-          <div className="nw-discover-label">Contacts · {totalItems}</div>
+          <div className="nw-discover-label">Contacts · <span title={totalItems}>{formatCount(totalItems)}</span></div>
+          {isCompact ? (
+            // Window scroll (no fixed-height box — the page scrolls exactly
+            // like before). Only the visible window mounts, so appended pages
+            // never slow rendering down; endReached pre-loads the next page
+            // before the bottom is hit.
+            <Virtuoso
+              className="nw-contact-list"
+              useWindowScroll
+              data={filtered}
+              endReached={loadMoreCompact}
+              overscan={360}
+              itemContent={renderCompactRow}
+            />
+          ) : (
           <div className="nw-contact-list">
             {filtered.map((rec) => (
               <div
@@ -444,7 +550,7 @@ function ContactsPage() {
               </div>
             ))}
           </div>
-          {isCompact && hasMore && <div ref={loaderRef} className="nw-list-sentinel" aria-hidden="true" />}
+          )}
           {isCompact && (loadingMore ? (
             <div className="nw-list-loader">
               <Spin size="small" />
@@ -455,7 +561,7 @@ function ContactsPage() {
           ))}
         </div>
       )}
-      {!loading && !isCompact && totalItems > pageSize && (
+      {!isCompact && totalItems > pageSize && (
         <div className="nw-table-pagination">
           <Pagination
             current={page + 1}
@@ -595,7 +701,7 @@ function ContactsPage() {
                     <span className="nw-mfilter-item-label">
                       <RelationChip relation={o.value} style={{ fontSize: 11 }} />
                     </span>
-                    <span className="nw-relation-filter-count">{o.count}</span>
+                    <span className="nw-relation-filter-count" title={o.count}>{formatCount(o.count)}</span>
                   </button>
                 );
               })

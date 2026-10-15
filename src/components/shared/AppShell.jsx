@@ -9,7 +9,7 @@ import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import { api } from "../../Services/networld";
 import { RefreshProvider, useRefresh } from "./RefreshContext";
 import ConfirmPopup from "./ConfirmPopup";
-import { MQ_COMPACT, SMALL_SCREEN_PX } from "../../constants";
+import { MQ_COMPACT, SMALL_SCREEN_PX, formatCount } from "../../constants";
 
 const NAV_ITEMS = [
   { to: "/contacts", label: "Contacts", icon: <FontAwesomeIcon icon={faUsers} /> },
@@ -211,12 +211,14 @@ function AppShellNav() {
 
   const fetchCounts = useCallback(async () => {
     try {
+      // Count endpoints only: full-list fetches here cost a 5MB payload
+      // plus a ~1min suggestion regen on mega-hubs per badge refresh.
       const [pendingRes, suggestionsRes] = await Promise.all([
-        api.pending(),
-        api.suggestions(),
+        api.pendingCount(),
+        api.suggestionsCount(),
       ]);
-      setPendingCount(pendingRes.data?.length || 0);
-      setSuggestionsCount(suggestionsRes.data?.length || 0);
+      setPendingCount(pendingRes.data?.count || 0);
+      setSuggestionsCount(suggestionsRes.data?.count || 0);
     } catch {
       setPendingCount(0);
       setSuggestionsCount(0);
@@ -358,10 +360,10 @@ function AppShellNav() {
                         <span className={hasSuggestions ? "suggestion-icon-glow" : undefined}>{item.icon}</span>
                         {item.label}
                         {item.to === "/discover/requests" && pendingCount > 0 && (
-                            <span className="nw-nav-badge">{pendingCount > 99 ? "99+" : pendingCount}</span>
+                            <span className="nw-nav-badge" title={pendingCount}>{formatCount(pendingCount)}</span>
                         )}
                         {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
-                            <span className="nw-nav-badge">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
+                            <span className="nw-nav-badge" title={suggestionsCount}>{formatCount(suggestionsCount)}</span>
                         )}
                       </NavLink>
                   );
@@ -426,10 +428,10 @@ function AppShellNav() {
                               <span className={`nw-nav-icon ${hasSuggestions ? "suggestion-icon-glow" : ""}`}>
                                 {item.icon}
                                 {item.to === "/discover/requests" && pendingCount > 0 && (
-                                    <span className="nw-nav-badge-dot">{pendingCount > 99 ? "99+" : pendingCount}</span>
+                                    <span className="nw-nav-badge-dot" title={pendingCount}>{formatCount(pendingCount)}</span>
                                 )}
                                 {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
-                                    <span className="nw-nav-badge-dot">{suggestionsCount > 99 ? "99+" : suggestionsCount}</span>
+                                    <span className="nw-nav-badge-dot" title={suggestionsCount}>{formatCount(suggestionsCount)}</span>
                                 )}
                               </span>
                               {isActive && <span className="nw-nav-label">{item.label}</span>}

@@ -6,13 +6,30 @@ export const api = {
     http.get(`${BASE}/user-relations/connections`, {
       params: search && search.trim() ? { query: search.trim() } : {},
     }),
-  connectionsOf: (email) =>
+  connectionsOf: (email, page = 0, size = 50, signal) =>
     http.get(`${BASE}/user-relations/connections/of`, {
+      params: { email, page, size },
+      ...(signal ? { signal } : {}),
+    }),
+  // Full single profile (covers included) for the detail screen — lists
+  // never ship covers, so this 1-row fetch fills them on demand.
+  profileOf: (email, signal) =>
+    http.get(`${BASE}/user-relations/profile`, {
       params: { email },
+      ...(signal ? { signal } : {}),
+    }),
+  // Preview on profile cards needs only the first few rows + total —
+  // fetching the whole graph on 4G was the connections lag.
+  connectionsPreviewOf: (email, signal) =>
+    http.get(`${BASE}/user-relations/connections/of`, {
+      params: { email, page: 0, size: 6 },
+      ...(signal ? { signal } : {}),
     }),
   // includePhone: desktop (name/username/mobile search) vs mobile
   // (name/username only). undefined → server default (true = desktop).
-  connectionsPaged: (page, size, search, category, relations, sort, includePhone) =>
+  // signal: AbortSignal — callers abort stale in-flight requests on fast
+  // typing/filter changes so the server stops doing discarded work.
+  connectionsPaged: (page, size, search, category, relations, sort, includePhone, signal) =>
     http.get(`${BASE}/user-relations/connections/paged`, {
       params: {
         page, size,
@@ -22,32 +39,54 @@ export const api = {
         ...(sort ? { sort } : {}),
         ...(includePhone !== undefined ? { includePhone } : {}),
       },
+      ...(signal ? { signal } : {}),
     }),
-  connectionCounts: (search, includePhone) =>
+  connectionCounts: (search, includePhone, signal) =>
     http.get(`${BASE}/user-relations/connections/counts`, {
       params: {
         ...(search && search.trim() ? { query: search.trim() } : {}),
         ...(includePhone !== undefined ? { includePhone } : {}),
       },
+      ...(signal ? { signal } : {}),
     }),
-  connectionRelations: (search, includePhone) =>
+  connectionRelations: (search, includePhone, signal) =>
     http.get(`${BASE}/user-relations/connections/relations`, {
       params: {
         ...(search && search.trim() ? { query: search.trim() } : {}),
         ...(includePhone !== undefined ? { includePhone } : {}),
       },
+      ...(signal ? { signal } : {}),
     }),
   relations: () => http.get(`${API_URL}/relations`),
   // Unfiltered display map (includes hidden engine rows) for chips/labels.
   relationsAll: () => http.get(`${API_URL}/relations/all`),
   searchUsers: (q) => http.get(`${BASE}/user-relations/search-users?query=${encodeURIComponent(q)}`),
   send: (toEmail, relationId) => http.post(`${BASE}/user-relations/send`, { toEmail, relationId }),
-  suggestions: () => http.get(`${BASE}/user-relations/suggestions`),
+  // Paged (default 50, max 100 server-side for suggestions/pending/sent;
+  // contacts allows up to 1000): unbounded full lists shipped
+  // 10k rows into the DOM. signal aborts stale in-flight requests.
+  suggestions: (page = 0, size = 50, signal) =>
+    http.get(`${BASE}/user-relations/suggestions`, {
+      params: { page, size },
+      ...(signal ? { signal } : {}),
+    }),
+  // Badge total: does NOT trigger regen (the list endpoint does).
+  suggestionsCount: () => http.get(`${BASE}/user-relations/suggestions/count`),
   suggestionsSend: (otherEmail, relationName) =>
     http.post(`${BASE}/user-relations/suggestions/send`, { otherEmail, relationName }),
   dismissSuggestion: (id) => http.delete(`${BASE}/user-relations/suggestions/${id}/dismiss`),
-  pending: () => http.get(`${BASE}/user-relations/pending`),
-  sent: () => http.get(`${BASE}/user-relations/sent`),
+  pending: (page = 0, size = 50, signal) =>
+    http.get(`${BASE}/user-relations/pending`, {
+      params: { page, size },
+      ...(signal ? { signal } : {}),
+    }),
+  pendingCount: () => http.get(`${BASE}/user-relations/pending/count`),
+  sent: (page = 0, size = 50, signal) =>
+    http.get(`${BASE}/user-relations/sent`, {
+      params: { page, size },
+      ...(signal ? { signal } : {}),
+    }),
+  sentCount: () => http.get(`${BASE}/user-relations/sent/count`),
   accept: (id) => http.post(`${BASE}/user-relations/${id}/accept`),
   decline: (id) => http.post(`${BASE}/user-relations/${id}/decline`),
   cancel: (id) => http.post(`${BASE}/user-relations/${id}/cancel`),

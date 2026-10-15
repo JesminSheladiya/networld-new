@@ -31,9 +31,10 @@ export const MQ_COMPACT = "(max-width: 1024px)"; // list/tablet layout
 export const MQ_NARROW = "(max-width: 399px)"; // category dropdown layout
 export const SMALL_SCREEN_PX = 390; // bottom-nav notch sizing
 
-// Contacts pagination
-export const DEFAULT_PAGE_SIZE = 10;
-export const PAGE_SIZE_OPTIONS = ["10", "20", "50", "100"];
+// Contacts pagination (50 default; 20 removed — too chatty at scale on 4G.
+// Instagram-style: bigger pages = fewer round-trips, smooth on 1M graphs.)
+export const DEFAULT_PAGE_SIZE = 50;
+export const PAGE_SIZE_OPTIONS = ["50", "100", "200", "500", "1000"];
 
 // Profile bio (matches backend 200-char limit)
 export const BIO_MAX_LENGTH = 200;
@@ -51,4 +52,17 @@ export const AVATAR_COLORS = Object.freeze([
 export function avatarColorFor(name = "", palette = AVATAR_COLORS) {
   const code = name ? name.charCodeAt(0) : 0;
   return palette[code % palette.length];
+}
+
+// Compact count formatting for tabs/chips/badges — raw 5-6 digit numbers
+// break pill layouts, so 10000 renders as "10k+" (exact value stays in title).
+export function formatCount(n) {
+  const v = Number(n) || 0;
+  if (v < 1000) return String(v);
+  if (v < 1000000) {
+    const k = v / 1000;
+    return `${Number.isInteger(k) ? k : k.toFixed(1).replace(/\.0$/, "")}k+`;
+  }
+  const m = v / 1000000;
+  return `${Number.isInteger(m) ? m : m.toFixed(1).replace(/\.0$/, "")}M+`;
 }

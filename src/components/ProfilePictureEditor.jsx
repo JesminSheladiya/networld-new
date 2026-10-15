@@ -9,7 +9,8 @@ import "./css/ProfilePictureEditor.css";
 const BOX_RATIO = 0.8; // square crop box = 80% of stage (aspect === 1 path)
 
 // Fixed-ratio crop editor (drag to move, scroll/pinch to zoom).
-// Defaults are the profile-photo flow (1:1 box, 512x512 output).
+// Defaults are the profile-photo flow (1:1 box, 256x256 output — avatars
+// render at 44px, so anything bigger is dead weight on slow networks).
 // Cover flow passes aspect={3} etc. — geometry below generalizes to
 // any box via BW/BH; the square path is byte-for-byte the old behavior.
 function ProfilePictureEditor({
@@ -18,8 +19,8 @@ function ProfilePictureEditor({
     onSave,
     src,
     aspect = 1,
-    outputWidth = 512,
-    outputHeight = 512,
+    outputWidth = 256,
+    outputHeight = 256,
     stageAspect = 1,
     modalWidth = 440,
     title = "Edit photo",
@@ -211,7 +212,7 @@ function ProfilePictureEditor({
             ctx.translate(c.width / 2, c.height / 2);
             ctx.rotate(-Math.PI / 2);
             ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-            setWorkSrc(c.toDataURL("image/jpeg", 0.92));
+            setWorkSrc(c.toDataURL("image/jpeg", 0.82));
         };
         img.src = workSrc;
     };
@@ -237,7 +238,7 @@ function ProfilePictureEditor({
         canvas.width = outputWidth;
         canvas.height = outputHeight;
         canvas.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, outputWidth, outputHeight);
-        canvas.toBlob((blob) => { if (blob && onSave) onSave(blob); }, "image/jpeg", 0.92);
+        canvas.toBlob((blob) => { if (blob && onSave) onSave(blob); }, "image/jpeg", 0.82);
     };
 
     useEffect(() => {
