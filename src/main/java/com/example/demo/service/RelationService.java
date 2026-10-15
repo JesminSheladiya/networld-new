@@ -53,6 +53,10 @@ public class RelationService {
             // keeps resolving it, chain row stays selectable.
             "brother-in-law");
 
+    // Relations master is read-only at runtime (seeded via data.sql, no
+    // write path) — safe to cache with no eviction. Hit on every picker,
+    // chip render, suggestion regen and relation lookup at 100k users.
+    @org.springframework.cache.annotation.Cacheable("relationsAll")
     public List<Relation> getAll() {
         List<Relation> all = relationRepository.findAll();
         java.util.Set<String> hidden = new java.util.HashSet<>(HIDDEN_FROM_SELECTION);
@@ -62,6 +66,12 @@ public class RelationService {
                         || !hidden.contains(r.getRelationName().toLowerCase()))
                 .sorted(SELECTION_ORDER)
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Rules master is read-only at runtime (seeded via data.sql) — cached.
+    @org.springframework.cache.annotation.Cacheable("inferenceRules")
+    public List<RelationInferenceRule> loadAllRules() {
+        return inferenceRuleRepository.findAll();
     }
 
     // Future-proofing: whenever a chain-wise row (e.g. "Sister-in-law
@@ -211,6 +221,7 @@ public class RelationService {
     // Grandfather, ...) also carry indian names, and every chip /
     // label in the app resolves through this — otherwise those fall back
     // to English regardless of the chosen format.
+    @org.springframework.cache.annotation.Cacheable("relationsDisplay")
     public List<Relation> getAllForDisplay() {
         return relationRepository.findAll();
     }
@@ -225,7 +236,7 @@ public class RelationService {
         Set<String> seen = new HashSet<>();
 
         // ── 2. Load inference rules into a map ─────────────────────────
-        List<RelationInferenceRule> allRules = inferenceRuleRepository.findAll();
+        List<RelationInferenceRule> allRules = loadAllRules();
         System.out.println("=== RULES LOADED FROM DB: " + allRules.size());
         System.out.println("=== USER CONTACTS COUNT : " + allContacts.size());
 

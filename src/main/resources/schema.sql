@@ -75,18 +75,12 @@ CREATE TABLE IF NOT EXISTS contact (
 );
 -- Migration for databases created with the old GLOBAL uniques:
 -- drop them if present so shared numbers/emails no longer collide.
+-- (Fresh tables get the per-user constraints from CREATE TABLE above;
+-- pre-existing tables get them via Hibernate ddl-auto=update from the
+-- Contact entity. No DO block here — Spring's SQL init splits on ';'
+-- and cannot parse dollar-quoted bodies.)
 ALTER TABLE contact DROP CONSTRAINT IF EXISTS uk_contact_phone;
 ALTER TABLE contact DROP CONSTRAINT IF EXISTS uk_contact_email;
--- Enforce per-user uniqueness on pre-existing tables (no-op when present).
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uk_contact_user_phone') THEN
-        ALTER TABLE contact ADD CONSTRAINT uk_contact_user_phone UNIQUE (user_id, phone);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uk_contact_user_email') THEN
-        ALTER TABLE contact ADD CONSTRAINT uk_contact_user_email UNIQUE (user_id, email);
-    END IF;
-END $$;
 
 -- USER RELATIONS TABLE (connections between users)
 CREATE TABLE IF NOT EXISTS user_relations (
@@ -127,6 +121,19 @@ CREATE TABLE IF NOT EXISTS username_change_history (
     CONSTRAINT fk_unch_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- EMAIL OTP VERIFICATIONS (previously Hibernate-only; defined here so
+-- standalone psql runs also create it with its index)
+CREATE TABLE IF NOT EXISTS email_otp_verifications (
+    id           BIGSERIAL PRIMARY KEY,
+    email        VARCHAR(255) NOT NULL UNIQUE,
+    otp_hash     VARCHAR(120),
+    otp_expiry   TIMESTAMPTZ,
+    otp_attempts INTEGER NOT NULL DEFAULT 0,
+    otp_sent_at  TIMESTAMPTZ,
+    verified     BOOLEAN NOT NULL DEFAULT FALSE,
+    verified_at  TIMESTAMPTZ
+);
+
 -- INFERENCE RULES TABLE (category+gender pairs -> inferred relation name)
 CREATE TABLE IF NOT EXISTS relation_inference_rules (
     id                     BIGSERIAL PRIMARY KEY,
@@ -158,6 +165,9 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- users: case-insensitive username lookups (login identifier + availability).
 CREATE INDEX IF NOT EXISTS idx_users_username_lower ON users (LOWER(username));
+-- users: case-insensitive email lookups (login identifier uses raw email OR
+-- LOWER(username); availability + OTP flows hit email per keystroke).
+CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email));
 
 -- users: global %LIKE% search (Find People page) via trigram. Expression
 -- indexes match the actual query shape: LOWER(col) LIKE LOWER('%q%').
@@ -169,6 +179,8 @@ CREATE INDEX IF NOT EXISTS idx_users_phone_trgm ON users USING gin (LOWER(phone)
 -- contact: every query is scoped to one user's address book.
 CREATE INDEX IF NOT EXISTS idx_contact_user ON contact(user_id);
 CREATE INDEX IF NOT EXISTS idx_contact_relation ON contact(relation_id);
+-- contact: relation filter + per-user duplicate checks resolve from index.
+CREATE INDEX IF NOT EXISTS idx_contact_user_relation ON contact(user_id, relation_id);
 
 -- user_relations: every list starts from from_user_id + status
 -- (connections, paged, counts, search). Composite order matters.
@@ -176,6 +188,11 @@ CREATE INDEX IF NOT EXISTS idx_ur_from_status ON user_relations(from_user_id, st
 CREATE INDEX IF NOT EXISTS idx_ur_to_status ON user_relations(to_user_id, status);
 CREATE INDEX IF NOT EXISTS idx_ur_relation ON user_relations(relation_id);
 CREATE INDEX IF NOT EXISTS idx_ur_status ON user_relations(status);
+-- Covering indexes for the 100k-user hot paths: paged + relation-IN filter
+-- + GROUP BY all resolve from the index without heap fetches; reverse
+-- lookups (pending/sent/counts-of) use the to_user leg.
+CREATE INDEX IF NOT EXISTS idx_ur_from_status_rel ON user_relations(from_user_id, status, relation_id);
+CREATE INDEX IF NOT EXISTS idx_ur_to_status_from ON user_relations(to_user_id, status, from_user_id);
 
 -- user_sessions: lookup by owner for session listing / revocation.
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);

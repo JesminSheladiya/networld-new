@@ -122,7 +122,7 @@ public class ContactController {
     @GetMapping("/paginated")
     public Page<ContactDTO> getContactsPaginated(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails userDetails) {
         User user = getCurrentUser(userDetails);
         Pageable pageable = PageRequest.of(page, size);
@@ -180,7 +180,7 @@ public class ContactController {
             @RequestParam(required = false) String email,
             @RequestParam(required = false) Long relationId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails userDetails) {
         User user = getCurrentUser(userDetails);
         Page<Contact> contacts =

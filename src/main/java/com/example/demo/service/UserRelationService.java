@@ -4,6 +4,7 @@ import com.example.demo.dto.UserRelationSuggestionDTO;
 import com.example.demo.model.*;
 import com.example.demo.repository.*;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,8 +31,18 @@ public class UserRelationService {
         this.resolver           = resolver;
     }
 
+    // Self-proxy so getInferredSuggestions(Pageable) hits the @Cacheable
+    // proxy instead of bypassing it via a direct this-call.
+    private UserRelationService self;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setSelf(@org.springframework.context.annotation.Lazy UserRelationService self) {
+        this.self = self;
+    }
+
     // User manually sends a relation request
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "suggestions", allEntries = true)
     public void sendRelationRequest(User fromUser, String toEmail, Long relationId) {
         User toUser = userRepository.findByEmail(toEmail)
                 .orElseThrow(() -> new RuntimeException("User not found: " + toEmail));
@@ -78,6 +89,7 @@ public class UserRelationService {
 
     // Accept a manually-sent or suggestion-based PENDING request
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "suggestions", allEntries = true)
     public void acceptRelation(Long id, User currentUser) {
         UserRelation ur = userRelationRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Not found!"));
@@ -122,6 +134,7 @@ public class UserRelationService {
 
     // Edit ONLY the relation of an accepted connection (keeps reverse consistent)
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "suggestions", allEntries = true)
     public void editRelation(Long id, User currentUser, String relationName) {
         UserRelation ur = userRelationRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Not found!"));
@@ -156,6 +169,7 @@ public class UserRelationService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "suggestions", allEntries = true)
     public void declineRelation(Long id, User currentUser) {
         UserRelation ur = userRelationRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Not found!"));
@@ -167,6 +181,21 @@ public class UserRelationService {
         userRelationRepo.save(ur);
     }
 
+    // Lists ship 50 rows per page and never render covers: a single 5MB
+    // phone photo as base64 would stall slow networks past the 15s timeout
+    // (Instagram ships thumbnails in lists, full photos on demand). Covers
+    // load on demand via getProfileOf; oversized legacy avatars are skipped
+    // in lists (initials show) but intact on the profile itself.
+    // New uploads are downscaled client-side (256px avatar), so this branch
+    // only ever triggers for pre-existing oversized rows.
+    static final int LIST_MAX_PHOTO_CHARS = 100_000;
+    private static UserRelationSuggestionDTO slimForList(UserRelationSuggestionDTO dto) {
+        dto.setSuggestedUserCoverImage(null);
+        if (dto.getSuggestedUserProfilePic() != null
+                && dto.getSuggestedUserProfilePic().length() > LIST_MAX_PHOTO_CHARS)
+            dto.setSuggestedUserProfilePic(null);
+        return dto;
+    }
     // Privacy: strip what the target hides from this viewer. Avatar, name,
     // username, gender and bio always stay visible (relation pickers and
     // lists need gender everywhere — privacy applies on profile pages only).
@@ -215,7 +244,7 @@ public class UserRelationService {
                             rel.getIndianRelation(),
                             name + " wants to add you as their " + rel.getRelationName(),
                             "PENDING");
-                    return applyProfilePrivacy(currentUser.getEmail(), s, false, dto);
+                    return slimForList(applyProfilePrivacy(currentUser.getEmail(), s, false, dto));
                 }).collect(Collectors.toList());
     }
 
@@ -239,12 +268,65 @@ public class UserRelationService {
                             rel.getIndianRelation(),
                             "You asked " + name + " to be your " + rel.getRelationName(),
                             "PENDING");
-                    return applyProfilePrivacy(currentUser.getEmail(), t, false, dto);
+                    return slimForList(applyProfilePrivacy(currentUser.getEmail(), t, false, dto));
                 }).collect(Collectors.toList());
     }
 
+    // Paged variants: 10k-item tabs render 20 rows, not 10k DOM nodes.
+    public Page<UserRelationSuggestionDTO> getPendingRequests(User currentUser, Pageable pageable) {
+        return userRelationRepo.findByToUserAndStatus(currentUser, "PENDING", pageable)
+                .map(ur -> {
+                    User s = ur.getFromUser();
+                    String name = s.getFullName() != null ? s.getFullName() : s.getDisplayName();
+                    Relation rel = ur.getRelation();
+                    UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
+                            ur.getId(), name, s.getDisplayName(), s.getEmail(), s.getPhone(), s.getProfilePicture(),
+                            s.getCoverImage(),
+                            s.getGender(), s.getBirthDate(), s.getBio(), s.getOccupation(),
+                            rel.getRelationName(),
+                            rel.getEnglishRelation(),
+                            rel.getIndianRelation(),
+                            name + " wants to add you as their " + rel.getRelationName(),
+                            "PENDING");
+                    return slimForList(applyProfilePrivacy(currentUser.getEmail(), s, false, dto));
+                });
+    }
+
+    public Page<UserRelationSuggestionDTO> getSentRequests(User currentUser, Pageable pageable) {
+        return userRelationRepo.findByFromUserAndStatus(currentUser, "PENDING", pageable)
+                .map(ur -> {
+                    User t = ur.getToUser();
+                    String name = t.getFullName() != null ? t.getFullName() : t.getDisplayName();
+                    Relation rel = ur.getRelation();
+                    UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
+                            ur.getId(), name, t.getDisplayName(), t.getEmail(), t.getPhone(), t.getProfilePicture(),
+                            t.getCoverImage(),
+                            t.getGender(), t.getBirthDate(), t.getBio(), t.getOccupation(),
+                            rel.getRelationName(),
+                            rel.getEnglishRelation(),
+                            rel.getIndianRelation(),
+                            "You asked " + name + " to be your " + rel.getRelationName(),
+                            "PENDING");
+                    return slimForList(applyProfilePrivacy(currentUser.getEmail(), t, false, dto));
+                });
+    }
+
+    public long countPendingRequests(User currentUser) {
+        return userRelationRepo.countByToUserAndStatus(currentUser, "PENDING");
+    }
+
+    public long countSentRequests(User currentUser) {
+        return userRelationRepo.countByFromUserAndStatus(currentUser, "PENDING");
+    }
+
+    // Badge total without regen: counts stored SUGGESTED rows (regen
+    // recomputes them on list read; the badge must never trigger a regen).
+    public long countInferredSuggestions(User currentUser) {
+        return userRelationRepo.countByFromUserAndStatus(currentUser, "SUGGESTED");
+    }
     // Sender withdraws their own outgoing PENDING request.
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "suggestions", allEntries = true)
     public void cancelSentRequest(Long id, User currentUser) {
         UserRelation ur = userRelationRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Not found!"));
@@ -285,15 +367,16 @@ public class UserRelationService {
                     null, "ACCEPTED");
         boolean visibleToViewer = viewerConnEmailsOrNull == null
                 || (o.getEmail() != null && viewerConnEmailsOrNull.contains(o.getEmail().toLowerCase()));
-        return applyProfilePrivacy(viewerEmail, o, visibleToViewer, dto);
+        return slimForList(applyProfilePrivacy(viewerEmail, o, visibleToViewer, dto));
         }).collect(Collectors.toList());
     }
 
-    // Any user's accepted connections (accept creates reverse rows, so this
-    // is complete for every user — no private filtering by design).
-    // Shape: { total, items }. Items the viewer may not see come back empty
-    // (connections hidden); total always shows. Viewer sees their own all.
-    public java.util.Map<String, Object> getConnectionsOf(String viewerEmail, String email) {
+    // Any user's accepted connections, PAGED in the database (Instagram-style:
+    // millions of followers still open instantly because each page ships only
+    // ~50 small rows, never the whole graph). Shape stays { total, items } so
+    // old clients keep working; new clients pass page/size.
+    // Total always shows; items come back empty when the owner hides them.
+    public java.util.Map<String, Object> getConnectionsOf(String viewerEmail, String email, Pageable pageable) {
         User target = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         boolean self = target.getEmail() != null && viewerEmail != null
@@ -305,29 +388,113 @@ public class UserRelationService {
                     : userRepository.findByEmail(viewerEmail).orElse(null);
             viewerConns = new java.util.HashSet<>();
             if (viewer != null) {
-                for (UserRelation ur : userRelationRepo.findByFromUserAndStatus(viewer, "ACCEPTED")) {
-                    if (ur.getToUser().getEmail() != null)
-                        viewerConns.add(ur.getToUser().getEmail().toLowerCase());
-                }
-                for (UserRelation ur : userRelationRepo.findByToUserAndStatus(viewer, "ACCEPTED")) {
-                    if (ur.getFromUser().getEmail() != null)
-                        viewerConns.add(ur.getFromUser().getEmail().toLowerCase());
-                }
+                // Email-only projections: no entity/photo hydration.
+                viewerConns.addAll(userRelationRepo.findAcceptedToEmails(viewer));
+                viewerConns.addAll(userRelationRepo.findAcceptedFromEmails(viewer));
             }
         }
-        List<UserRelationSuggestionDTO> all =
-                getMyConnections(target, null, viewerEmail, viewerConns);
+        final java.util.Set<String> viewerConnSet = viewerConns;
         boolean connectedToOwner = self || (viewerConns != null
                 && target.getEmail() != null
                 && viewerConns.contains(target.getEmail().toLowerCase()));
-        List<UserRelationSuggestionDTO> visible =
-                target.hidesConnectionsFrom(viewerEmail, connectedToOwner)
-                        ? java.util.List.of()
-                        : all;
+        long total = userRelationRepo.countByFromUserAndStatus(target, "ACCEPTED");
+        List<UserRelationSuggestionDTO> visible;
+        if (target.hidesConnectionsFrom(viewerEmail, connectedToOwner)) {
+            visible = java.util.List.of();
+        } else {
+            Page<UserRelation> page =
+                    userRelationRepo.pageFilteredConnections(target, null, null, true, pageable);
+            visible = page.getContent().stream().map(ur -> {
+                User o = ur.getToUser();
+                String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
+                Relation rel = ur.getRelation();
+                UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
+                        ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                        o.getCoverImage(),
+                        o.getGender(), o.getBirthDate(), o.getBio(), o.getOccupation(),
+                        rel.getRelationName(),
+                        rel.getEnglishRelation(),
+                        rel.getIndianRelation(),
+                        null, "ACCEPTED");
+                boolean visibleToViewer = viewerConnSet == null
+                        || (o.getEmail() != null && viewerConnSet.contains(o.getEmail().toLowerCase()));
+                return slimForList(applyProfilePrivacy(viewerEmail, o, visibleToViewer, dto));
+            }).collect(Collectors.toList());
+        }
         java.util.Map<String, Object> out = new java.util.HashMap<>();
-        out.put("total", all.size());
+        out.put("total", total);
         out.put("items", visible);
         return out;
+    }
+
+    // Legacy unbounded shape kept for old callers — delegates to the paged
+    // version with a single large page. New code must pass a Pageable.
+    public java.util.Map<String, Object> getConnectionsOf(String viewerEmail, String email) {
+        return getConnectionsOf(viewerEmail, email, PageRequest.of(0, 50));
+    }
+
+    // Full profile of ONE user (covers included): lists never ship covers,
+    // so the detail screen fetches them here on demand — 1 small row instead
+    // of 50 heavy ones. Shape matches search-users items, privacy-applied.
+    public java.util.Map<String, Object> getProfileOf(String viewerEmail, String email) {
+        User me = userRepository.findByEmail(viewerEmail).orElse(null);
+        User u = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Optional<UserRelation> fwd = me == null
+                ? Optional.empty() : userRelationRepo.findByFromUserAndToUser(me, u);
+        Optional<UserRelation> rev = me == null
+                ? Optional.empty() : userRelationRepo.findByFromUserAndToUser(u, me);
+        boolean connected = areConnected(me, u);
+        Map<String, Object> item = new HashMap<>();
+        item.put("id", u.getId());
+        item.put("name", u.getFullName() != null ? u.getFullName() : u.getDisplayName());
+        item.put("username", u.getDisplayName());
+        item.put("email", u.getEmail());
+        item.put("profilePic", u.getProfilePicture() != null ? u.getProfilePicture() : "");
+        item.put("coverImage", u.hidesCoverFrom(viewerEmail, connected)
+                ? com.example.demo.util.ImagePrivacy.blurredCoverOrNull(u.getCoverImage())
+                : (u.getCoverImage() != null ? u.getCoverImage() : ""));
+        item.put("coverHidden", u.hidesCoverFrom(viewerEmail, connected));
+        item.put("contactInfoHidden", u.hidesContactInfoFrom(viewerEmail, connected));
+        item.put("phone", u.hidesContactInfoFrom(viewerEmail, connected) ? null : u.getPhone());
+        item.put("gender", u.getGender());
+        item.put("birthDate", u.hidesContactInfoFrom(viewerEmail, connected) ? null : u.getBirthDate());
+        item.put("bio", u.getBio());
+        item.put("occupation", u.getOccupation());
+
+        Long pendingId = null;
+        boolean suggested = false;
+        String suggestedRelation = null;
+        Long relationId = null;
+        if (fwd.isPresent()) {
+            if ("ACCEPTED".equals(fwd.get().getStatus())) {
+                item.put("relationName", fwd.get().getRelation().getRelationName());
+                relationId = fwd.get().getId();
+            } else if ("PENDING".equals(fwd.get().getStatus())) {
+                item.put("pending", "sent");
+                pendingId = fwd.get().getId();
+                item.put("inferredRelation", fwd.get().getRelation().getRelationName());
+            } else if ("SUGGESTED".equals(fwd.get().getStatus())) {
+                suggested = true;
+                suggestedRelation = fwd.get().getRelation().getRelationName();
+            }
+        } else if (rev.isPresent()) {
+            if ("ACCEPTED".equals(rev.get().getStatus())) {
+                item.put("relationName", rev.get().getRelation().getRelationName());
+                if (relationId == null) relationId = rev.get().getId();
+            } else if ("PENDING".equals(rev.get().getStatus())) {
+                item.put("pending", "received");
+                pendingId = rev.get().getId();
+                item.put("inferredRelation", rev.get().getRelation().getRelationName());
+            }
+        }
+        item.put("pendingRelationId", pendingId);
+        item.put("relationId", relationId);
+        item.put("suggested", suggested);
+        if (suggestedRelation != null) {
+            item.put("inferredRelation", suggestedRelation);
+        }
+        return item;
     }
 
     // Category grouping shared with the app tabs, driven by the master
@@ -372,26 +539,56 @@ public class UserRelationService {
                     rel.getEnglishRelation(),
                     rel.getIndianRelation(),
                     null, "ACCEPTED");
-        return applyProfilePrivacy(currentUser.getEmail(), o, true, dto);
+        return slimForList(applyProfilePrivacy(currentUser.getEmail(), o, true, dto));
         });
     }
 
     public Map<String, Long> getConnectionCounts(User currentUser, String query, boolean includePhone) {
         String q = blankToNull(query);
-        List<UserRelation> list = (q == null)
-                ? userRelationRepo.findByFromUserAndStatus(currentUser, "ACCEPTED")
-                : userRelationRepo.searchAcceptedConnections(currentUser, q, includePhone);
-
         Map<String, Long> counts = new HashMap<>();
-        counts.put("all", (long) list.size());
+        if (q == null) {
+            // Fast path: COUNT(*) over the (from_user_id, status) index.
+            // Category buckets come from the GROUP BY query (no entity load).
+            long total = userRelationRepo.countByFromUserAndStatus(currentUser, "ACCEPTED");
+            counts.put("all", total);
+            counts.put("family", 0L);
+            counts.put("inlaws", 0L);
+            counts.put("others", 0L);
+            if (total == 0) return counts;
+            Map<String, String> buckets = relationBucketMap();
+            for (Object[] row : userRelationRepo.countConnectionsByRelation(currentUser, null, includePhone)) {
+                String bucket = buckets.getOrDefault(String.valueOf(row[0]).toLowerCase(), "others");
+                counts.put(bucket, counts.get(bucket) + ((Number) row[1]).longValue());
+            }
+            return counts;
+        }
+        // Filtered path: COUNT(*) with the same LIKE predicates (no entity
+        // hydration) + GROUP BY for buckets.
+        long total = userRelationRepo.countSearchAcceptedConnections(currentUser, q, includePhone);
+        counts.put("all", total);
         counts.put("family", 0L);
         counts.put("inlaws", 0L);
         counts.put("others", 0L);
-        for (UserRelation ur : list) {
-            String cat = categoryOf(ur.getRelation());
-            counts.put(cat, counts.get(cat) + 1);
+        if (total == 0) return counts;
+        Map<String, String> buckets = relationBucketMap();
+        for (Object[] row : userRelationRepo.countConnectionsByRelation(currentUser, q, includePhone)) {
+            String bucket = buckets.getOrDefault(String.valueOf(row[0]).toLowerCase(), "others");
+            counts.put(bucket, counts.get(bucket) + ((Number) row[1]).longValue());
         }
         return counts;
+    }
+
+    // Bucket relation names with ONE master-table read: the old per-row
+    // findByRelationNameIgnoreCase turned every counts call into 1 COUNT +
+    // 1 GROUP BY + N relation lookups (dozens of queries on 4G for users
+    // with many distinct relations — the tab counts lagged the list).
+    private Map<String, String> relationBucketMap() {
+        Map<String, String> m = new HashMap<>();
+        for (Relation r : relationRepository.findAll()) {
+            if (r.getRelationName() != null)
+                m.put(r.getRelationName().toLowerCase(), categoryOf(r));
+        }
+        return m;
     }
 
     public List<Map<String, Object>> getConnectionRelationCounts(User currentUser, String query, boolean includePhone) {
@@ -408,6 +605,15 @@ public class UserRelationService {
 
     @Transactional
     public List<UserRelationSuggestionDTO> getInferredSuggestions(User currentUser) {
+        return self.getCachedSuggestions(currentUser);
+    }
+
+    // Cached regen: the list is recomputed at most once per user per TTL
+    // window (see CacheConfig). Page clicks slice the cached list instead
+    // of re-running a ~1min regen per click on mega-hubs.
+    @org.springframework.cache.annotation.Cacheable(value = "suggestions", key = "#currentUser.id")
+    @Transactional
+    public List<UserRelationSuggestionDTO> getCachedSuggestions(User currentUser) {
         regenerateAllSuggestions(currentUser);
 
         return userRelationRepo.findByFromUserAndStatus(currentUser, "SUGGESTED")
@@ -424,12 +630,37 @@ public class UserRelationService {
                             rel.getIndianRelation(),
                             "Discovered through your network connections",
                             "SUGGESTED");
-                    return applyProfilePrivacy(currentUser.getEmail(), o, false, dto);
+                    return slimForList(applyProfilePrivacy(currentUser.getEmail(), o, false, dto));
                 }).collect(Collectors.toList());
     }
 
+    public Page<UserRelationSuggestionDTO> getInferredSuggestions(User currentUser, Pageable pageable) {
+        // DB-paged read: the old code loaded ALL suggested rows (9.5k entities
+        // with TEXT photo columns) into memory on every page click, after a
+        // full graph regen that times out on 4G for mega-hubs — the badge
+        // showed "9.5k+" while the list stayed empty. Each page now ships only
+        // its own ~50 rows with an index-only COUNT; regen stays on writes
+        // (accept/send/edit) plus the cached full refresh, never on paging.
+        return userRelationRepo.findByFromUserAndStatus(currentUser, "SUGGESTED", pageable)
+                .map(ur -> {
+                    User o = ur.getToUser();
+                    String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
+                    Relation rel = ur.getRelation();
+                    UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
+                            ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                            o.getCoverImage(),
+                            o.getGender(), o.getBirthDate(), o.getBio(), o.getOccupation(),
+                            rel.getRelationName(),
+                            rel.getEnglishRelation(),
+                            rel.getIndianRelation(),
+                            "Discovered through your network connections",
+                            "SUGGESTED");
+                    return slimForList(applyProfilePrivacy(currentUser.getEmail(), o, false, dto));
+                });
+    }
     // Send a request based on a system suggestion → PENDING (not auto-accepted)
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "suggestions", allEntries = true)
     public void sendInferredSuggestionRequest(User currentUser, String otherEmail, String relationName) {
         User otherUser = userRepository.findByEmail(otherEmail)
                 .orElseThrow(() -> new RuntimeException("User not found!"));
@@ -503,6 +734,7 @@ public class UserRelationService {
     }
 
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "suggestions", allEntries = true)
     public void dismissSuggestion(Long id, User currentUser) {
         userRelationRepo.findById(id).ifPresent(ur -> {
             if (ur.getFromUser().getId().equals(currentUser.getId())) {
@@ -526,6 +758,19 @@ public class UserRelationService {
         userRelationRepo.lockSuggestionRegeneration(48201927L);
         userRelationRepo.deleteAllSuggestionsFor(me);
 
+        // Bulk pair snapshot: 2 queries replace 2-per-candidate lookups
+        // (200k SELECTs at 100k users). Post-delete, outgoing rows can never
+        // be SUGGESTED, so every surviving candidate is an insert (the old
+        // update-branch was dead code).
+        Map<Long, String> fwdStatus = new HashMap<>();
+        for (Object[] row : userRelationRepo.findOutgoingIdStatus(me)) {
+            fwdStatus.put((Long) row[0], (String) row[1]);
+        }
+        Map<Long, String> revStatus = new HashMap<>();
+        for (Object[] row : userRelationRepo.findIncomingIdStatus(me)) {
+            revStatus.put((Long) row[0], (String) row[1]);
+        }
+
         List<UserRelation> accepted = userRelationRepo.findByStatus("ACCEPTED");
         Map<Long, RelationshipResolver.RelResult> resolvedMap = resolver.resolveAll(accepted, me);
 
@@ -541,24 +786,29 @@ public class UserRelationService {
         Map<Long, Map<Long, RelationshipResolver.RelResult>> inferredCache = new HashMap<>();
         Map<String, Relation> relationCache = new HashMap<>();
 
-        List<User> allUsers = userRepository.findAll();
+        // Id-only scan: hydrating 100k full User entities (with TEXT photo
+        // columns) per regen is MBs of garbage; per-candidate work uses a
+        // lazy reference (id only — composeChain/refine touch nothing else
+        // until a finalist is found).
+        List<Long> candidateIds = userRepository.findAllIdsExcept(me.getId());
 
-        for (User other : allUsers) {
-            if (other.getId().equals(me.getId())) continue;
+        // Bulk insert at the end: one flush instead of per-row save + an
+        // ever-growing persistence context.
+        List<UserRelation> toInsert = new ArrayList<>();
 
-            Optional<UserRelation> existing = userRelationRepo.findByFromUserAndToUser(me, other);
-            if (existing.isPresent() && !"SUGGESTED".equals(existing.get().getStatus())) continue;
+        for (Long otherId : candidateIds) {
+            String fs = fwdStatus.get(otherId);
+            if (fs != null && !"SUGGESTED".equals(fs)) continue;
 
-            Optional<UserRelation> reverseExisting = userRelationRepo.findByFromUserAndToUser(other, me);
-            if (reverseExisting.isPresent() && !"SUGGESTED".equals(reverseExisting.get().getStatus())) continue;
+            String rs = revStatus.get(otherId);
+            if (rs != null && !"SUGGESTED".equals(rs)) continue;
 
-            RelationshipResolver.RelResult result = resolvedMap.get(other.getId());
+            RelationshipResolver.RelResult result = resolvedMap.get(otherId);
 
             String genericName = (result == null) ? null : result.otherToMe;
-            Optional<Relation> genericRel = (genericName == null) ? Optional.empty()
-                    : relationRepository.findByRelationNameIgnoreCase(genericName);
-            if (genericRel.isEmpty() && genericName != null) {
-                genericRel = relationRepository.findByEnglishRelationIgnoreCase(genericName);
+            Relation genericRel = (genericName == null) ? null : relationOf(genericName, relationCache);
+            if (genericRel == null && genericName != null) {
+                genericRel = relationOfEnglish(genericName, relationCache);
             }
 
             // Distant/unnamed pairs get a descriptive chain ("Brother's
@@ -569,40 +819,48 @@ public class UserRelationService {
             // different seats in Indian kinship), while the composed chain
             // names the actual path exactly. Chains only win when a curated
             // master row matches; otherwise the generic stands.
-            boolean keepGeneric = genericRel.isPresent()
-                    && Boolean.TRUE.equals(genericRel.get().getIsBlood());
+            boolean keepGeneric = genericRel != null
+                    && Boolean.TRUE.equals(genericRel.getIsBlood());
+            User otherRef = userRepository.getReferenceById(otherId);
             String chainName = keepGeneric ? null
-                    : composeChain(me, other, resolvedMap, accepted, adjLabels, usersById,
+                    : composeChain(me, otherRef, resolvedMap, accepted, adjLabels, usersById,
                             inferredCache, relationCache);
 
             String finalName;
             if (chainName != null) {
                 finalName = chainName;
-            } else if (genericRel.isPresent()) {
+            } else if (genericRel != null) {
                 finalName = genericName;
             } else {
                 continue;
             }
 
-            Optional<Relation> finalRel = relationRepository.findByRelationNameIgnoreCase(finalName);
-            if (finalRel.isEmpty()) {
-                finalRel = relationRepository.findByEnglishRelationIgnoreCase(finalName);
+            Relation finalRel = relationOf(finalName, relationCache);
+            if (finalRel == null) {
+                finalRel = relationOfEnglish(finalName, relationCache);
             }
-            if (finalRel.isEmpty()) continue;
+            if (finalRel == null) continue;
             // Younger/Elder precision on suggestions too (describer = me).
-            finalRel = Optional.of(refineSiblingByAge(finalRel.get(), me, other));
+            // Proxy SELECT fires here only for actual finalists (few).
+            finalRel = refineSiblingByAge(finalRel, me, otherRef);
 
-            if (existing.isPresent()) {
-                UserRelation ur = existing.get();
-                ur.setRelation(finalRel.get());
-                userRelationRepo.save(ur);
-            } else {
-                userRelationRepo.save(new UserRelation(me, other, finalRel.get(), "SUGGESTED"));
-            }
+            toInsert.add(new UserRelation(me, otherRef, finalRel, "SUGGESTED"));
         }
+        userRelationRepo.saveAll(toInsert);
+    }
+
+    // Cached english_relation fallback (relationCache holds nulls too, so a
+    // second lookup for the same miss stays free).
+    private Relation relationOfEnglish(String name, Map<String, Relation> relationCache) {
+        String key = "en:" + name.toLowerCase();
+        if (relationCache.containsKey(key)) return relationCache.get(key);
+        Relation rel = relationRepository.findByEnglishRelationIgnoreCase(name).orElse(null);
+        relationCache.put(key, rel);
+        return rel;
     }
 
     // First-link categories for chain composition: simple blood ties only.
+    private static final int MAX_BRIDGE_INFERENCES_PER_REGEN = 8;
     // Spouse/in-law/nibling/cousin links are excluded (spouse-led chains
     // collapse into existing in-law rows; compound words like "Brother Son"
     // read poorly as chain heads). Piblings ARE included — uncle/aunt-led
@@ -648,7 +906,15 @@ public class UserRelationService {
         java.util.Map<Long, String> myLabels =
                 adjLabels.getOrDefault(me.getId(), java.util.Collections.emptyMap());
 
+        // Bound: accepted bridges sort first, then cap the scan. Distant
+        // candidates beyond the cap keep the generic label — at 100k users
+        // an unbounded scan is 100k candidates × N bridges with a full
+        // Dijkstra per bridge (the regen hang).
+        final int MAX_BRIDGES_PER_CANDIDATE = 40;
+        int scanned = 0;
+
         for (Long bridgeId : bridges) {
+            if (scanned >= MAX_BRIDGES_PER_CANDIDATE) break;
             RelationshipResolver.RelResult head = egoMap.get(bridgeId);
             if (head == null || head.otherToMe == null) continue;
             // Head wordings to try: the resolver's label plus my own chosen
@@ -665,15 +931,42 @@ public class UserRelationService {
                 if (syn != null) headForms.add(syn);
             }
 
+            // Head gate FIRST (cached master lookups only): the expensive
+            // second-link resolution below runs solely for bridges that can
+            // actually head a chain.
+            java.util.List<String[]> passingPairs = new java.util.ArrayList<>();
+            for (String hf : headForms) {
+                Relation hr = relationOf(hf, relationCache);
+                // Gate on the REAL row; synonyms inherit it (a synonym is
+                // not itself a master row, so it can never pass the gate).
+                if (!isChainHead(hr)) continue;
+                passingPairs.add(new String[]{hf, hf});
+                String syn = PIBLING_SYNONYMS.get(hf.toLowerCase());
+                if (syn != null) passingPairs.add(new String[]{syn, hf});
+                // Married-in pibling heads (Chachi, Mami, Fufa, Mausa,
+                // Tai) carry the spouse suffix — the bloodline is the
+                // head minus that suffix ("Father Sister Husband" +
+                // "Son" is really "Father Sister's Son" = Fufera Bhai).
+                String stripped = strippedPiblingHead(hf, hr);
+                if (stripped != null) passingPairs.add(new String[]{stripped, hf});
+            }
+            if (passingPairs.isEmpty()) continue;
+            scanned++;
+
             // Second link: bridge's own accepted wording first, else bridge's inference.
+            // Runs only for gate-passing bridges; bridge Dijkstra results are
+            // shared across all candidates via inferredCache.
             String tailName = adjLabels.getOrDefault(bridgeId, java.util.Collections.emptyMap())
                     .get(other.getId());
             if (tailName == null) {
                 User bridge = usersById.get(bridgeId);
                 if (bridge == null) continue;
-                Map<Long, RelationshipResolver.RelResult> bridgeMap =
-                        inferredCache.computeIfAbsent(bridgeId,
-                                k -> resolver.resolveAll(accepted, bridge));
+                Map<Long, RelationshipResolver.RelResult> bridgeMap = inferredCache.get(bridgeId);
+                if (bridgeMap == null) {
+                    if (inferredCache.size() >= MAX_BRIDGE_INFERENCES_PER_REGEN) continue;
+                    bridgeMap = resolver.resolveAll(accepted, bridge);
+                    inferredCache.put(bridgeId, bridgeMap);
+                }
                 RelationshipResolver.RelResult tail = bridgeMap.get(other.getId());
                 if (tail == null || tail.otherToMe == null) continue;
                 tailName = tail.otherToMe;
@@ -690,26 +983,8 @@ public class UserRelationService {
             // Sister-in-law" still describes her exactly).
             String tailGeneric = tailName;
             Optional<Relation> hit = Optional.empty();
-            for (String hf : headForms) {
-                Relation hr = relationOf(hf, relationCache);
-                // Gate on the REAL row; synonyms inherit it (a synonym is
-                // not itself a master row, so it can never pass the gate).
-                if (!isChainHead(hr)) continue;
-                hit = findChainRowCandidate(hf, tailGeneric);
-                if (hit.isEmpty()) {
-                    String syn = PIBLING_SYNONYMS.get(hf.toLowerCase());
-                    if (syn != null) hit = findChainRowCandidate(syn, tailGeneric);
-                }
-                if (hit.isEmpty()) {
-                    // Married-in pibling heads (Chachi, Mami, Fufa, Mausa,
-                    // Tai) carry the spouse suffix — the bloodline is the
-                    // head minus that suffix ("Father Sister Husband" +
-                    // "Son" is really "Father Sister's Son" = Fufera Bhai).
-                    String stripped = strippedPiblingHead(hf, hr);
-                    if (stripped != null) {
-                        hit = findChainRowCandidate(stripped, tailGeneric);
-                    }
-                }
+            for (String[] pair : passingPairs) {
+                hit = findChainRowCandidate(pair[0], tailGeneric, relationCache);
                 if (hit.isPresent()) break;
             }
             if (hit.isPresent()) return hit.get().getRelationName();
@@ -743,7 +1018,22 @@ public class UserRelationService {
     // relation_name first, then english_relation (first-order chains like
     // "Brother's Wife" live there), then the same two with a parenthesized
     // tail generalized ("Sister-in-law (Husband's Sister)" → "Sister-in-law").
+    // Results cached (nulls included) — the same head/tail pair recurs
+    // across thousands of candidates during regen.
+    private Optional<Relation> findChainRowCandidate(String head, String tailGeneric,
+            Map<String, Relation> relationCache) {
+        String key = "chain:" + head.toLowerCase() + "|" + tailGeneric.toLowerCase();
+        if (relationCache.containsKey(key)) return Optional.ofNullable(relationCache.get(key));
+        Optional<Relation> hit = findChainRowCandidateUncached(head, tailGeneric);
+        relationCache.put(key, hit.orElse(null));
+        return hit;
+    }
+
     private Optional<Relation> findChainRowCandidate(String head, String tailGeneric) {
+        return findChainRowCandidateUncached(head, tailGeneric);
+    }
+
+    private Optional<Relation> findChainRowCandidateUncached(String head, String tailGeneric) {
         String candidate = head + "'s " + tailGeneric;
         Optional<Relation> hit = relationRepository.findByRelationNameIgnoreCase(candidate);
         if (hit.isPresent()) return hit;

@@ -37,7 +37,7 @@ public class ContactSpecification {
             }
 
             if (relationId != null) {
-                predicates.add(cb.equal(root.get("relation"), relationId));
+                predicates.add(cb.equal(root.get("relation").get("id"), relationId));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

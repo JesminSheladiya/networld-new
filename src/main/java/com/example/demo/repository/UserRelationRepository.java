@@ -5,6 +5,7 @@ import com.example.demo.model.UserRelation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
@@ -15,14 +16,78 @@ import java.util.Optional;
 
 public interface UserRelationRepository extends JpaRepository<UserRelation, Long> {
 
+    // 10k-user lists (pending/sent/connections tabs) hydrate fromUser,
+    // toUser and relation per row — without the graph each row costs 3
+    // extra SELECTs (30k queries for a 10k list = the "lag/crash").
+    @EntityGraph(attributePaths = {"fromUser", "toUser", "relation"})
     List<UserRelation> findByFromUser(User fromUser);
+    @EntityGraph(attributePaths = {"fromUser", "toUser", "relation"})
     List<UserRelation> findByToUser(User toUser);
+    @EntityGraph(attributePaths = {"fromUser", "toUser", "relation"})
     List<UserRelation> findByFromUserAndStatus(User fromUser, String status);
+    @EntityGraph(attributePaths = {"fromUser", "toUser", "relation"})
     List<UserRelation> findByToUserAndStatus(User toUser, String status);
+    // Paged variants bound DOM + payload for 10k-item tabs (default 20).
+    @EntityGraph(attributePaths = {"fromUser", "toUser", "relation"})
+    Page<UserRelation> findByToUserAndStatus(User toUser, String status, Pageable pageable);
+    @EntityGraph(attributePaths = {"fromUser", "toUser", "relation"})
+    Page<UserRelation> findByFromUserAndStatus(User fromUser, String status, Pageable pageable);
+    // Badge/tab totals without hydrating entities.
+    long countByToUserAndStatus(User toUser, String status);
     Optional<UserRelation> findByFromUserAndToUser(User fromUser, User toUser);
+    @EntityGraph(attributePaths = {"fromUser", "toUser", "relation"})
     List<UserRelation> findByStatus(String status);
 
-    Page<UserRelation> findByFromUserAndStatus(User fromUser, String status, Pageable pageable);
+    // Cheap total for the unfiltered counts tab — COUNT(*) over the
+    // (from_user_id, status) index instead of loading full entities.
+    long countByFromUserAndStatus(User fromUser, String status);
+
+    // Bulk pair lookups for suggestion regen: 2 queries instead of 2 per
+    // candidate user (200k queries at 100k users = the regen "crash").
+    // Returns [otherUserId, status] rows for all pairs touching me.
+    @Query("SELECT ur.toUser.id, ur.status FROM UserRelation ur WHERE ur.fromUser = :me")
+    List<Object[]> findOutgoingIdStatus(@Param("me") User me);
+
+    @Query("SELECT ur.fromUser.id, ur.status FROM UserRelation ur WHERE ur.toUser = :me")
+    List<Object[]> findIncomingIdStatus(@Param("me") User me);
+
+    // Candidate scan without hydrating 100k full User entities (ids only;
+    // per-candidate entity is attached lazily via getReferenceById).
+    @Query("SELECT u.id FROM User u WHERE u.id <> :excludedId")
+    List<Long> findAllIdsExcept(@Param("excludedId") Long excludedId);
+
+    // Cheap filtered total for the counts tab — same predicates as
+    // searchAcceptedConnections but COUNT only (no entity hydration, no N+1).
+    // Parens matter: the OR legs must stay inside the fromUser/status scope.
+    @Query("""
+        SELECT COUNT(ur) FROM UserRelation ur
+        WHERE ur.fromUser = :fromUser
+          AND ur.status = 'ACCEPTED'
+          AND (LOWER(ur.toUser.fullName)  LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(ur.toUser.username)  LIKE LOWER(CONCAT('%', :query, '%'))
+            OR (:includePhone = TRUE AND LOWER(ur.toUser.phone) LIKE LOWER(CONCAT('%', :query, '%'))))
+    """)
+    long countSearchAcceptedConnections(
+            @Param("fromUser") User fromUser,
+            @Param("query") String query,
+            @Param("includePhone") boolean includePhone
+    );
+
+    // Lightweight email sets for the connections-of viewer check: the old
+    // code hydrated two full ACCEPTED entity lists (with TEXT photo columns
+    // via the EntityGraph) just to build a lowercased-email set. At 10k
+    // connections × 4G that is the profile-connections lag; at 1M it OOMs.
+    @Query("""
+        SELECT LOWER(ur.toUser.email) FROM UserRelation ur
+        WHERE ur.fromUser = :viewer AND ur.status = 'ACCEPTED'
+    """)
+    List<String> findAcceptedToEmails(@Param("viewer") User viewer);
+
+    @Query("""
+        SELECT LOWER(ur.fromUser.email) FROM UserRelation ur
+        WHERE ur.toUser = :viewer AND ur.status = 'ACCEPTED'
+    """)
+    List<String> findAcceptedFromEmails(@Param("viewer") User viewer);
 
     // Suggestions are owned per-sender: each user regenerates ONLY their own
     // outgoing rows (incoming rows belong to the other side's regeneration —
@@ -89,6 +154,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
     // Server-side category filter, driven by the master relation_category
     // column: INLAW -> inlaws, OTHER -> others, everything else -> family.
     // New relations only need the correct category — no query changes required.
+    @EntityGraph(attributePaths = {"toUser", "relation"})
     @Query("""
         SELECT ur FROM UserRelation ur
         JOIN ur.relation r
@@ -111,6 +177,7 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
             Pageable pageable
     );
 
+    @EntityGraph(attributePaths = {"toUser", "relation"})
     @Query("""
         SELECT ur FROM UserRelation ur
         JOIN ur.relation r

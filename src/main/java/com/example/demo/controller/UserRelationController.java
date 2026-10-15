@@ -41,12 +41,26 @@ public class UserRelationController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    // Oversized legacy photos are skipped in multi-row responses (initials
+    // show instead) — same 100k-char bound as slimForList. New uploads are
+    // downscaled client-side and capped server-side (see AuthService).
+    private static String slimListPhoto(String base64) {
+        if (base64 == null || base64.isEmpty()) return "";
+        return base64.length() > 100_000 ? "" : base64;
+    }
+
     @GetMapping("/search-users")
     public ResponseEntity<List<Map<String, Object>>> searchUsers(
             @RequestParam String query,
             @AuthenticationPrincipal UserDetails ud) {
         User me = getCurrentUser(ud);
-        List<User> users = userRepository.searchUsers(query, me.getId());
+        String q = query == null ? "" : query.trim();
+        // Guard: short queries on 100k users = full-table trigram scan per
+        // keystroke. Frontend debounces at 350ms and skips empty queries.
+        if (q.length() < 2) return ResponseEntity.ok(List.of());
+        // Hard cap: search-users is a typeahead, not a full dump.
+        List<User> users = userRepository.searchUsers(
+                q, me.getId(), org.springframework.data.domain.PageRequest.of(0, 20));
         List<Map<String, Object>> result = new ArrayList<>();
         for (User u : users) {
             Map<String, Object> item = new HashMap<>();
@@ -59,10 +73,10 @@ public class UserRelationController {
             item.put("name",       u.getFullName() != null ? u.getFullName() : u.getDisplayName());
             item.put("username",   u.getDisplayName());
             item.put("email",      u.getEmail());
-            item.put("profilePic", u.getProfilePicture() != null ? u.getProfilePicture() : "");
-            item.put("coverImage", u.hidesCoverFrom(me.getEmail(), connected)
-                    ? com.example.demo.util.ImagePrivacy.blurredCoverOrNull(u.getCoverImage())
-                    : (u.getCoverImage() != null ? u.getCoverImage() : ""));
+            item.put("profilePic", slimListPhoto(u.getProfilePicture()));
+            // Typeahead rows never render covers — the detail screen fetches
+            // them on demand via GET /profile (see slimForList rationale).
+            item.put("coverImage", "");
             item.put("coverHidden", u.hidesCoverFrom(me.getEmail(), connected));
             item.put("contactInfoHidden", u.hidesContactInfoFrom(me.getEmail(), connected));
             item.put("phone",      u.hidesContactInfoFrom(me.getEmail(), connected) ? null : u.getPhone());
@@ -152,16 +166,39 @@ public class UserRelationController {
     }
 
     @GetMapping("/pending")
-    public ResponseEntity<List<UserRelationSuggestionDTO>> getPending(
+    public ResponseEntity<Page<UserRelationSuggestionDTO>> getPending(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails ud) {
-        return ResponseEntity.ok(userRelationService.getPendingRequests(getCurrentUser(ud)));
+        // Bounded pages: the old unbounded list shipped 10k rows (5MB+ DOM).
+        int safeSize = Math.min(100, Math.max(1, size));
+        Pageable pageable = PageRequest.of(Math.max(0, page), safeSize);
+        return ResponseEntity.ok(userRelationService.getPendingRequests(getCurrentUser(ud), pageable));
+    }
+
+    @GetMapping("/pending/count")
+    public ResponseEntity<Map<String, Long>> getPendingCount(
+            @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(Map.of("count",
+                userRelationService.countPendingRequests(getCurrentUser(ud))));
     }
 
     // Outgoing requests I sent that are still pending (for the Sent tab).
     @GetMapping("/sent")
-    public ResponseEntity<List<UserRelationSuggestionDTO>> getSent(
+    public ResponseEntity<Page<UserRelationSuggestionDTO>> getSent(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails ud) {
-        return ResponseEntity.ok(userRelationService.getSentRequests(getCurrentUser(ud)));
+        int safeSize = Math.min(100, Math.max(1, size));
+        Pageable pageable = PageRequest.of(Math.max(0, page), safeSize);
+        return ResponseEntity.ok(userRelationService.getSentRequests(getCurrentUser(ud), pageable));
+    }
+
+    @GetMapping("/sent/count")
+    public ResponseEntity<Map<String, Long>> getSentCount(
+            @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(Map.of("count",
+                userRelationService.countSentRequests(getCurrentUser(ud))));
     }
 
     // Sender withdraws their own outgoing PENDING request.
@@ -175,11 +212,25 @@ public class UserRelationController {
         return ResponseEntity.ok(resp);
     }
 
-    // Returns system-inferred SUGGESTED entries
+    // Returns system-inferred SUGGESTED entries (paged; regen result is
+    // cached per user per TTL window so page clicks don't re-run regen).
     @GetMapping("/suggestions")
-    public ResponseEntity<List<UserRelationSuggestionDTO>> getSuggestions(
+    public ResponseEntity<Page<UserRelationSuggestionDTO>> getSuggestions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails ud) {
-        return ResponseEntity.ok(userRelationService.getInferredSuggestions(getCurrentUser(ud)));
+        int safeSize = Math.min(100, Math.max(1, size));
+        Pageable pageable = PageRequest.of(Math.max(0, page), safeSize);
+        return ResponseEntity.ok(userRelationService.getInferredSuggestions(getCurrentUser(ud), pageable));
+    }
+
+    // Badge total without regen (the list endpoint regenerates; badges and
+    // background polls must never trigger a ~1min regen on mega-hubs).
+    @GetMapping("/suggestions/count")
+    public ResponseEntity<Map<String, Long>> getSuggestionsCount(
+            @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(Map.of("count",
+                userRelationService.countInferredSuggestions(getCurrentUser(ud))));
     }
 
     @GetMapping("/connections")
@@ -189,12 +240,28 @@ public class UserRelationController {
         return ResponseEntity.ok(userRelationService.getMyConnections(getCurrentUser(ud), query));
     }
 
+    // Single full profile (covers included) for the detail screen: lists
+    // never ship covers, so this 1-row fetch fills them on demand.
+    @GetMapping("/profile")
+    public ResponseEntity<java.util.Map<String, Object>> getProfile(
+            @RequestParam String email,
+            @AuthenticationPrincipal UserDetails ud) {
+        getCurrentUser(ud); // authenticated only
+        return ResponseEntity.ok(userRelationService.getProfileOf(ud.getUsername(), email));
+    }
+
     @GetMapping("/connections/of")
     public ResponseEntity<java.util.Map<String, Object>> getConnectionsOf(
             @RequestParam String email,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
             @AuthenticationPrincipal UserDetails ud) {
         getCurrentUser(ud); // authenticated only; no private filtering by design
-        return ResponseEntity.ok(userRelationService.getConnectionsOf(ud.getUsername(), email));
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(1000, Math.max(1, size));
+        return ResponseEntity.ok(userRelationService.getConnectionsOf(
+                ud.getUsername(), email,
+                org.springframework.data.domain.PageRequest.of(safePage, safeSize)));
     }
 
     @GetMapping("/connections/paged")
@@ -207,7 +274,16 @@ public class UserRelationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserDetails ud) {
-        Pageable pageable = PageRequest.of(page, size, toSort(sort));
+        // Clamp: unbounded size (frontend offers up to 1000) × concurrent
+        // users = multi-MB pages + expensive COUNT(*) with LIKE predicates.
+        // 50/100/200/500/1000 options keep desktop fast and mobile (50/page
+        // infinite scroll) chatty-free on 4G.
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(1000, Math.max(1, size));
+        if (relations != null && relations.size() > 50) {
+            relations = relations.subList(0, 50);
+        }
+        Pageable pageable = PageRequest.of(safePage, safeSize, toSort(sort));
         return ResponseEntity.ok(userRelationService.getMyConnectionsPaged(
                 getCurrentUser(ud), query, category, relations, includePhone, pageable));
     }
@@ -238,7 +314,7 @@ public class UserRelationController {
             case "phone":    property = "toUser.phone"; break;
             case "username": property = "toUser.username"; break;
             case "email":    property = "toUser.email"; break;
-            case "relation": property = "r.relationName"; break;
+            case "relation": property = "relation.relationName"; break;
             case "name":
             default:         property = "toUser.fullName"; break;
         }

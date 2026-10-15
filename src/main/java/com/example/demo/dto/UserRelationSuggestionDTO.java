@@ -82,6 +82,7 @@ public class UserRelationSuggestionDTO {
     // Privacy stripping (setters used by the service, never at construction).
     // Bio + avatar + name + gender stay public by design — no setters for those.
     public void setSuggestedUserCoverImage(String v) { this.suggestedUserCoverImage = v; }
+    public void setSuggestedUserProfilePic(String v) { this.suggestedUserProfilePic = v; }
     public void setSuggestedUserPhone(String v)      { this.suggestedUserPhone = v; }
     public void setSuggestedUserBirthDate(java.time.LocalDate v) { this.suggestedUserBirthDate = v; }
 }

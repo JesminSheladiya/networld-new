@@ -518,11 +518,23 @@ public class AuthService {
         if (req.getOccupation() != null)
             u.setOccupation(validateOccupation(req.getOccupation()));
 
-        if (req.getProfilePicture() != null)
-            u.setProfilePicture(req.getProfilePicture());
+        // Server-side size caps (frontend downscales to 256px avatar /
+        // 960px cover first — these only catch API bypasses). Without caps a
+        // single 5MB phone photo as base64 would ride along in every 50-row
+        // list page and stall slow networks past the 15s timeout.
+        if (req.getProfilePicture() != null) {
+            String pic = req.getProfilePicture();
+            if (!pic.isEmpty() && pic.length() > 200_000)
+                throw new RuntimeException("Profile photo is too large — please choose a smaller image.");
+            u.setProfilePicture(pic);
+        }
 
-        if (req.getCoverImage() != null)
-            u.setCoverImage(req.getCoverImage());
+        if (req.getCoverImage() != null) {
+            String cover = req.getCoverImage();
+            if (!cover.isEmpty() && cover.length() > 500_000)
+                throw new RuntimeException("Cover photo is too large — please choose a smaller image.");
+            u.setCoverImage(cover);
+        }
 
         if (req.getHideCover() != null)
             u.setHideCover(req.getHideCover());
