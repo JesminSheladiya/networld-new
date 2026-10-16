@@ -46,10 +46,11 @@ public class UserRelationController {
             @RequestParam String query,
             @AuthenticationPrincipal UserDetails ud) {
         User me = getCurrentUser(ud);
-        String q = query == null ? "" : query.trim();
-        // Guard: short queries on 100k users = full-table trigram scan per
-        // keystroke. Frontend debounces at 350ms and skips empty queries.
-        if (q.length() < 2) return ResponseEntity.ok(List.of());
+        // Keep one-character searches useful (e.g. "a"), while still
+        // avoiding an unbounded empty-query scan. The frontend debounces and
+        // the result remains capped below.
+        String q = query == null ? "" : query.trim().replaceAll("\\s+", " ");
+        if (q.isEmpty()) return ResponseEntity.ok(List.of());
         // Hard cap: search-users is a typeahead, not a full dump.
         List<User> users = userRepository.searchUsers(
                 q, me.getId(), org.springframework.data.domain.PageRequest.of(0, 20));
@@ -167,7 +168,7 @@ public class UserRelationController {
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails ud) {
         // Bounded pages: the old unbounded list shipped 10k rows (5MB+ DOM).
-        int safeSize = Math.min(100, Math.max(1, size));
+        int safeSize = Math.min(1000, Math.max(1, size));
         Pageable pageable = PageRequest.of(Math.max(0, page), safeSize);
         return ResponseEntity.ok(userRelationService.getPendingRequests(getCurrentUser(ud), pageable));
     }
@@ -185,7 +186,7 @@ public class UserRelationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails ud) {
-        int safeSize = Math.min(100, Math.max(1, size));
+        int safeSize = Math.min(1000, Math.max(1, size));
         Pageable pageable = PageRequest.of(Math.max(0, page), safeSize);
         return ResponseEntity.ok(userRelationService.getSentRequests(getCurrentUser(ud), pageable));
     }
@@ -215,7 +216,7 @@ public class UserRelationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails ud) {
-        int safeSize = Math.min(100, Math.max(1, size));
+        int safeSize = Math.min(1000, Math.max(1, size));
         Pageable pageable = PageRequest.of(Math.max(0, page), safeSize);
         return ResponseEntity.ok(userRelationService.getInferredSuggestions(getCurrentUser(ud), pageable));
     }
