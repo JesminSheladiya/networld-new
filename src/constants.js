@@ -35,6 +35,35 @@ export const SMALL_SCREEN_PX = 390; // bottom-nav notch sizing
 // Instagram-style: bigger pages = fewer round-trips, smooth on 1M graphs.)
 export const DEFAULT_PAGE_SIZE = 50;
 export const PAGE_SIZE_OPTIONS = ["50", "100", "200", "500", "1000"];
+export function pageSizeOptionsForTotal(total) {
+  const count = Number(total) || 0;
+  const firstLargerOrEqual = PAGE_SIZE_OPTIONS.find((size) => Number(size) >= count);
+  return PAGE_SIZE_OPTIONS.filter(
+    (size) => Number(size) <= count || size === firstLargerOrEqual
+  );
+}
+export const PAGE_SIZE_STORAGE_KEY = "nw-page-size-preferences";
+
+// Keep the user's table size across reloads, separately for each account on
+// shared/browser machines. Invalid or unavailable storage falls back safely.
+export function getPageSizePreference(accountKey = "anonymous") {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PAGE_SIZE_STORAGE_KEY) || "{}");
+    const value = Number(saved[accountKey]);
+    return PAGE_SIZE_OPTIONS.includes(String(value)) ? value : DEFAULT_PAGE_SIZE;
+  } catch {
+    return DEFAULT_PAGE_SIZE;
+  }
+}
+
+export function setPageSizePreference(accountKey = "anonymous", value) {
+  const size = Number(value);
+  if (!PAGE_SIZE_OPTIONS.includes(String(size))) return;
+  try {
+    const saved = JSON.parse(localStorage.getItem(PAGE_SIZE_STORAGE_KEY) || "{}");
+    localStorage.setItem(PAGE_SIZE_STORAGE_KEY, JSON.stringify({ ...saved, [accountKey]: size }));
+  } catch { /* storage unavailable — current page still works */ }
+}
 
 // Profile bio (matches backend 200-char limit)
 export const BIO_MAX_LENGTH = 200;

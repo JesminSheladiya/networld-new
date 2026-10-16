@@ -54,7 +54,7 @@ function FindPeoplePage() {
   // reqIdRef drops stale responses (fast typing must not overwrite newer results)
   const reqIdRef = useRef(0);
   useEffect(() => {
-    const q = query.trim();
+     const q = query.trim().replace(/\s+/g, " ");
     if (!q) {
       reqIdRef.current += 1;
       setSearching(false);
@@ -69,12 +69,12 @@ function FindPeoplePage() {
         if (reqIdRef.current !== id) return; // stale — a newer search is in flight
         // Find tab: match ONLY against name / username (ignore email/phone
         // matches that the API may still return).
-        const qLower = q.toLowerCase();
-        const data = (res.data || []).filter(
-          (u) =>
-            (u.name || "").toLowerCase().includes(qLower) ||
-            (u.username || "").toLowerCase().includes(qLower)
-        );
+         const qLower = q.toLowerCase();
+         const data = (res.data || []).filter(
+           (u) =>
+             (u.name || "").toLowerCase().replace(/\s+/g, " ").includes(qLower) ||
+             (u.username || "").toLowerCase().includes(qLower)
+         );
         setResults(data);
         // Reconcile with server: a declined request is no longer pending,
         // so drop its local "Sent" mark and bring back the selection UI
@@ -195,7 +195,6 @@ function FindPeoplePage() {
           <div className="nw-state-box"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No users found" /></div>
         ) : (
           <div className="nw-discover-list">
-            <div className="nw-discover-label">Results · {displayResults.length}</div>
             {displayResults.map((u) => (
               <div
                 className="nw-find-row"

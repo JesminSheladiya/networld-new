@@ -10,8 +10,9 @@ import { mapConnectionToContact as mapContact } from "../../utils/contactMapper"
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
-import { DEFAULT_PAGE_SIZE, MQ_COMPACT, MQ_NARROW, PAGE_SIZE_OPTIONS, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
+import { getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
+import { useAuth } from "../../context/AuthContext";
 
 const CATEGORIES = [
   { key: "all", label: "All" },
@@ -80,6 +81,8 @@ function ContactsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { key: refreshKey, bump } = useRefresh();
+  const { user } = useAuth();
+  const accountKey = user?.email || "anonymous";
 
   // Coming from Requests accept → open the tab where the contact landed
   useEffect(() => {
@@ -102,7 +105,7 @@ function ContactsPage() {
   const [relationOptions, setRelationOptions] = useState([]);
   const [editingContact, setEditingContact] = useState(null);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [pageSize, setPageSize] = useState(() => getPageSizePreference(accountKey));
   const [sortParam, setSortParam] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const chipsRef = useRef(null);
@@ -224,6 +227,11 @@ function ContactsPage() {
     return () => clearTimeout(handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText, category, selectedRelations, pageSize, sortParam, refreshKey, isCompact]);
+
+  useEffect(() => {
+    setPageSize(getPageSizePreference(accountKey));
+    setPage(0);
+  }, [accountKey]);
 
   // Desktop page turns — including back to first page
   useEffect(() => {
@@ -545,13 +553,16 @@ function ContactsPage() {
             total={totalItems}
             showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} items`}
             showSizeChanger
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
+           pageSizeOptions={pageSizeOptionsForTotal(totalItems)}
             showQuickJumper
             showLessItems
             size="small"
             onChange={(pg, newPageSize) => {
               setPage(pg - 1);
-              if (newPageSize !== pageSize) setPageSize(newPageSize);
+               if (newPageSize !== pageSize) {
+                 setPageSize(newPageSize);
+                 setPageSizePreference(accountKey, newPageSize);
+               }
             }}
           />
         </div>
