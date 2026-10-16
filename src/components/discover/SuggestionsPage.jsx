@@ -11,8 +11,9 @@ import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationPickerModal from "../shared/RelationPickerModal";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";
-import { avatarColorFor, formatCount, MQ_COMPACT } from "../../constants";
+import { avatarColorFor, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, formatCount, MQ_COMPACT } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
+import { useAuth } from "../../context/AuthContext";
 
 // Memoized row — same markup as before. Virtuoso mounts only the visible
 // window (contacts-page pattern), so a 9.5k list never grows the DOM and
@@ -100,6 +101,8 @@ const SuggestionRow = memo(function SuggestionRow({
 
 function SuggestionsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const accountKey = user?.email || "anonymous";
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsTotal, setSuggestionsTotal] = useState(0);
@@ -111,13 +114,12 @@ function SuggestionsPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editedEmails, setEditedEmails] = useState([]);
   const [dismissTarget, setDismissTarget] = useState(null);
+  const [pageSize, setPageSize] = useState(() => getPageSizePreference(accountKey));
   const { bump, key: refreshKey, setSuggestionsCount } = useRefresh();
   const { relName } = useRelationDisplay();
 
   const abortSuggRef = useRef(null);
   const reqIdRef = useRef(0);
-  const PAGE_SIZE = 50;
-
   useEffect(() => {
     const mq = window.matchMedia(MQ_COMPACT);
     const onChange = (e) => setIsCompact(e.matches);
@@ -134,7 +136,7 @@ function SuggestionsPage() {
     abortSuggRef.current = ctrl;
     if (!append) setLoading(true);
     try {
-      const res = await api.suggestions(pageNum, PAGE_SIZE, ctrl.signal);
+      const res = await api.suggestions(pageNum, pageSize, ctrl.signal);
       if (id !== reqIdRef.current) return;
       const data = res.data?.content || [];
       const total = res.data?.totalElements ?? data.length;
@@ -160,7 +162,7 @@ function SuggestionsPage() {
     setSuggestionsPage(0);
     fetchSuggestions(0, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey, isCompact]);
+  }, [refreshKey, isCompact, pageSize]);
 
   // Next pages: append on compact, replace on desktop (pagination turns).
   useEffect(() => {
@@ -347,15 +349,23 @@ function SuggestionsPage() {
           </div>
         )}
       </div>
-      {!isCompact && suggestionsTotal > PAGE_SIZE && (
+      {!isCompact && suggestionsTotal > pageSize && (
         <div className="nw-table-pagination">
           <Pagination
             current={suggestionsPage + 1}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={suggestionsTotal}
-            showSizeChanger={false}
+            showSizeChanger
+            pageSizeOptions={pageSizeOptionsForTotal(suggestionsTotal)}
+            showQuickJumper
             size="small"
-            onChange={(pg) => setSuggestionsPage(pg - 1)}
+            onChange={(pg, newPageSize) => {
+              setSuggestionsPage(pg - 1);
+              if (newPageSize !== pageSize) {
+                setPageSize(newPageSize);
+                setPageSizePreference(accountKey, newPageSize);
+              }
+            }}
           />
         </div>
       )}

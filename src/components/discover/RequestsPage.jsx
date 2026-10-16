@@ -11,8 +11,9 @@ import { getInverseRelation } from "../../utils/relationUtils";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";
-import { avatarColorFor, formatCount, MQ_COMPACT } from "../../constants";
+import { avatarColorFor, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, formatCount, MQ_COMPACT } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
+import { useAuth } from "../../context/AuthContext";
 
 // Memoized rows — same markup as before. Virtuoso mounts only the visible
 // window (contacts-page pattern), so long lists never grow the DOM.
@@ -107,6 +108,8 @@ const SentRow = memo(function SentRow({ p, rel, avColor, reason, onOpen, onCance
 
 function RequestsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const accountKey = user?.email || "anonymous";
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
   const [tab, setTab] = useState("received");
   const [pending, setPending] = useState([]);
@@ -120,6 +123,7 @@ function RequestsPage() {
   const [sentPage, setSentPage] = useState(0);
   const [sentLoading, setSentLoading] = useState(false);
   const [sentLoadingMore, setSentLoadingMore] = useState(false);
+  const [pageSize, setPageSize] = useState(() => getPageSizePreference(accountKey));
   const [cancelId, setCancelId] = useState(null);
   const { bump, key: refreshKey, setPendingCount } = useRefresh();
   const { relName, relCategory } = useRelationDisplay();
@@ -130,8 +134,6 @@ function RequestsPage() {
   const abortSentRef = useRef(null);
   const pendingReqRef = useRef(0);
   const sentReqRef = useRef(0);
-  const PAGE_SIZE = 50;
-
   useEffect(() => {
     const mq = window.matchMedia(MQ_COMPACT);
     const onChange = (e) => setIsCompact(e.matches);
@@ -170,7 +172,7 @@ function RequestsPage() {
     abortPendingRef.current = ctrl;
     if (!append) setLoading(true);
     try {
-      const res = await api.pending(pageNum, PAGE_SIZE, ctrl.signal);
+      const res = await api.pending(pageNum, pageSize, ctrl.signal);
       if (id !== pendingReqRef.current) return;
       const data = res.data?.content || [];
       const total = res.data?.totalElements ?? data.length;
@@ -196,7 +198,7 @@ function RequestsPage() {
     abortSentRef.current = ctrl;
     if (!append) setSentLoading(true);
     try {
-      const res = await api.sent(pageNum, PAGE_SIZE, ctrl.signal);
+      const res = await api.sent(pageNum, pageSize, ctrl.signal);
       if (id !== sentReqRef.current) return;
       const data = res.data?.content || [];
       setSent((prev) => (append ? [...prev, ...data] : data));
@@ -221,7 +223,7 @@ function RequestsPage() {
     fetchPending(0, false);
     fetchSent(0, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey, isCompact]);
+  }, [refreshKey, isCompact, pageSize]);
 
   useEffect(() => {
     if (pendingPage === 0) return;
@@ -491,15 +493,23 @@ function RequestsPage() {
             ) : (
               !pendingHasMore && <div className="nw-list-end">No more requests</div>
             ))}
-            {!isCompact && pendingTotal > PAGE_SIZE && (
+            {!isCompact && pendingTotal > pageSize && (
               <div className="nw-table-pagination">
                 <Pagination
                   current={pendingPage + 1}
-                  pageSize={PAGE_SIZE}
+                  pageSize={pageSize}
                   total={pendingTotal}
-                  showSizeChanger={false}
+                  showSizeChanger
+                  pageSizeOptions={pageSizeOptionsForTotal(pendingTotal)}
+                  showQuickJumper
                   size="small"
-                  onChange={(pg) => setPendingPage(pg - 1)}
+                  onChange={(pg, newPageSize) => {
+                    setPendingPage(pg - 1);
+                    if (newPageSize !== pageSize) {
+                      setPageSize(newPageSize);
+                      setPageSizePreference(accountKey, newPageSize);
+                    }
+                  }}
                 />
               </div>
             )}
@@ -545,15 +555,23 @@ function RequestsPage() {
             ) : (
               !sentHasMore && <div className="nw-list-end">No more requests</div>
             ))}
-            {!isCompact && sentTotal > PAGE_SIZE && (
+            {!isCompact && sentTotal > pageSize && (
               <div className="nw-table-pagination">
                 <Pagination
                   current={sentPage + 1}
-                  pageSize={PAGE_SIZE}
+                  pageSize={pageSize}
                   total={sentTotal}
-                  showSizeChanger={false}
+                  showSizeChanger
+                  pageSizeOptions={pageSizeOptionsForTotal(sentTotal)}
+                  showQuickJumper
                   size="small"
-                  onChange={(pg) => setSentPage(pg - 1)}
+                  onChange={(pg, newPageSize) => {
+                    setSentPage(pg - 1);
+                    if (newPageSize !== pageSize) {
+                      setPageSize(newPageSize);
+                      setPageSizePreference(accountKey, newPageSize);
+                    }
+                  }}
                 />
               </div>
             )}
