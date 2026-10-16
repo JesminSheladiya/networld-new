@@ -85,7 +85,7 @@ export function RelationDisplayProvider({ children }) {
         setMaster(map);
         setMasterLower(lower);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [isAuthenticated]);
 
   // Optimistic local update + DB persist (own row, allowlisted
@@ -145,7 +145,7 @@ export function RelationDisplayProvider({ children }) {
     }
     const r = name.toLowerCase();
     if (r.includes("in-law")) return "inlaws";
-    if (r.includes("nati")) return "family";
+    if (r.includes("grandchild")) return "family";
     return "others";
   }, [master, masterLower]);
 

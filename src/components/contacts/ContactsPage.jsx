@@ -24,7 +24,7 @@ const CATEGORIES = [
 // never grows the DOM and every append stays as fast as the first one.
 // Markup + classes are identical to the plain list (no fixed-height box,
 // page scrolls normally).
-const ContactRow = memo(function ContactRow({ rec, onOpen, onPhoto, onEdit }) {
+const ContactRow = memo(function ContactRow({ rec, onOpen, onEdit }) {
   return (
     <div
       className="nw-contact-row"
@@ -34,17 +34,9 @@ const ContactRow = memo(function ContactRow({ rec, onOpen, onPhoto, onEdit }) {
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter") onOpen(rec); }}
     >
-      <span
-        className="nw-contact-avatar"
-        onClick={(e) => {
-          if (rec.profilePicture) {
-            e.stopPropagation();
-            onPhoto(rec);
-          }
-        }}
-        style={{ cursor: rec.profilePicture ? "pointer" : "default" }}
-        title={rec.profilePicture ? "View photo" : undefined}
-      >
+      {/* Avatar is not clickable here (Instagram-style): the photo opens
+          only on the profile page, never from a list. */}
+      <span className="nw-contact-avatar">
         <Avatar
           size={44}
           src={toDataUrl(rec.profilePicture)}
@@ -109,7 +101,6 @@ function ContactsPage() {
   const [counts, setCounts] = useState({ all: 0, family: 0, inlaws: 0, others: 0 });
   const [relationOptions, setRelationOptions] = useState([]);
   const [editingContact, setEditingContact] = useState(null);
-  const [viewer, setViewer] = useState(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sortParam, setSortParam] = useState(null);
@@ -310,16 +301,11 @@ function ContactsPage() {
     navigate(`/contacts/${encodeURIComponent(rec.username || rec.email)}`, { state: { contact: rec } });
   }, [navigate]);
 
-  const openPhoto = useCallback(
-    (rec) => setViewer({ pic: toDataUrl(rec.profilePicture), name: rec.name }),
-    []
-  );
-
   const renderCompactRow = useCallback(
     (_index, rec) => (
-      <ContactRow rec={rec} onOpen={openContact} onPhoto={openPhoto} onEdit={setEditingContact} />
+      <ContactRow rec={rec} onOpen={openContact} onEdit={setEditingContact} />
     ),
-    [openContact, openPhoto]
+    [openContact]
   );
 
   // Same sort options on every screen (no phone sorts — numbers hidden).
@@ -501,17 +487,7 @@ function ContactsPage() {
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter") openContact(rec); }}
               >
-                <span
-                  className="nw-contact-avatar"
-                  onClick={(e) => {
-                    if (rec.profilePicture) {
-                      e.stopPropagation();
-                      setViewer({ pic: toDataUrl(rec.profilePicture), name: rec.name });
-                    }
-                  }}
-                  style={{ cursor: rec.profilePicture ? "pointer" : "default" }}
-                  title={rec.profilePicture ? "View photo" : undefined}
-                >
+                <span className="nw-contact-avatar">
                   <Avatar
                     size={44}
                     src={toDataUrl(rec.profilePicture)}
@@ -592,65 +568,6 @@ function ContactsPage() {
           }
         }}
       />
-
-      {viewer && (
-        <div
-          onClick={() => setViewer(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 2000,
-            background: "rgba(0,0,0,0.92)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <span
-            onClick={(e) => {
-              e.stopPropagation();
-              setViewer(null);
-            }}
-            style={{
-              position: "fixed",
-              top: 16,
-              right: 16,
-              width: 40,
-              height: 40,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.14)",
-              color: "#fff",
-              fontSize: 18,
-              cursor: "pointer",
-              zIndex: 2001,
-            }}
-          >
-            ✕
-          </span>
-          {viewer?.pic && (
-            <img
-              src={viewer.pic}
-              alt="Profile full view"
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                objectFit: "contain",
-                width: "min(480px, 100%)",
-                height: "auto",
-                maxHeight: "80vh",
-                display: "block",
-                background: "#000",
-                borderRadius: 12,
-                boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
-              }}
-            />
-          )}
-        </div>
-      )}
 
       <Modal
         open={filterOpen}

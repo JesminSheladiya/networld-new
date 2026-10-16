@@ -6,6 +6,7 @@ import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { LockOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { forgotRequest, verifyOtp, forgotReset } from "../Services/authService";
+import { useRateLimitBlock } from "../hooks/useRateLimitBlock";
 import NetworkBackground from "./NetworkBackground";
 import "./css/Auth.css";
 import "./css/profile-page.css";
@@ -25,6 +26,7 @@ function ForgotPassword() {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const { blockedSeconds, blockedLabel, trigger } = useRateLimitBlock();
 
   const emailValue = Form.useWatch("email", form);
 
@@ -67,6 +69,7 @@ function ForgotPassword() {
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (error) {
       if (error?.errorFields) return;
+      if (trigger(error)) return;
       message.error(errMsg(error, "Failed to send OTP!"));
     } finally {
       setSendLoading(false);
@@ -117,6 +120,7 @@ function ForgotPassword() {
       setOtpVerified(true);
       message.success("OTP verified — set a new password.");
     } catch (error) {
+      if (trigger(error)) return;
       message.error(errMsg(error, "OTP verification failed!"));
     } finally {
       setVerifyLoading(false);
@@ -141,6 +145,7 @@ function ForgotPassword() {
       navigate("/login", { replace: true });
     } catch (error) {
       if (error?.errorFields) return;
+      if (trigger(error)) return;
       message.error(errMsg(error, "Password reset failed!"));
     } finally {
       setResetLoading(false);
@@ -207,16 +212,18 @@ function ForgotPassword() {
                 <button
                   type="button"
                   className="pf-primary-btn auth-otp-send-btn auth-send-full"
-                  disabled={sendLoading || !isEmailFormatOk(emailValue || "") || (otpSent && cooldown > 0)}
+                  disabled={sendLoading || blockedSeconds > 0 || !isEmailFormatOk(emailValue || "") || (otpSent && cooldown > 0)}
                   onClick={handleSend}
                 >
-                  {sendLoading
-                    ? "Sending..."
-                    : !otpSent
-                      ? "Send OTP"
-                      : cooldown > 0
-                        ? `Resend in ${cooldown}s`
-                        : "Resend code"}
+                  {blockedSeconds > 0
+                    ? blockedLabel
+                    : sendLoading
+                      ? "Sending..."
+                      : !otpSent
+                        ? "Send OTP"
+                        : cooldown > 0
+                          ? `Resend in ${cooldown}s`
+                          : "Resend code"}
                 </button>
               </span>
             </Tooltip>
@@ -247,10 +254,10 @@ function ForgotPassword() {
                     <button
                       type="button"
                       className="pf-primary-btn auth-otp-verify-btn"
-                      disabled={!otpSent || !otpComplete || verifyLoading}
+                      disabled={!otpSent || !otpComplete || verifyLoading || blockedSeconds > 0}
                       onClick={handleVerify}
                     >
-                      {verifyLoading ? "Verifying..." : "Verify"}
+                      {blockedSeconds > 0 ? blockedLabel : verifyLoading ? "Verifying..." : "Verify"}
                     </button>
                   </span>
                 )}
@@ -325,10 +332,10 @@ function ForgotPassword() {
                   type="button"
                   className="pf-primary-btn"
                   style={{ width: "100%", justifyContent: "center" }}
-                  disabled={resetLoading}
+                  disabled={resetLoading || blockedSeconds > 0}
                   onClick={handleReset}
                 >
-                  {resetLoading ? "Resetting..." : "Reset Password"}
+                  {blockedSeconds > 0 ? blockedLabel : resetLoading ? "Resetting..." : "Reset Password"}
                 </button>
               </Form.Item>
             </>
