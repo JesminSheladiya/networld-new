@@ -31,7 +31,7 @@ public class RelationshipResolver {
     // the relation's own naming convention ("Paternal ..."/"Father ..."
     // = father's side, "Maternal ..."/"Mother ..." = mother's side).
     // Generic rows ("Uncle", "Grandfather") carry no side (0). Married-in
-    // rows ("... Wife" / "... Husband": Chachi, Mami, Fufa, Mausa) are
+    // Married-in piblings always belong to the spouse's side.
     // always the spouse's side (-1). Applies to every current and future
     // pibling/grandparent — no per-name hardcoding.
     // Returns 1 = paternal, 2 = maternal, 0 = unknown; -1 = married-in.
@@ -69,7 +69,7 @@ public class RelationshipResolver {
         // side-assumption rule (pibling/grandfather side-matching, in-law
         // normalizations) or an s==1 translation / INLAW edge, rather than
         // an exact composition (blood, own marriage, nibling's/grandchild's
-        // parent). Tainted generics are candidates for chain upgrade
+        // parent). Tainted generics are candidates for chain upgrades
         // ("Brother's Brother-in-law" describes the actual path exactly);
         // untainted close truths are kept as-is.
         boolean viaSide;
@@ -512,10 +512,8 @@ public class RelationshipResolver {
         return 0;
     }
 
-    // True when 'rel' names kin on my child's OTHER parent's side (my
-    // spouse's side), so the suggestion must be an in-law, not blood:
-    //  - married-in piblings (".. Wife" / ".. Husband": Chachi, Mami,
-    //    Fufa, Mausa, Tai) are always in-laws, for either gender;
+    // True when a relation comes through my child's other parent.
+    // These relatives are in-laws rather than blood relations.
     //  - maternal-side kin (Maternal ../Mother's ..) belong to the mother:
     //    spouse side unless I (ego) am the mother (female);
     //  - paternal-side kin (Paternal ../Father's ..) belong to the father:
@@ -570,9 +568,8 @@ public class RelationshipResolver {
         if (!tMale && !tFemale) return null;
         boolean eMale = "M".equals(egoGender);
         boolean oMale = "M".equals(otherGender);
-        // My spouse's sibling is never generic Brother/Sister-in-law: a
-        // wife's brother/sister is Sala/Sali, a husband's brother/sister is
-        // Devar/Nanad (all rows exist). Direct-spouse state only (s == 2).
+        // A spouse's sibling gets a specific in-law label. This applies only
+        // to a direct spouse state (s == 2).
         if ("SIBLING".equals(cat) && curr.s == 2 && nextS == 1) {
             // eMale: my wife's sibling; else my husband's sibling.
             String myView;
@@ -588,23 +585,15 @@ public class RelationshipResolver {
             }
             return new String[]{myView, theirView};
         }
-        // My child's flipped pibling (spouse side) is never generic: name
-        // the exact seat. Plain sides derive from ego gender (my husband's
-        // brother is Devar, my wife's sister is Sali...); married-in rows
-        // map to their exact counterpart each way (Tai<->Jethani,
-        // Chachi<->Devrani, Fufa<->Nandoi/Jija, Mami<->Bhabhi/Sarhaj,
-        // Mausa<->Jija/Sadu). Blood-side readings stay generic (my own
-        // brother/sister). Flipped (nextS == 1) direct-child states only.
+        // A child's pibling on the spouse's side needs an exact in-law seat.
+        // Blood-side readings remain generic; married-in rows use their
+        // matching counterpart.
         if ("PIBLING".equals(cat) && curr.v == -1 && curr.maxV == 0 && curr.s == 0 && nextS == 1) {
             String[] exact = flippedPiblingExact(relName, kinSide, eMale, tMale);
             if (exact != null) return exact;
         }
-        // My nibling's parent: a brother-line nibling's mother is my
-        // brother's wife (Bhabhi) and the father is my Brother; a
-        // sister-line nibling mirrors this (Sister / Jija). Exact rows all
-        // exist. Nibling-state, blood path, fresh line only. (nextS is as
-        // the switch computed: in-law rows with s == 1, blood with s == 0 —
-        // the formulas below mirror that switch logic exactly.)
+        // A nibling's parent can be a sibling or an in-law. Keep the exact
+        // seat when the nibling line is known.
         if ("PARENT".equals(cat) && curr.v == -1 && curr.maxV == 1 && curr.s == 0
                 && "NIBLING".equals(curr.prevCat) && curr.line != 0) {
             String myView;
@@ -765,10 +754,8 @@ public class RelationshipResolver {
     }
 
     // Exact names for a flipped (spouse-side) pibling of my own child.
-    // Plain sides: my husband's brother/sister = Devar/Nanad, my wife's
-    // brother/sister = Sala/Sali. Married-in rows map to their counterpart:
-    // Tai<->Jethani, Chachi<->Devrani, Fufa->Nandoi(mine f)/Jija(mine m),
-    // Mami->Bhabhi(mine f)/Sarhaj(mine m), Mausa->Jija(mine f)/Sadu(mine m).
+    // Spouse-side piblings use precise in-law names. Married-in rows map to
+    // their matching counterpart; blood-side readings stay generic.
     // theirView is the reverse seat (all rows exist). Returns null when the
     // generic in-law label should stand.
     private static String[] flippedPiblingExact(String relName, int kinSide,

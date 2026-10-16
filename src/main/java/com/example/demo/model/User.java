@@ -86,6 +86,19 @@ public class User implements UserDetails {
     @Column(name = "relation_format", length = 10)
     private String relationFormat;
 
+    // Login brute-force protection (tiered lockout). Nullable for old rows —
+    // null counts as 0 / not locked everywhere (see AuthService).
+    @Column(name = "failed_login_attempts")
+    private Integer failedLoginAttempts;
+
+    @Column(name = "lockout_until")
+    private java.time.Instant lockoutUntil;
+
+    // Escalation tier: 0 = never long-locked, 1 = served 3h lock, 2 = 24h cycle.
+    // Null-safe for old rows (null = 0).
+    @Column(name = "lockout_level")
+    private Integer lockoutLevel;
+
     public User() {}
 
     public Long getId() { return id; }
@@ -187,4 +200,13 @@ public class User implements UserDetails {
 
     public String getRelationFormat() { return relationFormat; }
     public void setRelationFormat(String relationFormat) { this.relationFormat = relationFormat; }
+
+    public Integer getFailedLoginAttempts() { return failedLoginAttempts; }
+    public void setFailedLoginAttempts(Integer failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }
+
+    public java.time.Instant getLockoutUntil() { return lockoutUntil; }
+    public void setLockoutUntil(java.time.Instant lockoutUntil) { this.lockoutUntil = lockoutUntil; }
+
+    public Integer getLockoutLevel() { return lockoutLevel; }
+    public void setLockoutLevel(Integer lockoutLevel) { this.lockoutLevel = lockoutLevel; }
 }

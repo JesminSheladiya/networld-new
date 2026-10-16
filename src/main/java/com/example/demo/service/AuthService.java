@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.*;
+import com.example.demo.exception.AccountLockedException;
 import com.example.demo.model.EmailOtpVerification;
 import com.example.demo.model.User;
 import com.example.demo.model.UserSession;
@@ -43,6 +44,15 @@ public class AuthService {
     private static final long RESEND_COOLDOWN_SECONDS = 60;
     private static final long VERIFIED_VALID_MINUTES = 30;
 
+    // Tiered login lockout: maxAttempts fails -> firstLockMinutes lock,
+    // then extraAttempts more tries with remaining-count messages,
+    // then extendedLockHours lock. Success resets everything.
+    private final int loginMaxAttempts;
+    private final long loginFirstLockMinutes;
+    private final int loginExtraAttempts;
+    private final long loginExtendedLockHours;
+    private final long loginRepeatLockHours;
+
     // Max username changes in any rolling 7-day window.
     private static final int MAX_USERNAME_CHANGES_PER_WEEK = 2;
 
@@ -55,7 +65,12 @@ public class AuthService {
                        EmailOtpRepository pendingOtps,
                        UserSessionRepository sessions,
                        @org.springframework.beans.factory.annotation.Value("${app.otp.test-mode:false}") boolean otpTestMode,
-                       @org.springframework.beans.factory.annotation.Value("${app.disposable-list.url:https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf}") String disposableListUrl) {
+                       @org.springframework.beans.factory.annotation.Value("${app.disposable-list.url:https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf}") String disposableListUrl,
+                        @org.springframework.beans.factory.annotation.Value("${app.security.login-max-attempts:5}") int loginMaxAttempts,
+                        @org.springframework.beans.factory.annotation.Value("${app.security.login-first-lock-minutes:1}") long loginFirstLockMinutes,
+                        @org.springframework.beans.factory.annotation.Value("${app.security.login-extra-attempts:3}") int loginExtraAttempts,
+                        @org.springframework.beans.factory.annotation.Value("${app.security.login-extended-lock-hours:3}") long loginExtendedLockHours,
+                        @org.springframework.beans.factory.annotation.Value("${app.security.login-repeat-lock-hours:24}") long loginRepeatLockHours) {
         this.users   = users;
         this.encoder = encoder;
         this.jwt     = jwt;
@@ -67,6 +82,11 @@ public class AuthService {
         this.pendingOtps = pendingOtps;
         this.sessions = sessions;
         this.otpTestMode = otpTestMode;
+        this.loginMaxAttempts = loginMaxAttempts;
+        this.loginFirstLockMinutes = loginFirstLockMinutes;
+        this.loginExtraAttempts = loginExtraAttempts;
+        this.loginExtendedLockHours = loginExtendedLockHours;
+        this.loginRepeatLockHours = loginRepeatLockHours;
         if (otpTestMode) {
             System.out.println("WARN: OTP_TEST_MODE=true — /api/auth/test-otp enabled. NEVER use in production.");
         }
@@ -450,21 +470,94 @@ public class AuthService {
         User u = users.findByIdentifier(req.getIdentifier())
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
 
-        if (!encoder.matches(req.getPassword(), u.getPassword()))
+        java.time.Instant now = java.time.Instant.now();
+        int hardLimit = loginMaxAttempts + loginExtraAttempts;
+
+        // Active lockout — even the right password stays blocked until expiry.
+        if (u.getLockoutUntil() != null && now.isBefore(u.getLockoutUntil())) {
+            long secs = Math.max(1, u.getLockoutUntil().getEpochSecond() - now.getEpochSecond());
+            throw new AccountLockedException(
+                    "Account temporarily locked. Try again in " + formatLockDuration(secs) + ".", secs);
+        }
+
+        // A finished hard lock grants a fresh grace window (extraAttempts
+        // tries again) instead of re-locking on the next single mistake.
+        // The 1-minute lock needs no reset: attempts stay at maxAttempts,
+        // which is exactly where the +extraAttempts window starts.
+        int priorAttempts = u.getFailedLoginAttempts() == null ? 0 : u.getFailedLoginAttempts();
+        if (u.getLockoutUntil() != null && priorAttempts >= hardLimit) {
+            priorAttempts = loginMaxAttempts;
+            u.setFailedLoginAttempts(priorAttempts);
+            u.setLockoutUntil(null);
+        }
+
+        if (!encoder.matches(req.getPassword(), u.getPassword())) {
+            int attempts = priorAttempts + 1;
+            u.setFailedLoginAttempts(attempts);
+
+            if (attempts == loginMaxAttempts) {
+                // Tier 1: short cooldown (default 1 minute).
+                long secs = loginFirstLockMinutes * 60L;
+                u.setLockoutUntil(now.plus(loginFirstLockMinutes, java.time.temporal.ChronoUnit.MINUTES));
+                users.save(u);
+                throw new AccountLockedException(
+                        "Too many failed attempts. Account locked for "
+                                + formatLockDuration(secs) + ".", secs);
+            }
+            if (attempts >= hardLimit) {
+                // Tier 2 exhausted: first time -> extended lock (default 3h),
+                // every time after that -> repeat lock (default 24h).
+                int level = u.getLockoutLevel() == null ? 0 : u.getLockoutLevel();
+                long hours = level >= 1 ? loginRepeatLockHours : loginExtendedLockHours;
+                u.setLockoutLevel(Math.min(level + 1, 2));
+                long secs = hours * 3600L;
+                u.setLockoutUntil(now.plus(hours, java.time.temporal.ChronoUnit.HOURS));
+                users.save(u);
+                throw new AccountLockedException(
+                        "Too many failed attempts. Account locked for "
+                                + formatLockDuration(secs) + ".", secs);
+            }
+            users.save(u);
+            if (attempts > loginMaxAttempts) {
+                int left = hardLimit - attempts;
+                throw new BadCredentialsException(
+                        "Invalid password. " + left + " attempt(s) left before account lock.");
+            }
             throw new BadCredentialsException("Invalid password");
+        }
+
+        // Success resets the whole ladder.
+        u.setFailedLoginAttempts(0);
+        u.setLockoutUntil(null);
+        u.setLockoutLevel(0);
 
         if (!Boolean.TRUE.equals(u.getEmailVerified())) {
             // New-flow account still pending OTP -> block. Legacy accounts
             // (created before OTP existed: no OTP fields) pass through once
             // and get marked verified.
             if (u.getOtpHash() != null || u.getOtpSentAt() != null) {
+                users.save(u);
                 throw new RuntimeException("Email not verified. Please verify OTP sent to your email.");
             }
             u.setEmailVerified(true);
-            users.save(u);
         }
+        users.save(u);
 
         return buildResponseWithSession(u, req.getDeviceName(), userAgent, ipAddress);
+    }
+
+    private static String formatLockDuration(long totalSeconds) {
+        if (totalSeconds >= 3600) {
+            long h = totalSeconds / 3600;
+            long m = (totalSeconds % 3600) / 60;
+            return m == 0 ? h + (h == 1 ? " hour" : " hours")
+                    : h + (h == 1 ? " hour " : " hours ") + m + (m == 1 ? " minute" : " minutes");
+        }
+        if (totalSeconds >= 60) {
+            long m = totalSeconds / 60;
+            return m + (m == 1 ? " minute" : " minutes");
+        }
+        return totalSeconds + (totalSeconds == 1 ? " second" : " seconds");
     }
 
     public AuthResponse updateProfile(String email, UpdateProfileRequest req) {
@@ -518,22 +611,24 @@ public class AuthService {
         if (req.getOccupation() != null)
             u.setOccupation(validateOccupation(req.getOccupation()));
 
-        // Server-side size caps (frontend downscales to 256px avatar /
-        // 960px cover first — these only catch API bypasses). Without caps a
-        // single 5MB phone photo as base64 would ride along in every 50-row
-        // list page and stall slow networks past the 15s timeout.
+        // One stored image, compressed once on upload (avatars ≤512px,
+        // covers ≤1280px). Lists ship it as-is (covers never ship in lists),
+        // so this bound is what keeps 50-row pages usable on slow networks.
+        // Hard caps below only catch non-image/absurd payloads.
         if (req.getProfilePicture() != null) {
             String pic = req.getProfilePicture();
-            if (!pic.isEmpty() && pic.length() > 200_000)
+            if (!pic.isEmpty() && pic.length() > 1_000_000)
                 throw new RuntimeException("Profile photo is too large — please choose a smaller image.");
-            u.setProfilePicture(pic);
+            u.setProfilePicture(
+                    pic.isEmpty() ? pic : com.example.demo.util.ImageCompress.compressAvatar(pic));
         }
 
         if (req.getCoverImage() != null) {
             String cover = req.getCoverImage();
-            if (!cover.isEmpty() && cover.length() > 500_000)
+            if (!cover.isEmpty() && cover.length() > 2_000_000)
                 throw new RuntimeException("Cover photo is too large — please choose a smaller image.");
-            u.setCoverImage(cover);
+            u.setCoverImage(
+                    cover.isEmpty() ? cover : com.example.demo.util.ImageCompress.compressCover(cover));
         }
 
         if (req.getHideCover() != null)

@@ -192,12 +192,12 @@ class SuggestionEngineTest {
         User b = user("b@x.com", "Brother", "b", "M");
         User s = user("s@x.com", "Sister", "s", "F");
         User w = user("w@x.com", "Wife", "w", "F");
-        User bw = user("bw@x.com", "Bhabhi", "bw", "F");
-        User sh = user("sh@x.com", "Jija", "sh", "M");
-        User ws = user("ws@x.com", "Sali", "ws", "F");
-        User wb = user("wb@x.com", "Sala", "wb", "M");
+        User bw = user("bw@x.com", "Sister-in-law", "bw", "F");
+        User sh = user("sh@x.com", "Brother-in-law", "sh", "M");
+        User ws = user("ws@x.com", "Sister-in-law", "ws", "F");
+        User wb = user("wb@x.com", "Brother-in-law", "wb", "M");
         User son = user("son@x.com", "Son", "son", "M");
-        User dil = user("dil@x.com", "Bahu", "dil", "F");
+        User dil = user("dil@x.com", "Daughter-in-law", "dil", "F");
 
         accepted(me, b, R("Brother"), R("Brother"));
         accepted(me, s, R("Sister"), R("Sister"));
@@ -224,8 +224,8 @@ class SuggestionEngineTest {
     void husbandSideChainsResolveToExactSeats_femaleEgo() throws Exception {
         User me = user("me2@x.com", "Me2", "me2", "F");
         User h = user("h@x.com", "Husband", "h", "M");
-        User hs = user("hs@x.com", "Nanad", "hs", "F");
-        User hb = user("hb@x.com", "Devar", "hb", "M");
+        User hs = user("hs@x.com", "Sister-in-law", "hs", "F");
+        User hb = user("hb@x.com", "Brother-in-law", "hb", "M");
 
         accepted(me, h, R("Husband"), R("Wife"));
         accepted(h, hs, R("Sister"), R("Brother"));
@@ -240,12 +240,12 @@ class SuggestionEngineTest {
     void cousinChainsResolveToExactSeats() throws Exception {
         User me = user("me3@x.com", "Me3", "me3", "M");
         User f = user("f@x.com", "Father", "f", "M");
-        User tau = user("tau@x.com", "Tau", "tau", "M");
+        User tau = user("tau@x.com", "Father's Elder Brother", "tau", "M");
         User chs = user("chs@x.com", "Tayera", "chs", "M");
-        User bua = user("bua@x.com", "Bua", "bua", "F");
-        User fufa = user("fufa@x.com", "Fufa", "fufa", "M");
+        User bua = user("bua@x.com", "Aunt", "bua", "F");
+        User fufa = user("fufa@x.com", "Father's Sister's Husband", "fufa", "M");
         User fs = user("fs@x.com", "Fufera", "fs", "M");
-        User mama = user("mama@x.com", "Mama", "mama", "M");
+        User mama = user("mama@x.com", "Maternal Uncle", "mama", "M");
         User ms = user("ms@x.com", "Mamera", "ms", "M");
 
         accepted(me, f, R("Father"), R("Son"));

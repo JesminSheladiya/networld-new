@@ -182,15 +182,23 @@ public class UserRelationService {
     }
 
     // Lists ship 50 rows per page and never render covers: a single 5MB
-    // phone photo as base64 would stall slow networks past the 15s timeout
-    // (Instagram ships thumbnails in lists, full photos on demand). Covers
-    // load on demand via getProfileOf; oversized legacy avatars are skipped
-    // in lists (initials show) but intact on the profile itself.
-    // New uploads are downscaled client-side (256px avatar), so this branch
-    // only ever triggers for pre-existing oversized rows.
-    static final int LIST_MAX_PHOTO_CHARS = 100_000;
-    private static UserRelationSuggestionDTO slimForList(UserRelationSuggestionDTO dto) {
-        dto.setSuggestedUserCoverImage(null);
+    // phone photo as base64 would stall slow networks past the 15s timeout.
+    // Covers load on demand via getProfileOf; uploads are compressed once
+    // server-side (avatars ≤512px) so the guard below only ever trips for
+    // pre-existing oversized rows (initials show, profile stays intact).
+    // List avatar: 128px server-side thumbnail (~6KB) via a bounded memory
+    // cache — profiles/viewers always get the full stored photo. No extra DB
+    // column: the thumb derives from the single stored image, keyed by owner
+    // + content so photo changes recompute automatically.
+    private static String thumbOf(User u) {
+        if (u == null) return null;
+        if (u.getId() == null) return u.getProfilePicture();
+        return com.example.demo.util.ImageCompress.listThumb(u.getProfilePicture(), u.getId());
+    }
+
+    static final int LIST_MAX_PHOTO_CHARS = 300_000;
+
+    private static UserRelationSuggestionDTO slimForList(UserRelationSuggestionDTO dto) {        dto.setSuggestedUserCoverImage(null);
         if (dto.getSuggestedUserProfilePic() != null
                 && dto.getSuggestedUserProfilePic().length() > LIST_MAX_PHOTO_CHARS)
             dto.setSuggestedUserProfilePic(null);
@@ -236,7 +244,7 @@ public class UserRelationService {
                     String name = s.getFullName() != null ? s.getFullName() : s.getDisplayName();
                     Relation rel = ur.getRelation();
                     UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
-                            ur.getId(), name, s.getDisplayName(), s.getEmail(), s.getPhone(), s.getProfilePicture(),
+                            ur.getId(), name, s.getDisplayName(), s.getEmail(), s.getPhone(), thumbOf(s),
                             s.getCoverImage(),
                             s.getGender(), s.getBirthDate(), s.getBio(), s.getOccupation(),
                             rel.getRelationName(),
@@ -260,7 +268,7 @@ public class UserRelationService {
                     String name = t.getFullName() != null ? t.getFullName() : t.getDisplayName();
                     Relation rel = ur.getRelation();
                     UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
-                            ur.getId(), name, t.getDisplayName(), t.getEmail(), t.getPhone(), t.getProfilePicture(),
+                            ur.getId(), name, t.getDisplayName(), t.getEmail(), t.getPhone(), thumbOf(t),
                             t.getCoverImage(),
                             t.getGender(), t.getBirthDate(), t.getBio(), t.getOccupation(),
                             rel.getRelationName(),
@@ -280,7 +288,7 @@ public class UserRelationService {
                     String name = s.getFullName() != null ? s.getFullName() : s.getDisplayName();
                     Relation rel = ur.getRelation();
                     UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
-                            ur.getId(), name, s.getDisplayName(), s.getEmail(), s.getPhone(), s.getProfilePicture(),
+                            ur.getId(), name, s.getDisplayName(), s.getEmail(), s.getPhone(), thumbOf(s),
                             s.getCoverImage(),
                             s.getGender(), s.getBirthDate(), s.getBio(), s.getOccupation(),
                             rel.getRelationName(),
@@ -299,7 +307,7 @@ public class UserRelationService {
                     String name = t.getFullName() != null ? t.getFullName() : t.getDisplayName();
                     Relation rel = ur.getRelation();
                     UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
-                            ur.getId(), name, t.getDisplayName(), t.getEmail(), t.getPhone(), t.getProfilePicture(),
+                            ur.getId(), name, t.getDisplayName(), t.getEmail(), t.getPhone(), thumbOf(t),
                             t.getCoverImage(),
                             t.getGender(), t.getBirthDate(), t.getBio(), t.getOccupation(),
                             rel.getRelationName(),
@@ -358,7 +366,7 @@ public class UserRelationService {
             String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
             Relation rel = ur.getRelation();
             UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
-                    ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                    ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), thumbOf(o),
                     o.getCoverImage(),
                     o.getGender(), o.getBirthDate(), o.getBio(), o.getOccupation(),
                     rel.getRelationName(),
@@ -409,7 +417,7 @@ public class UserRelationService {
                 String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
                 Relation rel = ur.getRelation();
                 UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
-                        ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                        ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), thumbOf(o),
                         o.getCoverImage(),
                         o.getGender(), o.getBirthDate(), o.getBio(), o.getOccupation(),
                         rel.getRelationName(),
@@ -532,7 +540,7 @@ public class UserRelationService {
             String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
             Relation rel = ur.getRelation();
             UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
-                    ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                    ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), thumbOf(o),
                     o.getCoverImage(),
                     o.getGender(), o.getBirthDate(), o.getBio(), o.getOccupation(),
                     rel.getRelationName(),
@@ -622,7 +630,7 @@ public class UserRelationService {
                     String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
                     Relation rel = ur.getRelation();
             UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
-                    ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                    ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), thumbOf(o),
                     o.getCoverImage(),
                     o.getGender(), o.getBirthDate(), o.getBio(), o.getOccupation(),
                             rel.getRelationName(),
@@ -647,7 +655,7 @@ public class UserRelationService {
                     String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
                     Relation rel = ur.getRelation();
                     UserRelationSuggestionDTO dto = new UserRelationSuggestionDTO(
-                            ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), o.getProfilePicture(),
+                            ur.getId(), name, o.getDisplayName(), o.getEmail(), o.getPhone(), thumbOf(o),
                             o.getCoverImage(),
                             o.getGender(), o.getBirthDate(), o.getBio(), o.getOccupation(),
                             rel.getRelationName(),
@@ -865,14 +873,14 @@ public class UserRelationService {
     // collapse into existing in-law rows; compound words like "Brother Son"
     // read poorly as chain heads). Piblings ARE included — uncle/aunt-led
     // chains are exactly how cousin seats resolve ("Father Sister" + "Son"
-    // = Fufera Bhai); misses simply fall through to the generic label.
+    // = Paternal Cousin Brother); misses simply fall through to the generic label.
     private static final java.util.Set<String> CHAIN_HEAD_CATEGORIES = java.util.Set.of(
             "PARENT", "CHILD", "SIBLING", "GRANDPARENT", "GRANDCHILD", "PIBLING");
 
     // Seat-identical side wordings: "Paternal Aunt" IS "Father Sister" (no
     // elder/younger split exists for aunts, maternal uncles/aunts). Used as
     // extra chain-head forms. Deliberately NOT mapped: "Paternal Uncle"
-    // (elder Tau vs younger Chacha is unknowable) and grandparents.
+    // (elder Father's Elder Brother vs younger Uncle is unknowable) and grandparents.
     private static final java.util.Map<String, String> PIBLING_SYNONYMS = java.util.Map.of(
             "paternal aunt", "father sister",
             "maternal uncle", "mother brother",
@@ -943,10 +951,10 @@ public class UserRelationService {
                 passingPairs.add(new String[]{hf, hf});
                 String syn = PIBLING_SYNONYMS.get(hf.toLowerCase());
                 if (syn != null) passingPairs.add(new String[]{syn, hf});
-                // Married-in pibling heads (Chachi, Mami, Fufa, Mausa,
-                // Tai) carry the spouse suffix — the bloodline is the
+                // Married-in pibling heads (Father's Younger Brother's Wife, Mother's Brother's Wife, Father's Sister's Husband, Mother's Sister's Husband,
+                // Father's Elder Brother's Wife) carry the spouse suffix — the bloodline is the
                 // head minus that suffix ("Father Sister Husband" +
-                // "Son" is really "Father Sister's Son" = Fufera Bhai).
+                // "Son" is really "Father Sister's Son" = Paternal Cousin Brother).
                 String stripped = strippedPiblingHead(hf, hr);
                 if (stripped != null) passingPairs.add(new String[]{stripped, hf});
             }
@@ -1014,7 +1022,7 @@ public class UserRelationService {
         return rel;
     }
 
-    // Curated chain-row lookup for a composed "<Head>'s <Tail>" path:
+    // Curated chain-row lookup for a composed "<Head>'s <Father's Elder Brother's Wifel>" path:
     // relation_name first, then english_relation (first-order chains like
     // "Brother's Wife" live there), then the same two with a parenthesized
     // tail generalized ("Sister-in-law (Husband's Sister)" → "Sister-in-law").

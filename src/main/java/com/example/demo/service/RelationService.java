@@ -44,11 +44,11 @@ public class RelationService {
             "cousin brother", "cousin sister",
             "paternal cousin brother", "paternal cousin sister",
             "maternal cousin brother", "maternal cousin sister",
-            // generic Sister-in-law: its Indian name (Nanad) duplicates the
+            // generic Sister-in-law: its Indian name (Sister-in-law) duplicates the
             // specific Husband's Sister row in pickers — engine fallbacks
             // still resolve it, it just isn't directly selectable.
             "sister-in-law",
-            // generic Brother-in-law: its Indian name (Jija) duplicates the
+            // generic Brother-in-law: its Indian name (Brother-in-law) duplicates the
             // specific Sister's Husband row in pickers — same deal, engine
             // keeps resolving it, chain row stays selectable.
             "brother-in-law");
@@ -109,7 +109,7 @@ public class RelationService {
     }
 
     // Selection order: family first, then side by side, so similar
-    // options always sit together ("Jija" next to "Jija (Behen ke Pati)"
+    // options always sit together (the base label next to its precise variant
     // instead of scattered pages apart — picking the wrong twin used to
     // store the wrong relation and derail future suggestions).
     // Rank 1: blood / immediate family (parents, spouse, siblings,
@@ -136,8 +136,8 @@ public class RelationService {
                     .thenComparing(r -> r.getRelationName().toLowerCase());
 
     // Couple-wise arrangement: husband immediately followed by wife, so a
-    // pair is never split across the list (Devar-Devrani, Sadu-Sali,
-    // Sasur-Saas, ...). Only categories with couples need explicit pairs;
+    // pair is never split across the list (Brother-in-law-Sister-in-law, Brother-in-law-Sister-in-law,
+    // Father-in-law-Mother-in-law, ...). Only categories with couples need explicit pairs;
     // everything unlisted (including future rows) falls back to the generic
     // side/base-form order below. Keys are lowercase relation names.
     private static final java.util.List<String> PIBLING_ORDER = java.util.List.of(

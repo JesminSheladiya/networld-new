@@ -11,7 +11,7 @@ public interface RelationRepository extends JpaRepository<Relation, Long> {
 
     // Chain phrases live in english_relation (e.g. "Brother's Wife" on the
     // "Sister-in-law (Brother's Wife)" row) — lets composeChain resolve a
-    // composed "<Head>'s <Tail>" path to its exact curated row.
+    // composed "<Head>'s <Father's Elder Brother's Wifel>" path to its exact curated row.
     Optional<Relation> findByEnglishRelationIgnoreCase(String englishRelation);
 
     Optional<Relation> findFirstByGenerationLevelAndGenderAndIsBlood(

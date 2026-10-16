@@ -55,6 +55,18 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", msg, "error", msg));
     }
 
+    // Tiered login lockout — 423 + retryAfterSeconds so the client can
+    // show a countdown (handled like 429 on the frontend).
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<?> handleAccountLocked(AccountLockedException ex) {
+        return ResponseEntity.status(HttpStatus.LOCKED)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(Map.of(
+                        "message", ex.getMessage() != null ? ex.getMessage() : "Account locked",
+                        "error", "Account Locked",
+                        "retryAfterSeconds", ex.getRetryAfterSeconds()));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntime(RuntimeException ex) {
         ex.printStackTrace(); // Print to console logs

@@ -41,14 +41,6 @@ public class UserRelationController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // Oversized legacy photos are skipped in multi-row responses (initials
-    // show instead) — same 100k-char bound as slimForList. New uploads are
-    // downscaled client-side and capped server-side (see AuthService).
-    private static String slimListPhoto(String base64) {
-        if (base64 == null || base64.isEmpty()) return "";
-        return base64.length() > 100_000 ? "" : base64;
-    }
-
     @GetMapping("/search-users")
     public ResponseEntity<List<Map<String, Object>>> searchUsers(
             @RequestParam String query,
@@ -73,7 +65,11 @@ public class UserRelationController {
             item.put("name",       u.getFullName() != null ? u.getFullName() : u.getDisplayName());
             item.put("username",   u.getDisplayName());
             item.put("email",      u.getEmail());
-            item.put("profilePic", slimListPhoto(u.getProfilePicture()));
+            // Typeahead rows are list icons → server-side thumbnail (full
+            // photo loads on demand via GET /profile when the profile opens).
+            String pic = com.example.demo.util.ImageCompress.listThumb(
+                    u.getProfilePicture(), u.getId());
+            item.put("profilePic", pic != null ? pic : "");
             // Typeahead rows never render covers — the detail screen fetches
             // them on demand via GET /profile (see slimForList rationale).
             item.put("coverImage", "");
