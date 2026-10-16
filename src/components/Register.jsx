@@ -7,6 +7,7 @@ import { LockOutlined, PhoneOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { register, checkUsernameAvailable, checkEmailAvailable, checkPhoneAvailable, suggestUsernames, updateProfile, requestOtp, verifyOtp, resendOtp } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
+import { useRateLimitBlock } from "../hooks/useRateLimitBlock";
 import NetworkBackground from "./NetworkBackground";
 import ScrollDatePicker from "./shared/ScrollDatePicker";
 import { birthDateValidator, toBirthDateParam } from "../utils/dateUtils";
@@ -87,6 +88,7 @@ function Register() {
   const [sendLoading, setSendLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const { blockedSeconds, blockedLabel, trigger } = useRateLimitBlock();
 
   // Prefill email when redirected from login (unverified account).
   useEffect(() => {
@@ -296,6 +298,7 @@ function Register() {
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (error) {
       if (error?.errorFields) return; // antd validation, message shown inline
+      if (trigger(error)) return;
       const msg = errMsg(error, "Failed to send OTP!");
       message.error(msg);
       if (/already exists|already sent|please login|temporary|disposable/i.test(msg)) {
@@ -354,6 +357,7 @@ function Register() {
       setOtpVerified(true);
       message.success("Email verified!");
     } catch (error) {
+      if (trigger(error)) return;
       message.error(errMsg(error, "OTP verification failed!"));
     } finally {
       setVerifyLoading(false);
@@ -470,6 +474,10 @@ function Register() {
       authLogin({ fresh: true });
       navigate("/contacts", { replace: true });
     } catch (error) {
+      if (trigger(error)) {
+        setStep(1);
+        return;
+      }
       const fieldErrors = error.response?.data?.errors;
       if (fieldErrors && typeof fieldErrors === "object") {
         // Show each backend validation error inline on its field.
@@ -672,16 +680,18 @@ function Register() {
                     <button
                       type="button"
                       className="pf-primary-btn auth-otp-send-btn auth-send-full"
-                      disabled={sendLoading || emailStatus === "taken" || (!otpSent && (!isEmailFormatOk(emailValue || "") || isDisposableEmail(emailValue || ""))) || (otpSent && cooldown > 0)}
+                      disabled={sendLoading || blockedSeconds > 0 || emailStatus === "taken" || (!otpSent && (!isEmailFormatOk(emailValue || "") || isDisposableEmail(emailValue || ""))) || (otpSent && cooldown > 0)}
                       onClick={() => handleSendOtp(otpSent)}
                     >
-                      {sendLoading
-                        ? "Sending..."
-                        : !otpSent
-                          ? "Send OTP"
-                          : cooldown > 0
-                            ? `Resend in ${cooldown}s`
-                            : "Resend code"}
+                      {blockedSeconds > 0
+                        ? blockedLabel
+                        : sendLoading
+                          ? "Sending..."
+                          : !otpSent
+                            ? "Send OTP"
+                            : cooldown > 0
+                              ? `Resend in ${cooldown}s`
+                              : "Resend code"}
                     </button>
                   </span>
                 </Tooltip>
@@ -722,10 +732,10 @@ function Register() {
                         <button
                           type="button"
                           className="pf-primary-btn auth-otp-verify-btn"
-                          disabled={!otpSent || !otpComplete || verifyLoading}
+                          disabled={!otpSent || !otpComplete || verifyLoading || blockedSeconds > 0}
                           onClick={handleVerifyOtp}
                         >
-                          {verifyLoading ? "Verifying..." : "Verify"}
+                          {blockedSeconds > 0 ? blockedLabel : verifyLoading ? "Verifying..." : "Verify"}
                         </button>
                       </span>
                     </Tooltip>
@@ -957,9 +967,9 @@ function Register() {
                       <button
                         type="submit"
                         className="pf-primary-btn auth-next-btn"
-                        disabled={!registerReady || loading || usernameStatus === "taken"}
+                        disabled={!registerReady || loading || blockedSeconds > 0 || usernameStatus === "taken"}
                       >
-                        {loading ? "Registering..." : "Register"}
+                        {blockedSeconds > 0 ? blockedLabel : loading ? "Registering..." : "Register"}
                       </button>
                     </span>
                   </Tooltip>

@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faPenToSquare, faUser, faAddressCard, faBell, faLightbulb } from "@fortawesome/free-regular-svg-icons";
 import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo, faPaperPlane, faPlus, faCheck, faXmark, faUserPlus, faBriefcase } from "@fortawesome/free-solid-svg-icons";
 import { PhoneOutlined, LockOutlined, UserAddOutlined } from "@ant-design/icons";
-import { avatarColorFor } from "../../constants";
+import { avatarColorFor, formatCount } from "../../constants";
 import { api } from "../../Services/networld";
 import { mapConnectionToContact } from "../../utils/contactMapper";
 import { useRefresh } from "./RefreshContext";
@@ -163,11 +163,9 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
     setRelation(contact.relation || "");
   }, [contact.email, contact.relation]);
 
-  // This user's connections — { total, items }. Total always shows;
-  // items come back empty when the owner hides them (count still visible,
-  // list locked — never clickable into).
-  // Guarded + cleared on contact switch — otherwise a slow response for the
-  // previous profile overwrites the new one (stale list glitch).
+  // Preview needs only total + first 6 rows — the old unbounded fetch
+  // shipped the whole graph (10k rows with photos) on every profile open,
+  // which is the 4G lag. Paged preview keeps the card instant at any scale.
   useEffect(() => {
     let cancelled = false;
     if (!contact.email) {
@@ -176,7 +174,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
     }
     setConnections(null);
     api
-      .connectionsOf(contact.email)
+      .connectionsPreviewOf(contact.email)
       .then((res) => {
         if (cancelled) return;
         const data = res.data || {};
@@ -482,8 +480,8 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
                 Connections
               </h2>
               {connections && (
-                <span className="pf-count-pill">
-                  {connTotal} {connTotal === 1 ? "connection" : "connections"}
+                <span className="pf-count-pill" title={connTotal}>
+                  {formatCount(connTotal)} {connTotal === 1 ? "connection" : "connections"}
                 </span>
               )}
             </div>

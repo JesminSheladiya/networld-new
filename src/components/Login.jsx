@@ -7,6 +7,7 @@ import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { login } from "../Services/authService";
 import { useAuth } from "../context/AuthContext";
+import { useRateLimitBlock } from "../hooks/useRateLimitBlock";
 import NetworkBackground from "./NetworkBackground";
 import "./css/Auth.css";
 import "./css/profile-page.css";
@@ -19,6 +20,7 @@ function Login() {
   const { login: authLogin } = useAuth();
   const firstInputRef = useRef(null);
   const [form] = Form.useForm();
+  const { blockedSeconds, blockedLabel, trigger } = useRateLimitBlock();
 
   // Same as profile update — stays disabled until every field is filled.
   const values = Form.useWatch([], form);
@@ -37,6 +39,7 @@ function Login() {
       authLogin();
       navigate("/contacts", { replace: true });
     } catch (error) {
+      if (trigger(error)) return;
       const msg =
         error.response?.data?.error ||
         error.response?.data?.message ||
@@ -110,11 +113,16 @@ function Login() {
               type="submit"
               className="pf-primary-btn"
               style={{ width: "100%", justifyContent: "center" }}
-              disabled={!loginReady || loading}
+              disabled={!loginReady || loading || blockedSeconds > 0}
             >
-              {loading ? "Logging in..." : "Login"}
+              {blockedSeconds > 0 ? blockedLabel : loading ? "Logging in..." : "Login"}
             </button>
           </Form.Item>
+          {blockedSeconds > 0 && (
+            <div className="auth-hint" style={{ color: "#f59e0b", marginTop: -4 }}>
+              Too many login attempts — {blockedLabel.toLowerCase()}.
+            </div>
+          )}
 
           <div className="auth-forgot-row">
             <button type="button" className="auth-switch-link" onClick={() => navigate("/forgot-password", { replace: true })}>

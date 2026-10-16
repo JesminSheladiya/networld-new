@@ -12,7 +12,7 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, person
 
   useEffect(() => {
     if (open) {
-      api.relations().then((res) => setRelations(res.data || [])).catch(() => {});
+      api.relations().then((res) => setRelations(res.data || [])).catch(() => { });
       setVal(value);
     }
   }, [open, value]);
