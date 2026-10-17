@@ -1,5 +1,7 @@
 package com.example.demo.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class AuthResponse {
 
     private String token;
@@ -45,6 +47,9 @@ public class AuthResponse {
         this.relationFormat = relationFormat;
     }
 
+    // The JWT is delivered only through the HttpOnly auth cookie. It must not
+    // be exposed in JSON where browser JavaScript/XSS could read it.
+    @JsonIgnore
     public String getToken()    { return token; }
     public String getUsername() { return username; }
     public String getEmail()    { return email; }

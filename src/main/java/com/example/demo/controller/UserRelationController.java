@@ -252,12 +252,14 @@ public class UserRelationController {
             @RequestParam String email,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String query,
             @AuthenticationPrincipal UserDetails ud) {
         getCurrentUser(ud); // authenticated only; no private filtering by design
         int safePage = Math.max(0, page);
         int safeSize = Math.min(1000, Math.max(1, size));
         return ResponseEntity.ok(userRelationService.getConnectionsOf(
                 ud.getUsername(), email,
+                query,
                 org.springframework.data.domain.PageRequest.of(safePage, safeSize)));
     }
 

@@ -6,6 +6,9 @@ import com.example.demo.repository.UserRepository;
 import com.example.demo.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ResponseCookie;
+import org.springframework.beans.factory.annotation.Value;
+import java.time.Duration;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -16,12 +19,18 @@ public class AuthController {
 
     private final AuthService auth;
     private final UserRepository users;
+    @Value("${app.auth.cookie-secure:false}")
+    private boolean secureCookie;
+    @Value("${jwt.expiration}")
+    private long jwtExpirationMs;
+
     public AuthController(AuthService auth, UserRepository users) { this.auth = auth; this.users = users; }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req,
                                       jakarta.servlet.http.HttpServletRequest http) {
-        return ResponseEntity.ok(auth.register(req, req.getDeviceName(), userAgentOf(http), ipOf(http)));
+        AuthResponse result = auth.register(req, req.getDeviceName(), userAgentOf(http), ipOf(http));
+        return withAuthCookie(result);
     }
 
     @PostMapping("/verify-otp")
@@ -58,7 +67,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req,
                                    jakarta.servlet.http.HttpServletRequest http) {
-        return ResponseEntity.ok(auth.login(req, req.getDeviceName(), userAgentOf(http), ipOf(http)));
+        AuthResponse result = auth.login(req, req.getDeviceName(), userAgentOf(http), ipOf(http));
+        return withAuthCookie(result);
     }
 
     // Revoke only the calling device's session (best-effort — always 200).
@@ -67,7 +77,9 @@ public class AuthController {
                                     jakarta.servlet.http.HttpServletRequest http) {
         String email = userDetails == null ? null : userDetails.getUsername();
         auth.logoutSession(email, bearerHash(http));
-        return ResponseEntity.ok(java.util.Map.of("message", "Logged out"));
+        return ResponseEntity.ok()
+                .header("Set-Cookie", clearAuthCookie().toString())
+                .body(java.util.Map.of("message", "Logged out"));
     }
 
     @GetMapping("/sessions")
@@ -109,7 +121,30 @@ public class AuthController {
             String t = h.substring(7).trim();
             if (!t.isEmpty()) return com.example.demo.util.HashUtil.sha256Hex(t);
         }
+        if (http.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie c : http.getCookies()) {
+                if ("NW_AUTH".equals(c.getName()) && c.getValue() != null && !c.getValue().isBlank())
+                    return com.example.demo.util.HashUtil.sha256Hex(c.getValue());
+            }
+        }
         return null;
+    }
+
+    private ResponseEntity<AuthResponse> withAuthCookie(AuthResponse response) {
+        ResponseCookie cookie = ResponseCookie.from("NW_AUTH", response.getToken())
+                .httpOnly(true)
+                .secure(secureCookie)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(Duration.ofMillis(jwtExpirationMs))
+                .build();
+        return ResponseEntity.ok().header("Set-Cookie", cookie.toString()).body(response);
+    }
+
+    private ResponseCookie clearAuthCookie() {
+        return ResponseCookie.from("NW_AUTH", "")
+                .httpOnly(true).secure(secureCookie).sameSite("Strict")
+                .path("/").maxAge(0).build();
     }
 
     private static String deviceOf(jakarta.servlet.http.HttpServletRequest http) {

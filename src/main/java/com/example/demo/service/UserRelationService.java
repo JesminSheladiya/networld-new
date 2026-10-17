@@ -164,8 +164,11 @@ public class UserRelationService {
             }
         }
 
-        regenerateAllSuggestions(ur.getFromUser());
-        regenerateAllSuggestions(ur.getToUser());
+        // The relation is already updated and the suggestions cache was
+        // evicted above. Do not rebuild the complete graph synchronously here:
+        // for large accounts this can scan 100k users twice and make an
+        // otherwise small edit request time out. Suggestions regenerate lazily
+        // on the next suggestions-list request.
     }
 
     @Transactional
@@ -385,6 +388,10 @@ public class UserRelationService {
     // old clients keep working; new clients pass page/size.
     // Total always shows; items come back empty when the owner hides them.
     public java.util.Map<String, Object> getConnectionsOf(String viewerEmail, String email, Pageable pageable) {
+        return getConnectionsOf(viewerEmail, email, null, pageable);
+    }
+
+    public java.util.Map<String, Object> getConnectionsOf(String viewerEmail, String email, String query, Pageable pageable) {
         User target = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         boolean self = target.getEmail() != null && viewerEmail != null
@@ -410,8 +417,9 @@ public class UserRelationService {
         if (target.hidesConnectionsFrom(viewerEmail, connectedToOwner)) {
             visible = java.util.List.of();
         } else {
+            String normalizedQuery = query == null || query.trim().isEmpty() ? null : query.trim();
             Page<UserRelation> page =
-                    userRelationRepo.pageFilteredConnections(target, null, null, true, pageable);
+                    userRelationRepo.pageFilteredConnections(target, normalizedQuery, null, false, pageable);
             visible = page.getContent().stream().map(ur -> {
                 User o = ur.getToUser();
                 String name = o.getFullName() != null ? o.getFullName() : o.getDisplayName();
@@ -430,7 +438,10 @@ public class UserRelationService {
             }).collect(Collectors.toList());
         }
         java.util.Map<String, Object> out = new java.util.HashMap<>();
-        out.put("total", total);
+        out.put("total", target.hidesConnectionsFrom(viewerEmail, connectedToOwner)
+                ? total
+                : (query == null || query.trim().isEmpty() ? total
+                    : userRelationRepo.pageFilteredConnections(target, query.trim(), null, false, pageable).getTotalElements()));
         out.put("items", visible);
         return out;
     }

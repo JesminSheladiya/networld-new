@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -45,6 +46,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             token = header.substring(7);
             try { username = jwtUtil.extractUsername(token); } catch (Exception ignored) {}
+        }
+        // HttpOnly cookie is the primary browser auth mechanism. Keep the
+        // bearer fallback for controlled API clients/backward compatibility.
+        if (token == null && request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("NW_AUTH".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    try { username = jwtUtil.extractUsername(token); } catch (Exception ignored) {}
+                    break;
+                }
+            }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
