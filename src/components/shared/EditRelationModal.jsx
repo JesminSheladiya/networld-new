@@ -66,6 +66,9 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
         {contact?.gender && (contact.gender === "M" || contact.gender === "F") && (
           <div className="rpm-gender-hint">
             Relations for a {contact.gender === "M" ? "Male" : "Female"} profile
+            <span className="rpm-count">
+              {relations.filter(isCompatible).length} of {relations.length} valid
+            </span>
           </div>
         )}
         <Select

@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { getToken, getUser, logout as authLogout } from '../Services/authService';
+import { getUser, logout as authLogout } from '../Services/authService';
 import { fetchUser as fetchUserApi } from '../Services/authService';
 import { AUTH_CHANNEL, STORAGE_KEYS, USER_POLL_INTERVAL_MS, JUST_REGISTERED_KEY } from '../constants';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => !!getToken());
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!getUser()?.email);
   const [user, setUser] = useState(() => getUser());
   // True only in the tab/session right after a fresh registration.
   // Normal logins never set it — so the language popup shows once.
@@ -136,7 +136,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const onStorage = (event) => {
       if (event.key === STORAGE_KEYS.USER || event.key === STORAGE_KEYS.TOKEN) {
-        setIsAuthenticated(!!getToken());
+        setIsAuthenticated(!!getUser()?.email);
         setUser(getUser());
       }
     };

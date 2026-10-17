@@ -5,7 +5,9 @@ import { getDeviceName } from "../utils/deviceUtils";
 
 function persistSession(data) {
   if (!data) return;
-  if (data.token) localStorage.setItem(STORAGE_KEYS.TOKEN, data.token);
+  // JWT is stored in the server-issued HttpOnly cookie, never in JS-readable
+  // localStorage. Keep only the non-sensitive user profile locally.
+  localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data));
 }
 
@@ -128,17 +130,10 @@ export const getUser = () => {
     return {};
   }
 };
-export const getToken = () => localStorage.getItem(STORAGE_KEYS.TOKEN);
+export const getToken = () => null;
 export const logout = () => {
   try {
-    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-    if (token) {
-      // Fire-and-forget with an explicit header: the shared interceptor
-      // reads storage asynchronously, so pass the token directly before wiping it.
-      http.post(`${API_BASE}/auth/logout`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
-    }
+    http.post(`${API_BASE}/auth/logout`, {}).catch(() => {});
   } catch { /* ignore — local wipe below always runs */ }
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.USER);

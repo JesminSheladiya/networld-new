@@ -555,6 +555,13 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
   padding: 6px 12px 12px;
 }
 
+/* The standalone connections search sits above the results card.  The shared
+   full-width search normally adds a bottom margin for page sections, but the
+   page gap already provides the spacing here. */
+.pf-connections-search {
+  margin-bottom: 0;
+}
+
 .pf-conn-row {
   display: flex;
   align-items: center;

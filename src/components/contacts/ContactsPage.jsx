@@ -10,7 +10,7 @@ import { mapConnectionToContact as mapContact } from "../../utils/contactMapper"
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
-import { getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
+import { DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
 
@@ -80,7 +80,7 @@ const ContactRow = memo(function ContactRow({ rec, onOpen, onEdit }) {
 function ContactsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { key: refreshKey, bump } = useRefresh();
+  const { key: refreshKey } = useRefresh();
   const { user } = useAuth();
   const accountKey = user?.email || "anonymous";
 
@@ -331,7 +331,7 @@ function ContactsPage() {
           <h1 className="nw-page-title">My Contacts</h1>
           <p className="nw-page-subtitle">
             {totalItems > 0
-              ? `${formatCount(totalItems)} ${totalItems === 1 ? "person" : "people"} in your network`
+              ? `${totalItems.toLocaleString()} ${totalItems === 1 ? "person" : "people"} in your network`
               : "People connected with you"}
           </p>
         </div>
@@ -449,7 +449,7 @@ function ContactsPage() {
       {/* Full-screen spinner only when there is nothing to show yet —
           refetches (tab switch, filter, pull of page 0) keep the old rows on
           screen like the connections list, instead of blanking every time. */}
-      {loading && filtered.length === 0 ? (
+      {loading ? (
         <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading contacts...</span></div>
       ) : filtered.length === 0 ? (
         <div className="nw-discover-panel nw-table-empty">
@@ -469,7 +469,7 @@ function ContactsPage() {
         </div>
       ) : (
         <div className="nw-discover-panel">
-          <div className="nw-discover-label">Contacts · <span title={totalItems}>{formatCount(totalItems)}</span></div>
+           <div className="nw-discover-label">Contacts · <span title={totalItems}>{totalItems.toLocaleString()}</span></div>
           {isCompact ? (
             // Window scroll (no fixed-height box — the page scrolls exactly
             // like before). Only the visible window mounts, so appended pages
@@ -483,57 +483,17 @@ function ContactsPage() {
               overscan={360}
               itemContent={renderCompactRow}
             />
-          ) : (
-          <div className="nw-contact-list">
-            {filtered.map((rec) => (
-              <div
-                className="nw-contact-row"
-                key={rec.email || rec.key}
-                onClick={() => openContact(rec)}
-                title={`View ${rec.name}'s profile`}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === "Enter") openContact(rec); }}
-              >
-                <span className="nw-contact-avatar">
-                  <Avatar
-                    size={44}
-                    src={toDataUrl(rec.profilePicture)}
-                    style={{
-                      backgroundColor: rec.profilePicture ? "transparent" : avatarColorFor(rec.name),
-                      fontSize: 17,
-                      fontWeight: 700,
-                      color: "#fff",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {!(rec.profilePicture) && (rec.name || "?")?.charAt(0).toUpperCase()}
-                  </Avatar>
-                </span>
-                <span className="nw-contact-info">
-                  <span className="nw-contact-name">{rec.name}</span>
-                  <span className="nw-contact-sub">
-                    {rec.username ? `@${rec.username.toLowerCase()}` : (rec.phone || "—")}
-                  </span>
-                </span>
-                <span className="nw-contact-right">
-                  <RelationChip relation={rec.relation} style={{ flexShrink: 0, fontSize: 11 }} />
-                  <span className="nw-contact-actions" onClick={(e) => e.stopPropagation()}>
-                    <Tooltip title="Edit relation">
-                      <button
-                        className="nw-icon-btn"
-                        aria-label={`Edit relation with ${rec.name}`}
-                        onClick={() => setEditingContact(rec)}
-                      >
-                        <FontAwesomeIcon icon={faPenToSquare} />
-                      </button>
-                    </Tooltip>
-                  </span>
-                </span>
-                <FontAwesomeIcon icon={faChevronRight} className="nw-contact-chevron" />
-              </div>
-            ))}
-          </div>
+           ) : (
+           <div className="nw-contact-list">
+             {filtered.map((rec) => (
+               <ContactRow
+                 key={rec.email || rec.key}
+                 rec={rec}
+                 onOpen={openContact}
+                 onEdit={setEditingContact}
+               />
+             ))}
+           </div>
           )}
           {isCompact && (loadingMore ? (
             <div className="nw-list-loader">
@@ -545,7 +505,7 @@ function ContactsPage() {
           ))}
         </div>
       )}
-      {!isCompact && totalItems > pageSize && (
+      {!isCompact && totalItems > DEFAULT_PAGE_SIZE && (
         <div className="nw-table-pagination">
           <Pagination
             current={page + 1}
@@ -573,11 +533,36 @@ function ContactsPage() {
         open={!!editingContact}
         onClose={() => setEditingContact(null)}
         onSaved={(newRel) => {
-          if (editingContact) {
-            editingContact.relation = newRel;
-            bump();
-          }
-        }}
+           if (editingContact) {
+             const editedEmail = editingContact.email;
+             const previousRel = editingContact.relation;
+             setDataSource((prev) => {
+               const index = prev.findIndex((item) => item.email === editedEmail);
+               if (index < 0) return prev;
+               const updated = { ...prev[index], relation: newRel };
+               return [updated, ...prev.slice(0, index), ...prev.slice(index + 1)];
+             });
+             // A relation used as a filter must disappear immediately when
+             // the last matching contact is edited away from it. Keep the
+             // filter picker/counts in sync without waiting for a reload.
+             if (previousRel && previousRel !== newRel) {
+               setSelectedRelations((prev) => prev.filter((r) => r !== previousRel));
+               setRelationOptions((prev) => {
+                 const next = prev
+                   .map((item) => {
+                     if (item.value === previousRel) return { ...item, count: Math.max(0, item.count - 1) };
+                     if (item.value === newRel) return { ...item, count: item.count + 1 };
+                     return item;
+                   })
+                   .filter((item) => item.count > 0);
+                 if (!next.some((item) => item.value === newRel)) {
+                   next.push({ value: newRel, count: 1 });
+                 }
+                 return next;
+               });
+             }
+           }
+         }}
       />
 
       <Modal

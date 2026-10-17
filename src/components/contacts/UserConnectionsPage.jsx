@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState, memo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Virtuoso } from "react-virtuoso";
-import { Avatar, Spin } from "antd";
+import { Avatar, Spin, Input, Empty } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faUsers, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faUsers, faChevronRight, faMagnifyingGlass, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { LockOutlined } from "@ant-design/icons";
 import { api } from "../../Services/networld";
-import { avatarColorFor, formatCount, DEFAULT_PAGE_SIZE, MQ_COMPACT } from "../../constants";
+import { avatarColorFor, DEFAULT_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from "../../constants";
 import { mapConnectionToContact, matchesContactSlug, seedMatchesSlug } from "../../utils/contactMapper";
 import { toDataUrl } from "../../utils/imageUtils";
 import "../css/profile-page.css";
@@ -64,7 +64,6 @@ function UserConnectionsPage() {
 
   const slug = username ? decodeURIComponent(username) : "";
   const seedContact = location.state?.contact;
-  const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
   const [email, setEmail] = useState(() =>
     seedMatchesSlug(seedContact, slug) ? seedContact.email || "" : ""
   );
@@ -73,13 +72,8 @@ function UserConnectionsPage() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia(MQ_COMPACT);
-    const onChange = (e) => setIsCompact(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
+  const [searchText, setSearchText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Resolve slug → email without downloading the whole graph: a bounded
   // paged query first (matches when the target is already a connection),
@@ -90,6 +84,8 @@ function UserConnectionsPage() {
     setItems([]);
     setTotal(null);
     setPage(0);
+    setSearchText("");
+    setSearchQuery("");
     setLoading(true);
     (async () => {
       try {
@@ -132,7 +128,7 @@ function UserConnectionsPage() {
       try {
         if (page === 0) setLoading(true);
         else setLoadingMore(true);
-        const res = await api.connectionsOf(email, page, PAGE_SIZE, ctrl.signal);
+        const res = await api.connectionsOf(email, page, PAGE_SIZE, searchQuery, ctrl.signal);
         if (cancelled) return;
         const data = res.data || {};
         const mapped = Array.isArray(data.items)
@@ -157,17 +153,25 @@ function UserConnectionsPage() {
       cancelled = true;
       ctrl.abort();
     };
-  }, [email, page]);
+  }, [email, page, searchQuery]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setPage(0);
+      setSearchQuery(searchText.trim().replace(/\s+/g, " "));
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handler);
+  }, [searchText]);
 
   const hasMore = total != null && items.length < total;
 
   // Next page pre-loads as the end approaches (contacts-page pattern).
   const loadMore = useCallback(() => {
-    if (isCompact && hasMore && !loading && !loadingMore) {
+    if (hasMore && !loading && !loadingMore) {
       setPage((p) => p + 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCompact, hasMore, loading, loadingMore]);
+  }, [hasMore, loading, loadingMore]);
 
   const openProfile = useCallback((c) => {
     navigate(`/contacts/${encodeURIComponent(c.username || c.email)}`, {
@@ -199,12 +203,22 @@ function UserConnectionsPage() {
         <FontAwesomeIcon icon={faArrowLeft} /> Back
       </button>
 
+      <Input
+        className="nw-search nw-search-full pf-connections-search"
+        prefix={<FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "#64748b" }} />}
+        placeholder="Search connections by name or username..."
+        allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
+        size="large"
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+      />
+
       <div className="pf-card">
         <div className="pf-card-head">
           <h2 className="pf-card-title">{ownerName}&rsquo;s connections</h2>
           {connTotal != null && (
             <span className="pf-count-pill" title={connTotal}>
-              {formatCount(connTotal)} {connTotal === 1 ? "connection" : "connections"}
+              {connTotal.toLocaleString()} {connTotal === 1 ? "connection" : "connections"}
             </span>
           )}
         </div>
@@ -221,24 +235,24 @@ function UserConnectionsPage() {
           </div>
         ) : items.length === 0 && !hasMore ? (
           <div className="nw-state-box">
-            <FontAwesomeIcon icon={faUsers} style={{ fontSize: 40, color: "#475569" }} />
-            <span className="nw-state-text">No connections yet</span>
-          </div>
-        ) : (
-          <div className="pf-conn-list">
-            {isCompact ? (
-              <Virtuoso
-                useWindowScroll
-                data={connItems}
-                endReached={loadMore}
-                overscan={360}
-                itemContent={renderRow}
-              />
+            {searchQuery ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No connections found" />
             ) : (
-              connItems.map((c, i) => (
-                <ConnRow key={c.email || c.username || i} c={c} onOpen={openProfile} />
-              ))
+              <>
+                <FontAwesomeIcon icon={faUsers} style={{ fontSize: 40, color: "#475569" }} />
+                <span className="nw-state-text">No connections yet</span>
+              </>
             )}
+          </div>
+          ) : (
+          <div className="pf-conn-list">
+            <Virtuoso
+              useWindowScroll
+              data={connItems}
+              endReached={loadMore}
+              overscan={360}
+              itemContent={renderRow}
+            />
             {loadingMore && (
               <div className="nw-list-loader">
                 <Spin size="small" />
