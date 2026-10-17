@@ -3,14 +3,10 @@ import { HTTP_TIMEOUT_MS, STORAGE_KEYS } from "../constants";
 
 // Single shared HTTP client: auth header, expiry logout and timeout.
 // All Services must use this instead of raw axios.
-export const http = axios.create({ timeout: HTTP_TIMEOUT_MS });
+export const http = axios.create({ timeout: HTTP_TIMEOUT_MS, withCredentials: true });
 
 http.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
     return config;
   },
   (error) => {
@@ -42,7 +38,7 @@ http.interceptors.response.use(
       };
       return Promise.reject(error);
     }
-    if ((status === 401 || status === 403) && localStorage.getItem(STORAGE_KEYS.TOKEN)) {
+    if ((status === 401 || status === 403) && localStorage.getItem(STORAGE_KEYS.USER)) {
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.USER);
       if (window.location.pathname !== "/login") {

@@ -6,9 +6,9 @@ export const api = {
     http.get(`${BASE}/user-relations/connections`, {
       params: search && search.trim() ? { query: search.trim() } : {},
     }),
-  connectionsOf: (email, page = 0, size = 50, signal) =>
+  connectionsOf: (email, page = 0, size = 50, search, signal) =>
     http.get(`${BASE}/user-relations/connections/of`, {
-      params: { email, page, size },
+      params: { email, page, size, ...(search && search.trim() ? { query: search.trim() } : {}) },
       ...(signal ? { signal } : {}),
     }),
   // Full single profile (covers included) for the detail screen — lists

@@ -11,7 +11,7 @@ import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationPickerModal from "../shared/RelationPickerModal";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";
-import { avatarColorFor, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, formatCount, MQ_COMPACT } from "../../constants";
+import { avatarColorFor, DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, MQ_COMPACT } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
 
@@ -300,7 +300,7 @@ function SuggestionsPage() {
       </div>
 
       <div className="nw-discover-panel">
-        {loading && suggestions.length === 0 ? (
+        {loading ? (
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading suggestions...</span></div>
         ) : suggestionsTotal === 0 ? (
           <div className="nw-state-box">
@@ -310,7 +310,7 @@ function SuggestionsPage() {
           </div>
         ) : (
           <div className="nw-discover-list">
-            <div className="nw-discover-label">Suggestions · <span title={suggestionsTotal}>{formatCount(suggestionsTotal)}</span></div>
+             <div className="nw-discover-label">Suggestions · <span title={suggestionsTotal}>{suggestionsTotal.toLocaleString()}</span></div>
             {isCompact ? (
               <Virtuoso
                 useWindowScroll
@@ -349,7 +349,7 @@ function SuggestionsPage() {
           </div>
         )}
       </div>
-      {!isCompact && suggestionsTotal > pageSize && (
+      {!isCompact && suggestionsTotal > DEFAULT_PAGE_SIZE && (
         <div className="nw-table-pagination">
           <Pagination
             current={suggestionsPage + 1}

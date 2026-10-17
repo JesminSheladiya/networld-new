@@ -11,7 +11,7 @@ import { getInverseRelation } from "../../utils/relationUtils";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";
-import { avatarColorFor, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, formatCount, MQ_COMPACT } from "../../constants";
+import { avatarColorFor, DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, formatCount, MQ_COMPACT } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
 
@@ -452,7 +452,7 @@ function RequestsPage() {
 
       <div className="nw-discover-panel">
         {isReceived ? (
-          loading && pending.length === 0 ? (
+          loading ? (
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading requests...</span></div>
         ) : pendingTotal === 0 ? (
           <div className="nw-state-box">
@@ -462,7 +462,7 @@ function RequestsPage() {
           </div>
         ) : (
           <div className="nw-discover-list">
-            <div className="nw-discover-label">Requests · <span title={pendingTotal}>{formatCount(pendingTotal)}</span></div>
+             <div className="nw-discover-label">Requests · <span title={pendingTotal}>{pendingTotal.toLocaleString()}</span></div>
             {isCompact ? (
               <Virtuoso
                 useWindowScroll
@@ -493,7 +493,7 @@ function RequestsPage() {
             ) : (
               !pendingHasMore && <div className="nw-list-end">No more requests</div>
             ))}
-            {!isCompact && pendingTotal > pageSize && (
+            {!isCompact && pendingTotal > DEFAULT_PAGE_SIZE && (
               <div className="nw-table-pagination">
                 <Pagination
                   current={pendingPage + 1}
@@ -515,7 +515,7 @@ function RequestsPage() {
             )}
           </div>
         )
-        ) : sentLoading && sent.length === 0 ? (
+        ) : sentLoading ? (
           <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading sent requests...</span></div>
         ) : sentTotal === 0 ? (
           <div className="nw-state-box">
@@ -525,7 +525,7 @@ function RequestsPage() {
           </div>
         ) : (
           <div className="nw-discover-list">
-            <div className="nw-discover-label">Sent · <span title={sentTotal}>{formatCount(sentTotal)}</span></div>
+           <div className="nw-discover-label">Sent · <span title={sentTotal}>{sentTotal.toLocaleString()}</span></div>
             {isCompact ? (
               <Virtuoso
                 useWindowScroll
@@ -555,7 +555,7 @@ function RequestsPage() {
             ) : (
               !sentHasMore && <div className="nw-list-end">No more requests</div>
             ))}
-            {!isCompact && sentTotal > pageSize && (
+            {!isCompact && sentTotal > DEFAULT_PAGE_SIZE && (
               <div className="nw-table-pagination">
                 <Pagination
                   current={sentPage + 1}
