@@ -8,15 +8,25 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
   const [relations, setRelations] = useState([]);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [usedUnique, setUsedUnique] = useState([]);
 
   useEffect(() => {
     if (!open) return;
-    api.relations().then((res) => setRelations(res.data)).catch(() => { });
+    Promise.all([api.relations(), api.usedUniqueRelations()])
+      .then(([relationsRes, usedRes]) => {
+        setRelations(relationsRes.data || []);
+        setUsedUnique((usedRes.data || []).map((name) => name.toLowerCase()));
+      })
+      .catch(() => { });
     setEditValue(contact?.relation || "");
   }, [open, contact]);
 
   const isCompatible = (r) =>
     !contact?.gender || !r.gender || r.gender === "N" || r.gender === contact.gender;
+
+  const isUniqueUnavailable = (r) =>
+    usedUnique.includes((r.relationName || "").toLowerCase())
+      && (r.relationName || "").toLowerCase() !== (contact?.relation || "").toLowerCase();
 
   const saveEdit = async () => {
     if (!contact) return;
@@ -26,6 +36,10 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
       return;
     }
     const picked = relations.find((r) => r.relationName === finalRel.trim());
+    if (picked && isUniqueUnavailable(picked)) {
+      message.error(`'${relOptionLabel(picked, relations)}' is already assigned in your account.`);
+      return;
+    }
     if (picked && !isCompatible(picked)) {
       message.error(
         `'${relOptionLabel(picked, relations)}' can only be sent to ` +
@@ -91,9 +105,17 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
               .filter(Boolean)
               .join(" ")
               .toLowerCase(),
-            disabled: !isCompatible(r),
+            disabled: !isCompatible(r) || isUniqueUnavailable(r),
           }))}
         />
+        <div className="relation-limit-notice">
+          <span className="relation-limit-notice-icon">i</span>
+          <span>
+            <strong>Note:</strong> Father, Mother, Grandparents, Husband, Wife,
+            Father-in-law and Mother-in-law can be selected once. All other relations
+            can be selected multiple times.
+          </span>
+        </div>
       </div>
     </Modal>
   );

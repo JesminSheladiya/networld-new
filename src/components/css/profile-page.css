@@ -389,7 +389,6 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
 .pf-ghost-btn {
   height: 32px;
   padding: 5px 14px;
-  margin-top: 5px;
   border-radius: 9px;
   font-size: 12.5px;
   font-weight: 700;
@@ -952,6 +951,48 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
   padding: 8px 0;
 }
 
+.pf-info-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.pf-info-actions .pf-info-edit {
+  margin-left: 0;
+}
+
+.relation-limit-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 1px;
+  padding: 3px 1px 0;
+  color: #aebbd0;
+  font-size: 10.5px;
+  line-height: 1.3;
+}
+
+.relation-limit-notice strong {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.relation-limit-notice-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 50%;
+  color: #cbd5e1;
+  font-size: 9px;
+  font-weight: 700;
+}
+
 /* Tinted tiles instead of bordered tiles — color, not outlines */
 .pf-info-icon {
   width: 42px;
@@ -1058,6 +1099,18 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
   background: rgba(59, 130, 246, 0.18);
   border-color: rgba(96, 165, 250, 0.45);
   color: #fff;
+}
+
+.pf-info-edit.pf-info-remove {
+  margin-left: 0;
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.22);
+}
+
+.pf-info-edit.pf-info-remove:hover {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(127, 29, 29, 0.18);
 }
 
 /* Icon-only edit button at the right end of an info row */
@@ -1896,7 +1949,7 @@ button.pf-sk-stat:not(:disabled):hover .pf-sk-stat-label {
   font-weight: 600;
 }
 
-.pf-sessions-account-copy > span {
+.pf-sessions-account-copy>span {
   color: #e2e8f0;
   font-size: 14px;
   font-weight: 700;

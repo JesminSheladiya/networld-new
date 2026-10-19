@@ -674,6 +674,7 @@ function RequestsPage() {
         personName={editingSent?.suggestedUserName}
         personGender={editingSent?.suggestedUserGender}
         value={editingSent?.inferredRelation || undefined}
+        currentRelation={editingSent?.inferredRelation}
         onClose={() => { setSentPickerOpen(false); setEditingSent(null); }}
         onPick={saveSentRelation}
       />

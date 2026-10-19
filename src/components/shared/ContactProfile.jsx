@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Avatar, Spin, Tooltip, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faPenToSquare, faUser, faAddressCard, faBell, faLightbulb } from "@fortawesome/free-regular-svg-icons";
-import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo, faPaperPlane, faPlus, faCheck, faXmark, faUserPlus, faBriefcase } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faCakeCandles, faLink, faUsers, faChevronRight, faCircleInfo, faPaperPlane, faPlus, faCheck, faXmark, faUserMinus, faBriefcase } from "@fortawesome/free-solid-svg-icons";
 import { PhoneOutlined, LockOutlined, UserAddOutlined } from "@ant-design/icons";
 import { avatarColorFor, formatCount } from "../../constants";
 import { api } from "../../Services/networld";
@@ -29,6 +29,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
   const [viewerOpen, setViewerOpen] = useState(false);
   const [coverViewerOpen, setCoverViewerOpen] = useState(false);
   const [relation, setRelation] = useState(contact.relation || "");
+  const [removed, setRemoved] = useState(false);
   const [connections, setConnections] = useState(null);
 
   // Stranger request flow (relation pick + send), like Find People.
@@ -42,9 +43,10 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
   const [sentEditOpen, setSentEditOpen] = useState(false);
   const [sentDraftRelation, setSentDraftRelation] = useState(contact.relation || "");
   const [cancelSentOpen, setCancelSentOpen] = useState(false);
+  const [removeConnectionOpen, setRemoveConnectionOpen] = useState(false);
   const [dismissOpen, setDismissOpen] = useState(false);
 
-  const isConnection = contact.relationId != null;
+  const isConnection = contact.relationId != null && !removed;
   const isPendingReceived =
     !isConnection && contact.pending === "received" && contact.pendingRelationId != null;
   const isPendingSent = !isConnection && !isPendingReceived && contact.pending === "sent";
@@ -147,6 +149,24 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
     }
   };
 
+  const doRemoveConnection = async () => {
+    if (!contact.relationId || acting) return;
+    setRemoveConnectionOpen(false);
+    setActing(true);
+    try {
+      await api.removeConnection(contact.relationId);
+      setRemoved(true);
+      setRelation("");
+      message.success("Connection removed");
+      refreshAfterAction();
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not remove connection");
+      refreshAfterAction();
+    } finally {
+      setActing(false);
+    }
+  };
+
   const sendSuggestion = async () => {
     if (sending || !relation) return;
     setSending(true);
@@ -194,6 +214,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
   // Fresh server data (detail refetch) replaces the snapshot — keep the
   // chip in sync instead of sticking with the first snapshot.
   useEffect(() => {
+    setRemoved(false);
     setRelation(contact.relation || "");
     setSentDraftRelation(contact.relation || "");
   }, [contact.email, contact.relation]);
@@ -485,23 +506,35 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
               </div>
             ) : (
             <div className="pf-info-rows">
-              {contact.relationId != null && relation && (
+              {isConnection && relation && (
                 <div className="pf-info-row">
                   <span className="pf-info-icon"><FontAwesomeIcon icon={faLink} /></span>
                   <span className="pf-info-text">
                     <span className="pf-info-label">Relation</span>
                     <RelationChip relation={relation} style={{ fontSize: 12 }} />
                   </span>
-                  <Tooltip title="Edit relation">
-                    <button
-                      className="pf-info-edit"
-                      aria-label="Edit relation"
-                      onClick={() => setEditing(true)}
-                    >
-                      <FontAwesomeIcon icon={faPenToSquare} />
-                    </button>
-                  </Tooltip>
-                </div>
+                   <span className="pf-info-actions">
+                     <Tooltip title="Edit relation">
+                       <button
+                         className="pf-info-edit"
+                         aria-label="Edit relation"
+                         onClick={() => setEditing(true)}
+                       >
+                         <FontAwesomeIcon icon={faPenToSquare} />
+                       </button>
+                     </Tooltip>
+                     <Tooltip title="Remove connection">
+                       <button
+                         className="pf-info-edit pf-info-remove"
+                         disabled={acting}
+                         aria-label="Remove connection"
+                         onClick={() => setRemoveConnectionOpen(true)}
+                       >
+                         <FontAwesomeIcon icon={faUserMinus} />
+                       </button>
+                     </Tooltip>
+                   </span>
+                 </div>
               )}
               {contact.occupation && (
                 <div className="pf-info-row">
@@ -670,6 +703,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
         personName={name}
         personGender={contact.gender}
         value={sentDraftRelation || undefined}
+        currentRelation={relation}
         onClose={() => setSentEditOpen(false)}
         onPick={(value) => {
           setSentDraftRelation(value);
@@ -683,6 +717,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
         personName={name}
         personGender={contact.gender}
         value={relation}
+        currentRelation={relation}
         onClose={() => setSuggestEditOpen(false)}
         onPick={(v) => {
           setRelation(v);
@@ -716,6 +751,15 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
         okText="Cancel Request"
         onCancel={() => setCancelSentOpen(false)}
         onOk={doCancelSent}
+      />
+
+      <ConfirmPopup
+        open={removeConnectionOpen}
+        title="Remove connection?"
+        message={`This will remove ${name} from your connections.`}
+        okText="Remove Connection"
+        onCancel={() => setRemoveConnectionOpen(false)}
+        onOk={doRemoveConnection}
       />
 
       <ProfilePictureViewer
