@@ -22,6 +22,16 @@ public class UserRelationService {
     // discovery instead of producing a friend row for every reachable user.
     private static final int MIN_MUTUALS_FOR_FRIEND_SUGGESTION = 2;
 
+    // These represent one real-world seat in the user's family. All other
+    // master relations may be assigned to multiple people.
+    private static final Set<String> UNIQUE_RELATION_NAMES = Set.of(
+            "father", "mother",
+            "paternal grandfather", "paternal grandmother",
+            "maternal grandfather", "maternal grandmother",
+            "husband", "wife",
+            "father-in-law", "mother-in-law"
+    );
+
     private final UserRelationRepository userRelationRepo;
     private final UserRepository         userRepository;
     private final RelationRepository     relationRepository;
@@ -79,6 +89,7 @@ public class UserRelationService {
                 .orElseThrow(() -> new RuntimeException("Invalid relation!"));
 
         validateRelationGender(relation, toUser);
+        ensureUniqueRelationAvailable(fromUser, relation, null);
         // Younger/Elder precision when both birth dates are known.
         relation = refineSiblingByAge(relation, fromUser, toUser);
 
@@ -163,6 +174,7 @@ public class UserRelationService {
 
         Relation newRel = getRequiredRelation(relationName.trim());
         validateRelationGender(newRel, ur.getToUser());
+        ensureUniqueRelationAvailable(currentUser, newRel, ur.getId());
         ur.setRelation(newRel);
         userRelationRepo.save(ur);
 
@@ -183,6 +195,25 @@ public class UserRelationService {
         // for large accounts this can scan 100k users twice and make an
         // otherwise small edit request time out. Suggestions regenerate lazily
         // on the next suggestions-list request.
+    }
+
+    // Remove an accepted connection completely. Accepted relationships are
+    // represented by one row in each direction, so delete the pair rather
+    // than only the row whose id was sent by the UI.
+    @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "suggestions", allEntries = true)
+    public void removeConnection(Long id, User currentUser) {
+        UserRelation ur = userRelationRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Connection not found!"));
+
+        boolean participant = ur.getFromUser().getId().equals(currentUser.getId())
+                || ur.getToUser().getId().equals(currentUser.getId());
+        if (!participant)
+            throw new RuntimeException("Not authorized!");
+        if (!"ACCEPTED".equals(ur.getStatus()))
+            throw new RuntimeException("Only an accepted connection can be removed!");
+
+        userRelationRepo.deleteConnectionPair(ur.getFromUser(), ur.getToUser());
     }
 
     @Transactional
@@ -700,6 +731,7 @@ public class UserRelationService {
 
         Relation relation = getRequiredRelation(relationName);
         validateRelationGender(relation, otherUser);
+        ensureUniqueRelationAvailable(currentUser, relation, null);
 
         Optional<UserRelation> existing = userRelationRepo.findByFromUserAndToUser(currentUser, otherUser);
         if (existing.isPresent() && "ACCEPTED".equals(existing.get().getStatus()))
@@ -734,6 +766,25 @@ public class UserRelationService {
                     + ("F".equals(rg) ? "female" : "male") + " users, but "
                     + toUser.getEmail() + " is " + who + ".");
         }
+    }
+
+    private void ensureUniqueRelationAvailable(User user, Relation relation, Long excludedId) {
+        if (relation == null || relation.getRelationName() == null
+                || !UNIQUE_RELATION_NAMES.contains(relation.getRelationName().trim().toLowerCase())) {
+            return;
+        }
+        if (userRelationRepo.existsActiveRelationForUser(user, relation, excludedId)) {
+            throw new RuntimeException("You can select '" + relation.getRelationName()
+                    + "' only once for your account.");
+        }
+    }
+
+    public List<String> getUsedUniqueRelationNames(User user) {
+        return userRelationRepo.findActiveRelationNamesForUser(user).stream()
+                .filter(name -> name != null
+                        && UNIQUE_RELATION_NAMES.contains(name.trim().toLowerCase()))
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     // Younger/Elder precision: a generic Brother/Sister becomes the exact

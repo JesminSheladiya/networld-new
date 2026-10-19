@@ -42,6 +42,25 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
     // (from_user_id, status) index instead of loading full entities.
     long countByFromUserAndStatus(User fromUser, String status);
 
+    @Query("""
+        SELECT COUNT(ur) > 0 FROM UserRelation ur
+        WHERE ur.fromUser = :user
+          AND ur.relation = :relation
+          AND ur.status IN ('PENDING', 'ACCEPTED')
+          AND (:excludedId IS NULL OR ur.id <> :excludedId)
+    """)
+    boolean existsActiveRelationForUser(
+            @Param("user") User user,
+            @Param("relation") com.example.demo.model.Relation relation,
+            @Param("excludedId") Long excludedId);
+
+    @Query("""
+        SELECT DISTINCT ur.relation.relationName FROM UserRelation ur
+        WHERE ur.fromUser = :user
+          AND ur.status IN ('PENDING', 'ACCEPTED')
+    """)
+    List<String> findActiveRelationNamesForUser(@Param("user") User user);
+
     // Bulk pair lookups for suggestion regen: 2 queries instead of 2 per
     // candidate user (200k queries at 100k users = the regen "crash").
     // Returns [otherUserId, status] rows for all pairs touching me.
@@ -101,6 +120,16 @@ public interface UserRelationRepository extends JpaRepository<UserRelation, Long
     @Modifying
     @Query("DELETE FROM UserRelation ur WHERE ur.fromUser = :user OR ur.toUser = :user")
     void deleteAllInvolving(@Param("user") User user);
+
+    // A connection is stored as two accepted directional rows. Remove both
+    // sides together so neither user keeps a stale connected relationship.
+    @Modifying
+    @Query("""
+        DELETE FROM UserRelation ur
+        WHERE (ur.fromUser = :first AND ur.toUser = :second)
+           OR (ur.fromUser = :second AND ur.toUser = :first)
+    """)
+    int deleteConnectionPair(@Param("first") User first, @Param("second") User second);
 
     @Query(value = "SELECT pg_advisory_xact_lock(:lockKey)", nativeQuery = true)
     void lockSuggestionRegeneration(@Param("lockKey") long lockKey);

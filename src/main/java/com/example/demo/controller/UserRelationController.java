@@ -162,6 +162,16 @@ public class UserRelationController {
         return ResponseEntity.ok(resp);
     }
 
+    @DeleteMapping("/{id}/connection")
+    public ResponseEntity<?> removeConnection(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails ud) {
+        userRelationService.removeConnection(id, getCurrentUser(ud));
+        Map<String, String> resp = new HashMap<>();
+        resp.put("message", "Connection removed!");
+        return ResponseEntity.ok(resp);
+    }
+
     @GetMapping("/pending")
     public ResponseEntity<Page<UserRelationSuggestionDTO>> getPending(
             @RequestParam(defaultValue = "0") int page,
@@ -235,6 +245,12 @@ public class UserRelationController {
             @RequestParam(required = false) String query,
             @AuthenticationPrincipal UserDetails ud) {
         return ResponseEntity.ok(userRelationService.getMyConnections(getCurrentUser(ud), query));
+    }
+
+    @GetMapping("/used-unique-relations")
+    public ResponseEntity<List<String>> getUsedUniqueRelations(
+            @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(userRelationService.getUsedUniqueRelationNames(getCurrentUser(ud)));
     }
 
     // Single full profile (covers included) for the detail screen: lists
