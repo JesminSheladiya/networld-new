@@ -26,7 +26,9 @@ function ForgotPassword() {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const { blockedSeconds, blockedLabel, trigger } = useRateLimitBlock();
+  const sendLimit = useRateLimitBlock();
+  const verifyLimit = useRateLimitBlock();
+  const actionLimit = useRateLimitBlock();
 
   const emailValue = Form.useWatch("email", form);
 
@@ -69,7 +71,7 @@ function ForgotPassword() {
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (error) {
       if (error?.errorFields) return;
-      if (trigger(error)) return;
+      if (sendLimit.trigger(error)) return;
       message.error(errMsg(error, "Failed to send OTP!"));
     } finally {
       setSendLoading(false);
@@ -120,7 +122,7 @@ function ForgotPassword() {
       setOtpVerified(true);
       message.success("OTP verified — set a new password.");
     } catch (error) {
-      if (trigger(error)) return;
+      if (verifyLimit.trigger(error)) return;
       message.error(errMsg(error, "OTP verification failed!"));
     } finally {
       setVerifyLoading(false);
@@ -145,7 +147,7 @@ function ForgotPassword() {
       navigate("/login", { replace: true });
     } catch (error) {
       if (error?.errorFields) return;
-      if (trigger(error)) return;
+      if (actionLimit.trigger(error)) return;
       message.error(errMsg(error, "Password reset failed!"));
     } finally {
       setResetLoading(false);
@@ -212,11 +214,11 @@ function ForgotPassword() {
                 <button
                   type="button"
                   className="pf-primary-btn auth-otp-send-btn auth-send-full"
-                  disabled={sendLoading || blockedSeconds > 0 || !isEmailFormatOk(emailValue || "") || (otpSent && cooldown > 0)}
+                   disabled={sendLoading || sendLimit.blockedSeconds > 0 || !isEmailFormatOk(emailValue || "") || (otpSent && cooldown > 0)}
                   onClick={handleSend}
                 >
-                  {blockedSeconds > 0
-                    ? blockedLabel
+                  {sendLimit.blockedSeconds > 0
+                    ? sendLimit.blockedLabel
                     : sendLoading
                       ? "Sending..."
                       : !otpSent
@@ -239,7 +241,7 @@ function ForgotPassword() {
                       ref={(el) => (otpRefs.current[i] = el)}
                       className={`auth-otp-box ${otpVerified ? "verified" : ""}`}
                       value={d}
-                      disabled={!otpSent || otpVerified}
+                       disabled={!otpSent || otpVerified || verifyLimit.blockedSeconds > 0}
                       inputMode="numeric"
                       maxLength={1}
                       autoComplete="one-time-code"
@@ -254,15 +256,19 @@ function ForgotPassword() {
                     <button
                       type="button"
                       className="pf-primary-btn auth-otp-verify-btn"
-                      disabled={!otpSent || !otpComplete || verifyLoading || blockedSeconds > 0}
+                       disabled={!otpSent || !otpComplete || verifyLoading || verifyLimit.blockedSeconds > 0}
                       onClick={handleVerify}
                     >
-                      {blockedSeconds > 0 ? blockedLabel : verifyLoading ? "Verifying..." : "Verify"}
+                      {verifyLimit.blockedSeconds > 0 ? verifyLimit.blockedLabel : verifyLoading ? "Verifying..." : "Verify"}
                     </button>
                   </span>
                 )}
               </div>
-              {otpVerified && (
+              {verifyLimit.blockedSeconds > 0 ? (
+                <div className="auth-otp-foot">
+                  <span className="auth-otp-err">{verifyLimit.blockedMessageLive}</span>
+                </div>
+              ) : otpVerified && (
                 <div className="auth-otp-foot">
                   <span className="auth-otp-ok">✓ OTP verified — set a new password.</span>
                 </div>
@@ -332,10 +338,10 @@ function ForgotPassword() {
                   type="button"
                   className="pf-primary-btn"
                   style={{ width: "100%", justifyContent: "center" }}
-                  disabled={resetLoading || blockedSeconds > 0}
+                  disabled={resetLoading || actionLimit.blockedSeconds > 0}
                   onClick={handleReset}
                 >
-                  {blockedSeconds > 0 ? blockedLabel : resetLoading ? "Resetting..." : "Reset Password"}
+                  {actionLimit.blockedSeconds > 0 ? actionLimit.blockedLabel : resetLoading ? "Resetting..." : "Reset Password"}
                 </button>
               </Form.Item>
             </>

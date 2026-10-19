@@ -33,3 +33,18 @@ export function formatCountdown(seconds) {
   }
   return `${s}s`;
 }
+
+export function formatCountdownLong(seconds) {
+  const s = Math.max(0, Math.ceil(Number(seconds) || 0));
+  if (s >= 3600) {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return `${h} hour${h === 1 ? "" : "s"}${m ? ` ${m} minute${m === 1 ? "" : "s"}` : ""}`;
+  }
+  if (s >= 60) {
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m} minute${m === 1 ? "" : "s"}${r ? ` ${r} second${r === 1 ? "" : "s"}` : ""}`;
+  }
+  return `${s} second${s === 1 ? "" : "s"}`;
+}

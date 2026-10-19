@@ -39,6 +39,9 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
   const [acting, setActing] = useState(false);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [suggestEditOpen, setSuggestEditOpen] = useState(false);
+  const [sentEditOpen, setSentEditOpen] = useState(false);
+  const [sentDraftRelation, setSentDraftRelation] = useState(contact.relation || "");
+  const [cancelSentOpen, setCancelSentOpen] = useState(false);
   const [dismissOpen, setDismissOpen] = useState(false);
 
   const isConnection = contact.relationId != null;
@@ -113,6 +116,37 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
     }
   };
 
+  const saveSentRelation = async () => {
+    const nextRelation = sentDraftRelation.trim();
+    if (!contact.pendingRelationId || !nextRelation || nextRelation === relation) return;
+    try {
+      await api.updateRelation(contact.pendingRelationId, nextRelation);
+      setRelation(nextRelation);
+      setSentDraftRelation(nextRelation);
+      setSentEditOpen(false);
+      message.success("Request relation updated");
+      refreshAfterAction();
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not update request relation");
+    }
+  };
+
+  const doCancelSent = async () => {
+    if (!contact.pendingRelationId || acting) return;
+    setCancelSentOpen(false);
+    setActing(true);
+    try {
+      await api.cancel(contact.pendingRelationId);
+      message.success("Connection request cancelled");
+      refreshAfterAction();
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not cancel request");
+      refreshAfterAction();
+    } finally {
+      setActing(false);
+    }
+  };
+
   const sendSuggestion = async () => {
     if (sending || !relation) return;
     setSending(true);
@@ -161,6 +195,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
   // chip in sync instead of sticking with the first snapshot.
   useEffect(() => {
     setRelation(contact.relation || "");
+    setSentDraftRelation(contact.relation || "");
   }, [contact.email, contact.relation]);
 
   // Preview needs only total + first 6 rows — the old unbounded fetch
@@ -262,6 +297,48 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
                     </button>
                   </Tooltip>
                 </span>
+              </span>
+            </div>
+          ) : isPendingSent ? (
+            <div className="pf-req-strip">
+              <span className="pf-req-strip-icon">
+                <FontAwesomeIcon icon={faPaperPlane} />
+              </span>
+              <span className="pf-req-msg">
+                You sent a connection request to <strong>{name}</strong> as their{" "}
+                <strong>{relName(sentDraftRelation || relation) || "connection"}</strong>
+              </span>
+              <span className="pf-req-side">
+                <RelationChip relation={(sentDraftRelation || relation || "").toLowerCase()} style={{ fontSize: 11 }} />
+                {sentDraftRelation !== relation ? (
+                  <button className="pf-primary-btn" onClick={saveSentRelation}>
+                    Send
+                  </button>
+                ) : (
+                  <span className="nw-find-chip-sent">✓ Request Sent</span>
+                )}
+                <Tooltip title="Edit relation">
+                  <button
+                    className="nw-act-btn nw-act-edit"
+                    onClick={() => {
+                      setSentDraftRelation(relation);
+                      setSentEditOpen(true);
+                    }}
+                    aria-label="Edit sent request relation"
+                  >
+                    <FontAwesomeIcon icon={faPenToSquare} />
+                  </button>
+                </Tooltip>
+                <Tooltip title="Cancel request">
+                  <button
+                    className="nw-act-btn nw-act-decline"
+                    disabled={acting}
+                    onClick={() => setCancelSentOpen(true)}
+                    aria-label="Cancel sent request"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                </Tooltip>
               </span>
             </div>
           ) : isStranger ? (
@@ -368,13 +445,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
             </div>
           ) : null
         }
-        belowAvatarAction={
-          isPendingSent ? (
-            <div className="pf-sk-actions-row">
-              <span className="nw-find-chip-sent">✓ Request Sent</span>
-            </div>
-          ) : null
-        }
+         belowAvatarAction={null}
       />
 
       {/* Stacked sections (same language as own profile) — no tabs. */}
@@ -594,6 +665,19 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
       />
 
       <RelationPickerModal
+        open={sentEditOpen}
+        title="Edit Request Relation"
+        personName={name}
+        personGender={contact.gender}
+        value={sentDraftRelation || undefined}
+        onClose={() => setSentEditOpen(false)}
+        onPick={(value) => {
+          setSentDraftRelation(value);
+          setSentEditOpen(false);
+        }}
+      />
+
+      <RelationPickerModal
         open={suggestEditOpen}
         title="Edit Relation"
         personName={name}
@@ -623,6 +707,15 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
         okText="Decline"
         onCancel={() => setDeclineOpen(false)}
         onOk={doDecline}
+      />
+
+      <ConfirmPopup
+        open={cancelSentOpen}
+        title="Cancel request?"
+        message="This sent connection request will be cancelled."
+        okText="Cancel Request"
+        onCancel={() => setCancelSentOpen(false)}
+        onOk={doCancelSent}
       />
 
       <ProfilePictureViewer

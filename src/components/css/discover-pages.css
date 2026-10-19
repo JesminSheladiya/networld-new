@@ -385,6 +385,12 @@
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
 }
 
+.nw-act-edit {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.08);
+}
+
 /* ── Inline relation edit (Suggestions) ── */
 .nw-edit-inline {
   display: flex;

@@ -5,6 +5,7 @@ import { Spin, Button, Tooltip, message, Avatar, Pagination } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBell } from "@fortawesome/free-regular-svg-icons";
 import { faCheck, faXmark, faRotateRight } from "@fortawesome/free-solid-svg-icons";
+import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 import { api } from "../../Services/networld";
 import { useRefresh } from "../shared/RefreshContext";
 import { getInverseRelation } from "../../utils/relationUtils";
@@ -14,6 +15,11 @@ import ConfirmPopup from "../shared/ConfirmPopup";
 import { avatarColorFor, DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, formatCount, MQ_COMPACT } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
+import RelationPickerModal from "../shared/RelationPickerModal";
+
+// Keep the current request lists while the user visits profiles or another
+// tab. A refresh key/mutation makes the next visit fetch fresh server data.
+const requestCache = new Map();
 
 // Memoized rows — same markup as before. Virtuoso mounts only the visible
 // window (contacts-page pattern), so long lists never grow the DOM.
@@ -64,7 +70,7 @@ const PendingRow = memo(function PendingRow({ p, rel, avColor, reason, onOpen, o
   );
 });
 
-const SentRow = memo(function SentRow({ p, rel, avColor, reason, onOpen, onCancel }) {
+const SentRow = memo(function SentRow({ p, rel, avColor, reason, onOpen, onEdit, onCancel }) {
   return (
     <div
       className="nw-req-row"
@@ -94,8 +100,13 @@ const SentRow = memo(function SentRow({ p, rel, avColor, reason, onOpen, onCance
       </div>
       <div className="nw-req-right">
         <RelationChip relation={rel} style={{ fontSize: 11 }} />
-        <div className="nw-req-actions" onClick={(e) => e.stopPropagation()}>
-          <Tooltip title="Cancel request">
+          <div className="nw-req-actions" onClick={(e) => e.stopPropagation()}>
+            <Tooltip title="Edit relation">
+              <button className="nw-act-btn nw-act-edit" onClick={() => onEdit(p)}>
+                <FontAwesomeIcon icon={faPenToSquare} />
+              </button>
+            </Tooltip>
+            <Tooltip title="Cancel request">
             <button className="nw-act-btn nw-act-decline" onClick={() => onCancel(p.pendingRelationId)}>
               <FontAwesomeIcon icon={faXmark} />
             </button>
@@ -110,21 +121,24 @@ function RequestsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const accountKey = user?.email || "anonymous";
+  const cachedRequests = requestCache.get(accountKey);
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
   const [tab, setTab] = useState("received");
-  const [pending, setPending] = useState([]);
-  const [pendingTotal, setPendingTotal] = useState(0);
+  const [pending, setPending] = useState(() => cachedRequests?.pending || []);
+  const [pendingTotal, setPendingTotal] = useState(() => cachedRequests?.pendingTotal || 0);
   const [pendingPage, setPendingPage] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !cachedRequests?.pending);
   const [loadingMore, setLoadingMore] = useState(false);
   const [declineId, setDeclineId] = useState(null);
-  const [sent, setSent] = useState([]);
-  const [sentTotal, setSentTotal] = useState(0);
+  const [sent, setSent] = useState(() => cachedRequests?.sent || []);
+  const [sentTotal, setSentTotal] = useState(() => cachedRequests?.sentTotal || 0);
   const [sentPage, setSentPage] = useState(0);
-  const [sentLoading, setSentLoading] = useState(false);
+  const [sentLoading, setSentLoading] = useState(() => !cachedRequests?.sent);
   const [sentLoadingMore, setSentLoadingMore] = useState(false);
   const [pageSize, setPageSize] = useState(() => getPageSizePreference(accountKey));
   const [cancelId, setCancelId] = useState(null);
+  const [editingSent, setEditingSent] = useState(null);
+  const [sentPickerOpen, setSentPickerOpen] = useState(false);
   const { bump, key: refreshKey, setPendingCount } = useRefresh();
   const { relName, relCategory } = useRelationDisplay();
   const chipsRef = useRef(null);
@@ -179,6 +193,16 @@ function RequestsPage() {
       setPending((prev) => (append ? [...prev, ...data] : data));
       setPendingTotal(total);
       setPendingCount(total);
+      if (!append) {
+        const cached = requestCache.get(accountKey) || {};
+        requestCache.set(accountKey, {
+          ...cached,
+          refreshKey,
+          pageSize,
+          pending: data,
+          pendingTotal: total,
+        });
+      }
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
       if (!append && id === pendingReqRef.current) {
@@ -202,7 +226,18 @@ function RequestsPage() {
       if (id !== sentReqRef.current) return;
       const data = res.data?.content || [];
       setSent((prev) => (append ? [...prev, ...data] : data));
-      setSentTotal(res.data?.totalElements ?? data.length);
+      const total = res.data?.totalElements ?? data.length;
+      setSentTotal(total);
+      if (!append) {
+        const cached = requestCache.get(accountKey) || {};
+        requestCache.set(accountKey, {
+          ...cached,
+          refreshKey,
+          pageSize,
+          sent: data,
+          sentTotal: total,
+        });
+      }
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
       if (!append && id === sentReqRef.current) {
@@ -218,12 +253,23 @@ function RequestsPage() {
   useEffect(() => {
     setLoadingMore(false);
     setSentLoadingMore(false);
+    const cached = requestCache.get(accountKey);
+    if (cached && cached.refreshKey === refreshKey && cached.pageSize === pageSize) {
+      setPendingPage(0);
+      setSentPage(0);
+      setPending(cached.pending || []);
+      setPendingTotal(cached.pendingTotal || 0);
+      setPendingCount(cached.pendingTotal || 0);
+      setSent(cached.sent || []);
+      setSentTotal(cached.sentTotal || 0);
+      return;
+    }
     setPendingPage(0);
     setSentPage(0);
     fetchPending(0, false);
     fetchSent(0, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey, isCompact, pageSize]);
+  }, [accountKey, refreshKey, isCompact, pageSize]);
 
   useEffect(() => {
     if (pendingPage === 0) return;
@@ -370,6 +416,33 @@ function RequestsPage() {
     }
   };
 
+  const saveSentRelation = async (relationName) => {
+    if (!editingSent || !relationName) return;
+    try {
+      await api.updateRelation(editingSent.pendingRelationId, relationName);
+      setSent((prev) => prev.map((p) => (
+        p.pendingRelationId === editingSent.pendingRelationId
+          ? { ...p, inferredRelation: relationName }
+          : p
+      )));
+      requestCache.set(accountKey, {
+        ...(requestCache.get(accountKey) || {}),
+        refreshKey,
+        pageSize,
+        sent: sent.map((p) => p.pendingRelationId === editingSent.pendingRelationId
+          ? { ...p, inferredRelation: relationName }
+          : p),
+        sentTotal,
+      });
+      setEditingSent(null);
+      setSentPickerOpen(false);
+      bump();
+      message.success("Request relation updated");
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not update request relation");
+    }
+  };
+
   const renderPendingRow = useCallback(
     (_index, p) => (
       <PendingRow
@@ -394,6 +467,7 @@ function RequestsPage() {
         avColor={avatarColorFor(p.suggestedUserName)}
         reason={formatSentReason(p.reason)}
         onOpen={openSentProfile}
+        onEdit={(item) => { setEditingSent(item); setSentPickerOpen(true); }}
         onCancel={setCancelId}
       />
     ),
@@ -543,7 +617,8 @@ function RequestsPage() {
                   avColor={avatarColorFor(p.suggestedUserName)}
                   reason={formatSentReason(p.reason)}
                   onOpen={openSentProfile}
-                  onCancel={setCancelId}
+                   onEdit={(item) => { setEditingSent(item); setSentPickerOpen(true); }}
+                   onCancel={setCancelId}
                 />
               ))
             )}
@@ -591,6 +666,16 @@ function RequestsPage() {
           setDeclineId(null);
           decline(id);
         }}
+      />
+
+      <RelationPickerModal
+        open={sentPickerOpen}
+        title="Edit Request Relation"
+        personName={editingSent?.suggestedUserName}
+        personGender={editingSent?.suggestedUserGender}
+        value={editingSent?.inferredRelation || undefined}
+        onClose={() => { setSentPickerOpen(false); setEditingSent(null); }}
+        onPick={saveSentRelation}
       />
 
       <ConfirmPopup

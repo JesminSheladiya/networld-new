@@ -15,6 +15,10 @@ import { avatarColorFor, DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePr
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
 
+// Suggestions are preserved while navigating away from this page. Mutations
+// change refreshKey, which intentionally invalidates this snapshot.
+const suggestionsCache = new Map();
+
 // Memoized row — same markup as before. Virtuoso mounts only the visible
 // window (contacts-page pattern), so a 9.5k list never grows the DOM and
 // every append stays as fast as the first one.
@@ -103,11 +107,12 @@ function SuggestionsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const accountKey = user?.email || "anonymous";
+  const cachedSuggestions = suggestionsCache.get(accountKey);
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
-  const [suggestions, setSuggestions] = useState([]);
-  const [suggestionsTotal, setSuggestionsTotal] = useState(0);
+  const [suggestions, setSuggestions] = useState(() => cachedSuggestions?.data || []);
+  const [suggestionsTotal, setSuggestionsTotal] = useState(() => cachedSuggestions?.total || 0);
   const [suggestionsPage, setSuggestionsPage] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !cachedSuggestions);
   const [loadingMore, setLoadingMore] = useState(false);
   const [editingEmail, setEditingEmail] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -143,6 +148,9 @@ function SuggestionsPage() {
       setSuggestions((prev) => (append ? [...prev, ...data] : data));
       setSuggestionsTotal(total);
       setSuggestionsCount(total);
+      if (!append) {
+        suggestionsCache.set(accountKey, { refreshKey, pageSize, data, total });
+      }
       if (!append) setEditedEmails([]);
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
@@ -159,10 +167,18 @@ function SuggestionsPage() {
   // Mount + refresh: immediate page-0 load (no blank wait).
   useEffect(() => {
     setLoadingMore(false);
+    const cached = suggestionsCache.get(accountKey);
+    if (cached && cached.refreshKey === refreshKey && cached.pageSize === pageSize) {
+      setSuggestionsPage(0);
+      setSuggestions(cached.data || []);
+      setSuggestionsTotal(cached.total || 0);
+      setSuggestionsCount(cached.total || 0);
+      return;
+    }
     setSuggestionsPage(0);
     fetchSuggestions(0, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey, isCompact, pageSize]);
+  }, [accountKey, refreshKey, isCompact, pageSize]);
 
   // Next pages: append on compact, replace on desktop (pagination turns).
   useEffect(() => {

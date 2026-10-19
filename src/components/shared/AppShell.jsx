@@ -179,6 +179,58 @@ function ProfileMenu() {
 
 function AppShellNav() {
   const location = useLocation();
+  const scrollPositionsRef = useRef(new Map());
+  const previousPathRef = useRef(location.pathname);
+
+  // Keep each top-level page's scroll position while opening a profile or
+  // switching tabs. The delayed restore is needed because list pages fetch
+  // their rows after the route has mounted; restoring too early gets clamped
+  // back to zero while the page is still short.
+  useEffect(() => {
+    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+    const saveBeforeNavigation = () => {
+      scrollPositionsRef.current.set(location.pathname, window.scrollY);
+    };
+    // Capture before React Router handles the click; after navigation the
+    // browser may already have reset scrollY to zero.
+    window.addEventListener("click", saveBeforeNavigation, true);
+    return () => {
+      window.removeEventListener("click", saveBeforeNavigation, true);
+      if ("scrollRestoration" in window.history) window.history.scrollRestoration = "auto";
+    };
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const previousPath = previousPathRef.current;
+    // A route transition can reset the browser to 0 before this effect runs;
+    // never replace a captured non-zero position with that reset value.
+    if (window.scrollY > 0 || !scrollPositionsRef.current.has(previousPath)) {
+      scrollPositionsRef.current.set(previousPath, window.scrollY);
+    }
+    previousPathRef.current = location.pathname;
+    const savedTop = scrollPositionsRef.current.get(location.pathname) || 0;
+    // New/reloaded pages should be placed at the top once only. Delayed
+    // retries are only for a previously saved non-zero position; otherwise a
+    // user who starts scrolling during the initial fetch gets pulled back to
+    // the top by a late retry.
+    if (savedTop === 0) {
+      window.scrollTo(0, 0);
+      return;
+    }
+    const restore = () => window.scrollTo(0, savedTop);
+    requestAnimationFrame(restore);
+    const firstRetry = window.setTimeout(restore, 100);
+    const secondRetry = window.setTimeout(restore, 500);
+    const thirdRetry = window.setTimeout(restore, 1200);
+    const fourthRetry = window.setTimeout(restore, 2200);
+    return () => {
+      window.clearTimeout(firstRetry);
+      window.clearTimeout(secondRetry);
+      window.clearTimeout(thirdRetry);
+      window.clearTimeout(fourthRetry);
+    };
+  }, [location.pathname]);
+
   // -1 when the route is not a tab (e.g. /profile): no tab highlights,
   // and the bottom notch parks at the last visited tab.
   const activeIndex = (() => {
@@ -197,6 +249,7 @@ function AppShellNav() {
   const notchIndex = activeIndex >= 0 ? activeIndex : lastTabRef.current;
 
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
+  const [bottomNavHidden, setBottomNavHidden] = useState(false);
   const { pendingCount, suggestionsCount, setPendingCount, setSuggestionsCount, key: refreshKey } = useRefresh();
   const topNavRef = useRef(null);
   const topItemRefs = useRef([]);
@@ -208,6 +261,45 @@ function AppShellNav() {
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
+
+  // LinkedIn-style mobile/tablet navigation: hide while scrolling down and
+  // reveal as soon as the user reverses direction.
+  useEffect(() => {
+    if (!isCompact || hideBottomNav) {
+      setBottomNavHidden(false);
+      return;
+    }
+    let lastY = window.scrollY;
+    let lastUserInputAt = 0;
+    const markUserInput = () => { lastUserInputAt = Date.now(); };
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastY;
+      // Ignore scroll adjustments caused by rows loading/reflowing. They can
+      // be 1px in either direction and must not make the nav blink.
+      if (Date.now() - lastUserInputAt > 800) {
+        lastY = y;
+        return;
+      }
+      // Keep it visible for the first 200px. After that, even a 1px
+      // downward movement hides it, while any upward movement reveals it.
+      if (y <= 200 || delta < 0) setBottomNavHidden(false);
+      else if (delta > 0) setBottomNavHidden(true);
+      lastY = y;
+    };
+    window.addEventListener("wheel", markUserInput, { passive: true });
+    window.addEventListener("touchstart", markUserInput, { passive: true });
+    window.addEventListener("touchmove", markUserInput, { passive: true });
+    window.addEventListener("keydown", markUserInput);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("wheel", markUserInput);
+      window.removeEventListener("touchstart", markUserInput);
+      window.removeEventListener("touchmove", markUserInput);
+      window.removeEventListener("keydown", markUserInput);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [isCompact, hideBottomNav, location.pathname]);
 
   const fetchCounts = useCallback(async () => {
     try {
@@ -382,7 +474,7 @@ function AppShellNav() {
               </header>
 
               {!hideBottomNav && (
-              <div className="nw-bottomnav-wrapper">
+               <div className={`nw-bottomnav-wrapper${bottomNavHidden ? " nw-bottomnav-wrapper-hidden" : ""}`}>
                 <nav className="nw-bottomnav" ref={bottomBarRef}>
                   <svg
                       className="nw-bottomnav-svg"

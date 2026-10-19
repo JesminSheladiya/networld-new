@@ -88,7 +88,9 @@ function Register() {
   const [sendLoading, setSendLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const { blockedSeconds, blockedLabel, trigger } = useRateLimitBlock();
+  const sendLimit = useRateLimitBlock();
+  const verifyLimit = useRateLimitBlock();
+  const actionLimit = useRateLimitBlock();
 
   // Prefill email when redirected from login (unverified account).
   useEffect(() => {
@@ -298,7 +300,7 @@ function Register() {
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (error) {
       if (error?.errorFields) return; // antd validation, message shown inline
-      if (trigger(error)) return;
+      if (sendLimit.trigger(error)) return;
       const msg = errMsg(error, "Failed to send OTP!");
       message.error(msg);
       if (/already exists|already sent|please login|temporary|disposable/i.test(msg)) {
@@ -357,7 +359,7 @@ function Register() {
       setOtpVerified(true);
       message.success("Email verified!");
     } catch (error) {
-      if (trigger(error)) return;
+      if (verifyLimit.trigger(error)) return;
       message.error(errMsg(error, "OTP verification failed!"));
     } finally {
       setVerifyLoading(false);
@@ -474,7 +476,7 @@ function Register() {
       authLogin({ fresh: true });
       navigate("/contacts", { replace: true });
     } catch (error) {
-      if (trigger(error)) {
+      if (actionLimit.trigger(error)) {
         setStep(1);
         return;
       }
@@ -680,11 +682,11 @@ function Register() {
                     <button
                       type="button"
                       className="pf-primary-btn auth-otp-send-btn auth-send-full"
-                      disabled={sendLoading || blockedSeconds > 0 || emailStatus === "taken" || (!otpSent && (!isEmailFormatOk(emailValue || "") || isDisposableEmail(emailValue || ""))) || (otpSent && cooldown > 0)}
+                       disabled={sendLoading || sendLimit.blockedSeconds > 0 || emailStatus === "taken" || (!otpSent && (!isEmailFormatOk(emailValue || "") || isDisposableEmail(emailValue || ""))) || (otpSent && cooldown > 0)}
                       onClick={() => handleSendOtp(otpSent)}
                     >
-                      {blockedSeconds > 0
-                        ? blockedLabel
+                      {sendLimit.blockedSeconds > 0
+                        ? sendLimit.blockedLabel
                         : sendLoading
                           ? "Sending..."
                           : !otpSent
@@ -708,7 +710,7 @@ function Register() {
                         ref={(el) => (otpRefs.current[i] = el)}
                         className={`auth-otp-box ${otpVerified ? "verified" : ""}`}
                         value={d}
-                        disabled={!otpSent || otpVerified}
+                        disabled={!otpSent || otpVerified || verifyLimit.blockedSeconds > 0}
                         inputMode="numeric"
                         maxLength={1}
                         autoComplete="one-time-code"
@@ -732,16 +734,20 @@ function Register() {
                         <button
                           type="button"
                           className="pf-primary-btn auth-otp-verify-btn"
-                          disabled={!otpSent || !otpComplete || verifyLoading || blockedSeconds > 0}
+                          disabled={!otpSent || !otpComplete || verifyLoading || verifyLimit.blockedSeconds > 0}
                           onClick={handleVerifyOtp}
                         >
-                          {blockedSeconds > 0 ? blockedLabel : verifyLoading ? "Verifying..." : "Verify"}
+                          {verifyLimit.blockedSeconds > 0 ? verifyLimit.blockedLabel : verifyLoading ? "Verifying..." : "Verify"}
                         </button>
                       </span>
                     </Tooltip>
                   )}
                 </div>
-                {otpVerified && (
+                {verifyLimit.blockedSeconds > 0 ? (
+                  <div className="auth-otp-foot">
+                    <span className="auth-otp-err">{verifyLimit.blockedMessageLive}</span>
+                  </div>
+                ) : otpVerified && (
                   <div className="auth-otp-foot">
                     <span className="auth-otp-ok">✓ Email verified — you can continue.</span>
                   </div>
@@ -967,9 +973,9 @@ function Register() {
                       <button
                         type="submit"
                         className="pf-primary-btn auth-next-btn"
-                        disabled={!registerReady || loading || blockedSeconds > 0 || usernameStatus === "taken"}
+                        disabled={!registerReady || loading || actionLimit.blockedSeconds > 0 || usernameStatus === "taken"}
                       >
-                        {blockedSeconds > 0 ? blockedLabel : loading ? "Registering..." : "Register"}
+                        {actionLimit.blockedSeconds > 0 ? actionLimit.blockedLabel : loading ? "Registering..." : "Register"}
                       </button>
                     </span>
                   </Tooltip>

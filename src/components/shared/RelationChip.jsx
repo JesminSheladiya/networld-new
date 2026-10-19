@@ -14,7 +14,9 @@ export const relationTone = (relation) => {
 
 export default function RelationChip({ relation, style }) {
   const { relName } = useRelationDisplay();
-  if (!relation) return <span className="nw-rel-empty">—</span>;
+  // Empty relations are valid for pending/stranger states; don't show a
+  // placeholder dash in request stripes or action rows.
+  if (!relation) return null;
   const raw = typeof relation === "string" ? relation : relation.relationName || relation || `Relation ${relation.id}`;
   const label = relName(raw);
   const tone = relationTone(raw);
