@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -85,6 +86,10 @@ public class User implements UserDetails {
     // (legacy rows + fresh registers before the onboarding popup).
     @Column(name = "relation_format", length = 10)
     private String relationFormat;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private java.time.Instant createdAt;
 
     // Login brute-force protection (tiered lockout). Nullable for old rows —
     // null counts as 0 / not locked everywhere (see AuthService).
@@ -219,6 +224,8 @@ public class User implements UserDetails {
 
     public String getRelationFormat() { return relationFormat; }
     public void setRelationFormat(String relationFormat) { this.relationFormat = relationFormat; }
+    public java.time.Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(java.time.Instant createdAt) { this.createdAt = createdAt; }
 
     public Integer getFailedLoginAttempts() { return failedLoginAttempts; }
     public void setFailedLoginAttempts(Integer failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }

@@ -1017,8 +1017,9 @@ public class AuthService {
                 u.getHideCover(),
                 u.getHideConnections(),
                 u.getHideContactInfo(),
-                u.getRelationFormat()
-        );
+                 u.getRelationFormat(),
+                 u.getCreatedAt()
+         );
     }
 
     // Raw bearer token of the current request (null when absent).

@@ -20,6 +20,7 @@ public class AuthResponse {
     private Boolean hideConnections;
     private Boolean hideContactInfo;
     private String relationFormat;
+    private java.time.Instant createdAt;
 
     public AuthResponse(String token, String username, String email,
                         String phone, String fullName, Long id, String profilePicture,
@@ -28,7 +29,7 @@ public class AuthResponse {
                         String occupation,
                         Boolean hideCover,
                         Boolean hideConnections, Boolean hideContactInfo,
-                        String relationFormat) {
+                         String relationFormat, java.time.Instant createdAt) {
         this.token    = token;
         this.username = username;
         this.email    = email;
@@ -45,6 +46,7 @@ public class AuthResponse {
         this.hideConnections = hideConnections;
         this.hideContactInfo = hideContactInfo;
         this.relationFormat = relationFormat;
+        this.createdAt = createdAt;
     }
 
     // The JWT is delivered only through the HttpOnly auth cookie. It must not
@@ -66,4 +68,5 @@ public class AuthResponse {
     public Boolean getHideConnections() { return hideConnections; }
     public Boolean getHideContactInfo() { return hideContactInfo; }
     public String getRelationFormat() { return relationFormat; }
+    public java.time.Instant getCreatedAt() { return createdAt; }
 }
