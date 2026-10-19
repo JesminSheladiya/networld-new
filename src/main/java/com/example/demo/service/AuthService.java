@@ -2,15 +2,19 @@ package com.example.demo.service;
 
 import com.example.demo.dto.*;
 import com.example.demo.exception.AccountLockedException;
+import com.example.demo.exception.OtpQuotaExceededException;
+import com.example.demo.exception.OtpCooldownException;
 import com.example.demo.model.EmailOtpVerification;
 import com.example.demo.model.User;
 import com.example.demo.model.UserSession;
+import com.example.demo.model.OtpQuota;
 import com.example.demo.repository.ContactRepository;
 import com.example.demo.repository.EmailOtpRepository;
 import com.example.demo.repository.UserRelationRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.UserSessionRepository;
 import com.example.demo.repository.UsernameChangeHistoryRepository;
+import com.example.demo.repository.OtpQuotaRepository;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.util.HashUtil;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -31,6 +35,7 @@ public class AuthService {
     private final OtpMailService mailer;
     private final EmailOtpRepository pendingOtps;
     private final UserSessionRepository sessions;
+    private final OtpQuotaRepository otpQuotas;
     private final boolean otpTestMode;
     // Test-hook storage (active only when OTP_TEST_MODE=true): email -> plain OTP.
     // Always empty in production — plain OTPs are never persisted.
@@ -52,6 +57,8 @@ public class AuthService {
     private final int loginExtraAttempts;
     private final long loginExtendedLockHours;
     private final long loginRepeatLockHours;
+    private final int otpDailyLimit;
+    private final long otpQuotaHours;
 
     // Max username changes in any rolling 7-day window.
     private static final int MAX_USERNAME_CHANGES_PER_WEEK = 2;
@@ -62,15 +69,18 @@ public class AuthService {
                        UserRelationRepository relations,
                        ContactRepository contacts,
                        OtpMailService mailer,
-                       EmailOtpRepository pendingOtps,
-                       UserSessionRepository sessions,
+                        EmailOtpRepository pendingOtps,
+                        UserSessionRepository sessions,
+                        OtpQuotaRepository otpQuotas,
                        @org.springframework.beans.factory.annotation.Value("${app.otp.test-mode:false}") boolean otpTestMode,
                        @org.springframework.beans.factory.annotation.Value("${app.disposable-list.url:https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf}") String disposableListUrl,
                         @org.springframework.beans.factory.annotation.Value("${app.security.login-max-attempts:5}") int loginMaxAttempts,
                         @org.springframework.beans.factory.annotation.Value("${app.security.login-first-lock-minutes:1}") long loginFirstLockMinutes,
                         @org.springframework.beans.factory.annotation.Value("${app.security.login-extra-attempts:3}") int loginExtraAttempts,
                         @org.springframework.beans.factory.annotation.Value("${app.security.login-extended-lock-hours:3}") long loginExtendedLockHours,
-                        @org.springframework.beans.factory.annotation.Value("${app.security.login-repeat-lock-hours:24}") long loginRepeatLockHours) {
+                        @org.springframework.beans.factory.annotation.Value("${app.security.login-repeat-lock-hours:24}") long loginRepeatLockHours,
+                        @org.springframework.beans.factory.annotation.Value("${app.security.otp-daily-limit:3}") int otpDailyLimit,
+                        @org.springframework.beans.factory.annotation.Value("${app.security.otp-quota-hours:24}") long otpQuotaHours) {
         this.users   = users;
         this.encoder = encoder;
         this.jwt     = jwt;
@@ -81,12 +91,15 @@ public class AuthService {
         this.mailer  = mailer;
         this.pendingOtps = pendingOtps;
         this.sessions = sessions;
+        this.otpQuotas = otpQuotas;
         this.otpTestMode = otpTestMode;
         this.loginMaxAttempts = loginMaxAttempts;
         this.loginFirstLockMinutes = loginFirstLockMinutes;
         this.loginExtraAttempts = loginExtraAttempts;
         this.loginExtendedLockHours = loginExtendedLockHours;
         this.loginRepeatLockHours = loginRepeatLockHours;
+        this.otpDailyLimit = otpDailyLimit;
+        this.otpQuotaHours = otpQuotaHours;
         if (otpTestMode) {
             System.out.println("WARN: OTP_TEST_MODE=true — /api/auth/test-otp enabled. NEVER use in production.");
         }
@@ -212,6 +225,7 @@ public class AuthService {
     }
 
     // Step 1 of registration: email-only OTP. No account is created here.
+    @org.springframework.transaction.annotation.Transactional
     public java.util.Map<String, Object> requestOtp(String rawEmail) {
         String email = normalizeEmail(rawEmail);
         if (users.existsByEmail(email)) {
@@ -231,8 +245,10 @@ public class AuthService {
         });
         if (p.getOtpSentAt() != null && java.time.Instant.now().isBefore(
                 p.getOtpSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS))) {
-            throw new RuntimeException("Please wait a minute before resending OTP.");
+            throw new OtpCooldownException("Please wait a minute before resending OTP.",
+                    cooldownSeconds(p.getOtpSentAt()));
         }
+        consumeOtpQuota(email, "register");
         String otp = newOtp(p);
         pendingOtps.save(p);
         if (otpTestMode) testOtpCodes.put(email, otp);
@@ -302,6 +318,12 @@ public class AuthService {
         }
     }
 
+    private static long cooldownSeconds(java.time.Instant sentAt) {
+        if (sentAt == null) return RESEND_COOLDOWN_SECONDS;
+        return Math.max(1, sentAt.plusSeconds(RESEND_COOLDOWN_SECONDS)
+                .getEpochSecond() - java.time.Instant.now().getEpochSecond());
+    }
+
     private String newOtp(EmailOtpVerification p) {
         String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
         p.setOtpHash(encoder.encode(otp));
@@ -311,6 +333,35 @@ public class AuthService {
         p.setVerified(false);
         p.setVerifiedAt(null);
         return otp;
+    }
+
+    /** Separate 24-hour quota per normalized email and OTP purpose. */
+    private void consumeOtpQuota(String email, String purpose) {
+        java.time.Instant now = java.time.Instant.now();
+        OtpQuota quota = otpQuotas.findByEmailAndPurpose(email, purpose).orElseGet(() -> {
+            OtpQuota q = new OtpQuota();
+            q.setEmail(email);
+            q.setPurpose(purpose);
+            q.setCount(0);
+            q.setWindowStart(now);
+            return q;
+        });
+        if (quota.getWindowStart() == null || !now.isBefore(
+                quota.getWindowStart().plus(otpQuotaHours, java.time.temporal.ChronoUnit.HOURS))) {
+            quota.setWindowStart(now);
+            quota.setCount(0);
+        }
+        int count = quota.getCount() == null ? 0 : quota.getCount();
+        if (count >= otpDailyLimit) {
+            long retry = Math.max(1, quota.getWindowStart()
+                    .plus(otpQuotaHours, java.time.temporal.ChronoUnit.HOURS)
+                    .getEpochSecond() - now.getEpochSecond());
+            throw new OtpQuotaExceededException(
+                    purpose + " OTP daily limit reached (" + otpDailyLimit + "). Try again in "
+                            + formatLockDuration(retry) + ".", retry);
+        }
+        quota.setCount(count + 1);
+        otpQuotas.save(quota);
     }
 
     // Step 2 of registration: requires a verified Step-1 OTP. Returns token.
@@ -350,6 +401,7 @@ public class AuthService {
         return buildResponseWithSession(u, req.getDeviceName(), userAgent, ipAddress);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public java.util.Map<String, Object> resendOtp(String rawEmail) {
         String email = normalizeEmail(rawEmail);
         EmailOtpVerification p = pendingOtps.findByEmail(email).orElse(null);
@@ -359,8 +411,10 @@ public class AuthService {
             if (u != null && !Boolean.TRUE.equals(u.getEmailVerified()) && u.getOtpHash() != null) {
                 if (u.getOtpSentAt() != null && java.time.Instant.now().isBefore(
                         u.getOtpSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS))) {
-                    throw new RuntimeException("Please wait a minute before resending OTP.");
+                    throw new OtpCooldownException("Please wait a minute before resending OTP.",
+                            cooldownSeconds(u.getOtpSentAt()));
                 }
+                consumeOtpQuota(email, "register");
                 String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
                 u.setOtpHash(encoder.encode(otp));
                 u.setOtpExpiry(java.time.Instant.now().plus(OTP_EXPIRY_MINUTES, java.time.temporal.ChronoUnit.MINUTES));
@@ -382,8 +436,10 @@ public class AuthService {
         }
         if (p.getOtpSentAt() != null && java.time.Instant.now().isBefore(
                 p.getOtpSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS))) {
-            throw new RuntimeException("Please wait a minute before resending OTP.");
+            throw new OtpCooldownException("Please wait a minute before resending OTP.",
+                    cooldownSeconds(p.getOtpSentAt()));
         }
+        consumeOtpQuota(email, "register");
         String otp = newOtp(p);
         pendingOtps.save(p);
         if (otpTestMode) testOtpCodes.put(email, otp);
@@ -408,6 +464,7 @@ public class AuthService {
     // ── Forgot password ──────────────────────────────────────────────
     // Step 1: send a reset OTP to an existing account. Reuses the pending
     // OTP table so the existing /verify-otp endpoint can confirm it.
+    @org.springframework.transaction.annotation.Transactional
     public java.util.Map<String, Object> forgotRequest(String rawEmail) {
         String email = normalizeEmail(rawEmail);
         User u = users.findByEmail(email).orElse(null);
@@ -420,8 +477,10 @@ public class AuthService {
         });
         if (p.getOtpSentAt() != null && java.time.Instant.now().isBefore(
                 p.getOtpSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS))) {
-            throw new RuntimeException("Please wait a minute before resending OTP.");
+            throw new OtpCooldownException("Please wait a minute before resending OTP.",
+                    cooldownSeconds(p.getOtpSentAt()));
         }
+        consumeOtpQuota(email, "forgot");
         String otp = newOtp(p);
         pendingOtps.save(p);
         if (otpTestMode) testOtpCodes.put(email, otp);
@@ -714,6 +773,7 @@ public class AuthService {
     // any status), their address-book contacts and username history, then
     // the user row itself. Other users' address-book snapshots stay untouched.
     // Requires a fresh OTP sent to the account email (see deleteAccountRequest).
+    @org.springframework.transaction.annotation.Transactional
     public java.util.Map<String, Object> deleteAccountRequest(String email) {
         User u = users.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -724,8 +784,10 @@ public class AuthService {
         });
         if (p.getOtpSentAt() != null && java.time.Instant.now().isBefore(
                 p.getOtpSentAt().plusSeconds(RESEND_COOLDOWN_SECONDS))) {
-            throw new RuntimeException("Please wait a minute before resending OTP.");
+            throw new OtpCooldownException("Please wait a minute before resending OTP.",
+                    cooldownSeconds(p.getOtpSentAt()));
         }
+        consumeOtpQuota(email, "delete");
         String otp = newOtp(p);
         pendingOtps.save(p);
         if (otpTestMode) testOtpCodes.put(email, otp);
@@ -763,6 +825,9 @@ public class AuthService {
         history.deleteByUser(u);
         try { sessions.deleteByUser(u); } catch (Exception ignored) {}
         try { pendingOtps.deleteByEmail(email); } catch (Exception ignored) {}
+        // Account deletion is successful: the email starts completely fresh
+        // if it registers again, including fresh OTP quotas per purpose.
+        try { otpQuotas.deleteByEmail(email); } catch (Exception ignored) {}
         if (otpTestMode) testOtpCodes.remove(email);
         users.delete(u);
     }

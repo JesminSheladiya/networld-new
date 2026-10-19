@@ -99,6 +99,25 @@ public class User implements UserDetails {
     @Column(name = "lockout_level")
     private Integer lockoutLevel;
 
+    // Used by legacy users whose OTP is stored on the User row.
+    @Column(name = "register_otp_quota_count")
+    private Integer registerOtpQuotaCount;
+
+    @Column(name = "forgot_otp_quota_count")
+    private Integer forgotOtpQuotaCount;
+
+    @Column(name = "delete_otp_quota_count")
+    private Integer deleteOtpQuotaCount;
+
+    @Column(name = "register_otp_quota_window_start")
+    private java.time.Instant registerOtpQuotaWindowStart;
+
+    @Column(name = "forgot_otp_quota_window_start")
+    private java.time.Instant forgotOtpQuotaWindowStart;
+
+    @Column(name = "delete_otp_quota_window_start")
+    private java.time.Instant deleteOtpQuotaWindowStart;
+
     public User() {}
 
     public Long getId() { return id; }
@@ -209,4 +228,22 @@ public class User implements UserDetails {
 
     public Integer getLockoutLevel() { return lockoutLevel; }
     public void setLockoutLevel(Integer lockoutLevel) { this.lockoutLevel = lockoutLevel; }
+
+    public Integer getRegisterOtpQuotaCount() { return registerOtpQuotaCount; }
+    public void setRegisterOtpQuotaCount(Integer count) { this.registerOtpQuotaCount = count; }
+
+    public Integer getForgotOtpQuotaCount() { return forgotOtpQuotaCount; }
+    public void setForgotOtpQuotaCount(Integer count) { this.forgotOtpQuotaCount = count; }
+
+    public Integer getDeleteOtpQuotaCount() { return deleteOtpQuotaCount; }
+    public void setDeleteOtpQuotaCount(Integer count) { this.deleteOtpQuotaCount = count; }
+
+    public java.time.Instant getRegisterOtpQuotaWindowStart() { return registerOtpQuotaWindowStart; }
+    public void setRegisterOtpQuotaWindowStart(java.time.Instant value) { this.registerOtpQuotaWindowStart = value; }
+
+    public java.time.Instant getForgotOtpQuotaWindowStart() { return forgotOtpQuotaWindowStart; }
+    public void setForgotOtpQuotaWindowStart(java.time.Instant value) { this.forgotOtpQuotaWindowStart = value; }
+
+    public java.time.Instant getDeleteOtpQuotaWindowStart() { return deleteOtpQuotaWindowStart; }
+    public void setDeleteOtpQuotaWindowStart(java.time.Instant value) { this.deleteOtpQuotaWindowStart = value; }
 }

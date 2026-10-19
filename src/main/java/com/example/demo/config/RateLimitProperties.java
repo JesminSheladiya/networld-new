@@ -24,6 +24,10 @@ public class RateLimitProperties {
     private int globalRequests = 100;
     private long globalWindowMinutes = 1;
 
+    /** Read-only list/search calls can legitimately issue one request per page. */
+    private int readRequests = 600;
+    private long readWindowMinutes = 1;
+
     /**
      * true = counters Redis me (multi-instance safe).
      * false = in-memory ConcurrentHashMap (single instance).
@@ -51,6 +55,12 @@ public class RateLimitProperties {
 
     public long getGlobalWindowMinutes() { return globalWindowMinutes; }
     public void setGlobalWindowMinutes(long globalWindowMinutes) { this.globalWindowMinutes = globalWindowMinutes; }
+
+    public int getReadRequests() { return readRequests; }
+    public void setReadRequests(int readRequests) { this.readRequests = readRequests; }
+
+    public long getReadWindowMinutes() { return readWindowMinutes; }
+    public void setReadWindowMinutes(long readWindowMinutes) { this.readWindowMinutes = readWindowMinutes; }
 
     public boolean isDistributed() { return distributed; }
     public void setDistributed(boolean distributed) { this.distributed = distributed; }

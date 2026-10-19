@@ -53,14 +53,22 @@ public class RateLimitFilter extends OncePerRequestFilter {
         int maxHits;
         long windowMs;
 
-        if (isOtpPath(path)) {
-            category = "otp";
+        if (isOtpVerifyPath(path)) {
+            category = "otp-verify";
+            maxHits = props.getOtpRequests();
+            windowMs = TimeUnit.MINUTES.toMillis(props.getOtpWindowMinutes());
+        } else if (isOtpSendPath(path)) {
+            category = "otp-send";
             maxHits = props.getOtpRequests();
             windowMs = TimeUnit.MINUTES.toMillis(props.getOtpWindowMinutes());
         } else if (isAuthPath(path)) {
             category = "auth";
             maxHits = props.getAuthRequests();
             windowMs = TimeUnit.MINUTES.toMillis(props.getAuthWindowMinutes());
+        } else if ("GET".equalsIgnoreCase(request.getMethod())) {
+            category = "read";
+            maxHits = props.getReadRequests();
+            windowMs = TimeUnit.MINUTES.toMillis(props.getReadWindowMinutes());
         } else {
             category = "global";
             maxHits = props.getGlobalRequests();
@@ -96,12 +104,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return uri == null ? "" : uri;
     }
 
-    private static boolean isOtpPath(String path) {
+    private static boolean isOtpSendPath(String path) {
         return path.contains("request-otp")
                 || path.contains("resend-otp")
-                || path.contains("verify-otp")
                 || path.contains("forgot-password")
                 || path.contains("delete-account/request");
+    }
+
+    private static boolean isOtpVerifyPath(String path) {
+        return path.contains("verify-otp");
     }
 
     private static boolean isAuthPath(String path) {

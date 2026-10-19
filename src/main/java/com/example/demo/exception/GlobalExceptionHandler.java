@@ -67,6 +67,26 @@ public class GlobalExceptionHandler {
                         "retryAfterSeconds", ex.getRetryAfterSeconds()));
     }
 
+    @ExceptionHandler(OtpQuotaExceededException.class)
+    public ResponseEntity<?> handleOtpQuota(OtpQuotaExceededException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(Map.of(
+                        "message", ex.getMessage(),
+                        "error", "OTP daily limit exceeded",
+                        "retryAfterSeconds", ex.getRetryAfterSeconds()));
+    }
+
+    @ExceptionHandler(OtpCooldownException.class)
+    public ResponseEntity<?> handleOtpCooldown(OtpCooldownException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(Map.of(
+                        "message", ex.getMessage(),
+                        "error", "OTP cooldown",
+                        "retryAfterSeconds", ex.getRetryAfterSeconds()));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntime(RuntimeException ex) {
         ex.printStackTrace(); // Print to console logs

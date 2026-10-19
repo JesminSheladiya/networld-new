@@ -16,6 +16,12 @@ import java.util.stream.Collectors;
 @Service
 public class UserRelationService {
 
+    // A generic Friend relation is intentionally conservative: unlike a
+    // family relation it can match almost anyone in the graph. Requiring two
+    // shared accepted connections keeps suggestions closer to mutual-friend
+    // discovery instead of producing a friend row for every reachable user.
+    private static final int MIN_MUTUALS_FOR_FRIEND_SUGGESTION = 2;
+
     private final UserRelationRepository userRelationRepo;
     private final UserRepository         userRepository;
     private final RelationRepository     relationRepository;
@@ -128,11 +134,14 @@ public class UserRelationService {
             }
         }
 
-        regenerateAllSuggestions(currentUser);
-        regenerateAllSuggestions(ur.getFromUser());
+        // Suggestions cache is evicted above. Do not regenerate the complete
+        // graph inside the accept request; with the demo dataset this can
+        // exceed the HTTP timeout. The next suggestions read regenerates it
+        // lazily.
     }
 
-    // Edit ONLY the relation of an accepted connection (keeps reverse consistent)
+    // Edit an accepted connection, or the relation on a pending request sent
+    // by the current user. Pending incoming requests remain read-only.
     @Transactional
     @org.springframework.cache.annotation.CacheEvict(value = "suggestions", allEntries = true)
     public void editRelation(Long id, User currentUser, String relationName) {
@@ -144,8 +153,10 @@ public class UserRelationService {
         if (!participant)
             throw new RuntimeException("Not authorized!");
 
-        if (!"ACCEPTED".equals(ur.getStatus()))
-            throw new RuntimeException("Only accepted relations can be edited!");
+        boolean ownPendingRequest = "PENDING".equals(ur.getStatus())
+                && ur.getFromUser().getId().equals(currentUser.getId());
+        if (!"ACCEPTED".equals(ur.getStatus()) && !ownPendingRequest)
+            throw new RuntimeException("Only your pending requests or accepted relations can be edited!");
 
         if (relationName == null || relationName.isBlank())
             throw new RuntimeException("Relation name is required!");
@@ -154,6 +165,9 @@ public class UserRelationService {
         validateRelationGender(newRel, ur.getToUser());
         ur.setRelation(newRel);
         userRelationRepo.save(ur);
+
+        // A pending request has no reverse accepted relation to keep in sync.
+        if (ownPendingRequest) return;
 
         Optional<UserRelation> reverseOpt = userRelationRepo.findByFromUserAndToUser(ur.getToUser(), ur.getFromUser());
         if (reverseOpt.isPresent() && "ACCEPTED".equals(reverseOpt.get().getStatus())) {
@@ -701,8 +715,10 @@ public class UserRelationService {
             userRelationRepo.save(new UserRelation(currentUser, otherUser, relation, "PENDING"));
         }
 
-        regenerateAllSuggestions(currentUser);
-        regenerateAllSuggestions(otherUser);
+        // Do not rebuild the complete suggestion graph synchronously here.
+        // On large networks this made suggestions/send appear stuck until the
+        // HTTP timeout. The cache is evicted above; the next suggestions read
+        // regenerates the data lazily.
     }
 
     // A gendered relation (M/F) can only go to a matching or neutral (N) user.
@@ -854,6 +870,11 @@ public class UserRelationService {
                 continue;
             }
 
+            if ("Friend".equalsIgnoreCase(finalName)
+                    && countMutualConnections(me, otherId, adjLabels) < MIN_MUTUALS_FOR_FRIEND_SUGGESTION) {
+                continue;
+            }
+
             Relation finalRel = relationOf(finalName, relationCache);
             if (finalRel == null) {
                 finalRel = relationOfEnglish(finalName, relationCache);
@@ -866,6 +887,17 @@ public class UserRelationService {
             toInsert.add(new UserRelation(me, otherRef, finalRel, "SUGGESTED"));
         }
         userRelationRepo.saveAll(toInsert);
+    }
+
+    private int countMutualConnections(User me, Long otherId,
+            Map<Long, Map<Long, String>> adjacency) {
+        Map<Long, String> mine = adjacency.getOrDefault(me.getId(), Map.of());
+        int count = 0;
+        for (Long contactId : mine.keySet()) {
+            Map<Long, String> contactLinks = adjacency.get(contactId);
+            if (contactLinks != null && contactLinks.containsKey(otherId)) count++;
+        }
+        return count;
     }
 
     // Cached english_relation fallback (relationCache holds nulls too, so a

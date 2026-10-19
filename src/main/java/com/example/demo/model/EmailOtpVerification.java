@@ -31,6 +31,26 @@ public class EmailOtpVerification {
     @Column(name = "verified_at")
     private Instant verifiedAt;
 
+    // Separate 24-hour quotas per OTP purpose. Register, forgot-password and
+    // delete-account each get their own allowance.
+    @Column(name = "register_otp_quota_count")
+    private Integer registerOtpQuotaCount;
+
+    @Column(name = "forgot_otp_quota_count")
+    private Integer forgotOtpQuotaCount;
+
+    @Column(name = "delete_otp_quota_count")
+    private Integer deleteOtpQuotaCount;
+
+    @Column(name = "register_otp_quota_window_start")
+    private Instant registerOtpQuotaWindowStart;
+
+    @Column(name = "forgot_otp_quota_window_start")
+    private Instant forgotOtpQuotaWindowStart;
+
+    @Column(name = "delete_otp_quota_window_start")
+    private Instant deleteOtpQuotaWindowStart;
+
     public Long getId() { return id; }
 
     public String getEmail() { return email; }
@@ -53,4 +73,22 @@ public class EmailOtpVerification {
 
     public Instant getVerifiedAt() { return verifiedAt; }
     public void setVerifiedAt(Instant verifiedAt) { this.verifiedAt = verifiedAt; }
+
+    public Integer getRegisterOtpQuotaCount() { return registerOtpQuotaCount; }
+    public void setRegisterOtpQuotaCount(Integer count) { this.registerOtpQuotaCount = count; }
+
+    public Integer getForgotOtpQuotaCount() { return forgotOtpQuotaCount; }
+    public void setForgotOtpQuotaCount(Integer count) { this.forgotOtpQuotaCount = count; }
+
+    public Integer getDeleteOtpQuotaCount() { return deleteOtpQuotaCount; }
+    public void setDeleteOtpQuotaCount(Integer count) { this.deleteOtpQuotaCount = count; }
+
+    public Instant getRegisterOtpQuotaWindowStart() { return registerOtpQuotaWindowStart; }
+    public void setRegisterOtpQuotaWindowStart(Instant value) { this.registerOtpQuotaWindowStart = value; }
+
+    public Instant getForgotOtpQuotaWindowStart() { return forgotOtpQuotaWindowStart; }
+    public void setForgotOtpQuotaWindowStart(Instant value) { this.forgotOtpQuotaWindowStart = value; }
+
+    public Instant getDeleteOtpQuotaWindowStart() { return deleteOtpQuotaWindowStart; }
+    public void setDeleteOtpQuotaWindowStart(Instant value) { this.deleteOtpQuotaWindowStart = value; }
 }

@@ -25,7 +25,8 @@ public class ContactSpecification {
             List<Predicate> predicates = new ArrayList<>();
 
             if (name != null && !name.isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("name")), "%" + name.toLowerCase() + "%"));
+                String pattern = likePattern(name);
+                predicates.add(cb.like(cb.lower(root.get("name")), "%" + pattern + "%", '\\'));
             }
 
             if (phone != null && !phone.isBlank()) {
@@ -33,7 +34,8 @@ public class ContactSpecification {
             }
 
             if (email != null && !email.isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("email")), "%" + email.toLowerCase() + "%"));
+                String pattern = likePattern(email);
+                predicates.add(cb.like(cb.lower(root.get("email")), "%" + pattern + "%", '\\'));
             }
 
             if (relationId != null) {
@@ -42,5 +44,15 @@ public class ContactSpecification {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    // User input is still bound as a query parameter by Criteria/JPA. Escaping
+    // LIKE metacharacters additionally prevents '%' and '_' from turning a
+    // literal search into an unexpectedly broad pattern.
+    private static String likePattern(String value) {
+        return value.toLowerCase()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 }
