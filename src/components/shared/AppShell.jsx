@@ -130,7 +130,7 @@ function ProfileMenu() {
                     </Avatar>
                     <div className="nw-profile-meta">
                       <div className="nw-profile-name">{fullName}</div>
-                      <div className="nw-profile-email">{email}</div>
+                       <div className="nw-profile-email">{email}</div>
                     </div>
                   </div>
                   <div className="nw-profile-actions">

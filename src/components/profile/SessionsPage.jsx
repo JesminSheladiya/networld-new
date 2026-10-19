@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Spin, message } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faDesktop, faMobileScreen, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faDesktop, faMobileScreen, faShieldHalved, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 import { getSessions, revokeSession, revokeAllSessions } from "../../Services/authService";
 import { parseDevice } from "../../utils/deviceUtils";
 import { useAuth } from "../../context/AuthContext";
@@ -39,7 +39,7 @@ function formatDate(iso) {
 }
 
 function SessionsPage() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,6 +102,19 @@ function SessionsPage() {
       <button className="nw-back-btn" onClick={goBack}>
         <FontAwesomeIcon icon={faArrowLeft} /> Back
       </button>
+
+      {user?.createdAt && (
+        <div className="pf-sessions-account-card">
+          <span className="pf-sessions-account-icon"><FontAwesomeIcon icon={faCalendarDays} /></span>
+          <span className="pf-sessions-account-copy">
+            <strong>Account created on</strong>
+            <span>{(() => {
+              const created = new Date(user.createdAt);
+              return `${created.getDate()} ${created.toLocaleDateString("en-US", { month: "long" })} ${created.getFullYear()} • ${created.toLocaleDateString("en-US", { weekday: "long" })}`;
+            })()}</span>
+          </span>
+        </div>
+      )}
 
       <div className="pf-card">
         <div className="pf-card-head pf-sessions-head">
