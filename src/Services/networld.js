@@ -60,6 +60,7 @@ export const api = {
   relations: () => http.get(`${API_URL}/relations`),
   // Unfiltered display map (includes hidden engine rows) for chips/labels.
   relationsAll: () => http.get(`${API_URL}/relations/all`),
+  usedUniqueRelations: () => http.get(`${BASE}/user-relations/used-unique-relations`),
   searchUsers: (q) => http.get(`${BASE}/user-relations/search-users?query=${encodeURIComponent(q)}`),
   send: (toEmail, relationId) => http.post(`${BASE}/user-relations/send`, { toEmail, relationId }),
   // Paged (default 50, max 100 server-side for suggestions/pending/sent;
@@ -92,4 +93,6 @@ export const api = {
   cancel: (id) => http.post(`${BASE}/user-relations/${id}/cancel`),
   updateRelation: (relationId, relationName) =>
     http.put(`${BASE}/user-relations/${relationId}/relation`, { relationName }),
+  removeConnection: (relationId) =>
+    http.delete(`${BASE}/user-relations/${relationId}/connection`),
 };

@@ -270,6 +270,7 @@
   text-overflow: ellipsis;
 }
 
+
 .nw-profile-dropdown .nw-profile-actions {
   display: flex;
   flex-direction: column;
@@ -382,6 +383,13 @@
   display: flex;
   justify-content: center;
   padding: 0 12px;
+  transition: transform 0.24s ease, opacity 0.2s ease;
+}
+
+.nw-bottomnav-wrapper-hidden {
+  transform: translateY(calc(100% + 18px));
+  opacity: 0;
+  pointer-events: none;
 }
 
 .nw-bottomnav {

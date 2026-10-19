@@ -5,14 +5,20 @@ import { useRelationDisplay } from "../../context/RelationDisplayContext";
 
 const GENDER_LABEL = { M: "Male", F: "Female" };
 
-function RelationPickerModal({ open, title = "Edit Relation", personName, personGender, value, idMode = false, onClose, onPick }) {
+function RelationPickerModal({ open, title = "Edit Relation", personName, personGender, value, currentRelation, idMode = false, onClose, onPick }) {
   const { relOptionLabel } = useRelationDisplay();
   const [relations, setRelations] = useState([]);
   const [val, setVal] = useState(value);
+  const [usedUnique, setUsedUnique] = useState([]);
 
   useEffect(() => {
     if (open) {
-      api.relations().then((res) => setRelations(res.data || [])).catch(() => { });
+      Promise.all([api.relations(), api.usedUniqueRelations()])
+        .then(([relationsRes, usedRes]) => {
+          setRelations(relationsRes.data || []);
+          setUsedUnique((usedRes.data || []).map((name) => name.toLowerCase()));
+        })
+        .catch(() => { });
       setVal(value);
     }
   }, [open, value]);
@@ -20,12 +26,22 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, person
   const isCompatible = (r) =>
     !personGender || !r.gender || r.gender === "N" || r.gender === personGender;
 
+  const isUniqueUnavailable = (r) => {
+    if (!usedUnique.includes((r.relationName || "").toLowerCase())) return false;
+    if (!currentRelation) return true;
+    return (r.relationName || "").toLowerCase() !== currentRelation.toLowerCase();
+  };
+
   // Show all relations; incompatible ones are disabled (greyed out)
   const visible = relations;
 
   const handlePick = () => {
     if (val === undefined || val === null || val === "") return;
     const picked = relations.find((r) => (idMode ? r.id : r.relationName) === val);
+    if (picked && isUniqueUnavailable(picked)) {
+      message.error(`'${relOptionLabel(picked, relations)}' is already assigned in your account.`);
+      return;
+    }
     if (picked && !isCompatible(picked)) {
       message.error(
         `'${relOptionLabel(picked, relations)}' can only be sent to ` +
@@ -88,9 +104,17 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, person
               .filter(Boolean)
               .join(" ")
               .toLowerCase(),
-            disabled: !isCompatible(r),
+            disabled: !isCompatible(r) || isUniqueUnavailable(r),
           }))}
         />
+        <div className="relation-limit-notice">
+          <span className="relation-limit-notice-icon">i</span>
+          <span>
+            <strong>Note:</strong> Father, Mother, Grandparents, Husband, Wife,
+            Father-in-law and Mother-in-law can be selected once. All other relations
+            can be selected multiple times.
+          </span>
+        </div>
       </div>
     </Modal>
   );

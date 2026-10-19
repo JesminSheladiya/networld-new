@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, memo } from "react";
 import { Virtuoso } from "react-virtuoso";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Input, Spin, Avatar, Empty, Tooltip, Pagination, Modal, Select } from "antd";
+import { Input, Spin, Avatar, Empty, Tooltip, Modal, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 import { faMagnifyingGlass, faXmark, faFilter, faCheck, faRotateLeft, faChevronRight, faArrowDownWideShort } from "@fortawesome/free-solid-svg-icons";
@@ -10,7 +10,7 @@ import { mapConnectionToContact as mapContact } from "../../utils/contactMapper"
 import { useRefresh } from "../shared/RefreshContext";
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
-import { DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
+import { getPageSizePreference, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
 
@@ -20,6 +20,8 @@ const CATEGORIES = [
   { key: "inlaws", label: "In-Laws" },
   { key: "others", label: "Others" },
 ];
+
+const contactsCache = new Map();
 
 // Memoized row — Virtuoso mounts only the visible window, so a 10k list
 // never grows the DOM and every append stays as fast as the first one.
@@ -83,6 +85,7 @@ function ContactsPage() {
   const { key: refreshKey } = useRefresh();
   const { user } = useAuth();
   const accountKey = user?.email || "anonymous";
+  const cachedContacts = contactsCache.get(accountKey);
 
   // Coming from Requests accept → open the tab where the contact landed
   useEffect(() => {
@@ -96,22 +99,22 @@ function ContactsPage() {
 
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
   const [isNarrow, setIsNarrow] = useState(() => window.matchMedia(MQ_NARROW).matches);
-  const [searchText, setSearchText] = useState("");
-  const [category, setCategory] = useState("all");
-  const [loading, setLoading] = useState(false);
-  const [dataSource, setDataSource] = useState([]);
-  const [totalItems, setTotalItems] = useState(0);
+  const [searchText, setSearchText] = useState(() => cachedContacts?.searchText || "");
+  const [category, setCategory] = useState(() => cachedContacts?.category || "all");
+  const [loading, setLoading] = useState(() => !cachedContacts);
+  const [dataSource, setDataSource] = useState(() => cachedContacts?.dataSource || []);
+  const [totalItems, setTotalItems] = useState(() => cachedContacts?.totalItems || 0);
   const [counts, setCounts] = useState({ all: 0, family: 0, inlaws: 0, others: 0 });
   const [relationOptions, setRelationOptions] = useState([]);
   const [editingContact, setEditingContact] = useState(null);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => cachedContacts?.page || 0);
   const [pageSize, setPageSize] = useState(() => getPageSizePreference(accountKey));
-  const [sortParam, setSortParam] = useState(null);
+  const [sortParam, setSortParam] = useState(() => cachedContacts?.sortParam || null);
   const [loadingMore, setLoadingMore] = useState(false);
   const chipsRef = useRef(null);
   const chipRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
-  const [selectedRelations, setSelectedRelations] = useState([]);
+  const [selectedRelations, setSelectedRelations] = useState(() => cachedContacts?.selectedRelations || []);
   const [filterOpen, setFilterOpen] = useState(false);
   const [mobileQ, setMobileQ] = useState("");
   const [sortDraft, setSortDraft] = useState(null);
@@ -187,8 +190,16 @@ function ContactsPage() {
       );
       if (id !== reqIdRef.current) return; // stale — a newer request is in flight
       const mapped = res.data.content.map(mapContact);
-      setDataSource((prev) => (append ? [...prev, ...mapped] : mapped));
-      setTotalItems(res.data.totalElements);
+      const nextTotal = res.data.totalElements;
+      setDataSource((prev) => {
+        const next = append ? [...prev, ...mapped] : mapped;
+        contactsCache.set(accountKey, {
+          searchText, category, selectedRelations, sortParam, pageSize,
+          page: pageNum, refreshKey, dataSource: next, totalItems: nextTotal,
+        });
+        return next;
+      });
+      setTotalItems(nextTotal);
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
       if (!append && id === reqIdRef.current) {
@@ -205,6 +216,7 @@ function ContactsPage() {
   // True while the reset effect's own page-0 fetch is authoritative,
   // so the page effect doesn't fire a duplicate for the same page
   const resetFetchRef = useRef(false);
+  const restoredCacheRef = useRef(false);
 
   // Reset + load first page when anything filter-ish changes.
   // Always fetches page 0 directly: on mobile the page effect skips page 0,
@@ -218,6 +230,19 @@ function ContactsPage() {
     prevSearchRef.current = searchText;
     const delay = firstMountRef.current ? 0 : (searchChanged ? SEARCH_DEBOUNCE_MS : 0);
     const handler = setTimeout(() => {
+      const cached = contactsCache.get(accountKey);
+      const cacheMatches = firstMountRef.current && cached
+        && cached.searchText === searchText
+        && cached.category === category
+        && cached.pageSize === pageSize
+        && cached.sortParam === sortParam
+        && JSON.stringify(cached.selectedRelations || []) === JSON.stringify(selectedRelations);
+      if (cacheMatches) {
+        firstMountRef.current = false;
+        restoredCacheRef.current = true;
+        setLoading(false);
+        return;
+      }
       setLoadingMore(false);
       firstMountRef.current = false;
       resetFetchRef.current = true;
@@ -233,22 +258,19 @@ function ContactsPage() {
     setPage(0);
   }, [accountKey]);
 
-  // Desktop page turns — including back to first page
+  // Append subsequent pages on every viewport. The rendered list is
+  // virtualized, so large desktop contact graphs remain lightweight.
   useEffect(() => {
-    if (isCompact) return;
+    if (restoredCacheRef.current) {
+      restoredCacheRef.current = false;
+      return;
+    }
     if (page === 0 && (firstMountRef.current || resetFetchRef.current)) {
       firstMountRef.current = false;
       resetFetchRef.current = false;
       return;
     }
     resetFetchRef.current = false;
-    fetchList(page, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
-
-  // Mobile: append next page
-  useEffect(() => {
-    if (!isCompact || page === 0) return;
     setLoadingMore(true);
     fetchList(page, true).finally(() => setLoadingMore(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -296,14 +318,15 @@ function ContactsPage() {
   const filtered = dataSource;
   const hasMore = dataSource.length < totalItems;
 
-  // Compact: next page loads automatically as the end approaches
-  // (endReached chains while the user scrolls — no waiting at the bottom).
-  // Single trigger: the old sentinel observer is gone, so a page can never
-  // be requested twice / skipped by two racing triggers.
-  const loadMoreCompact = useCallback(() => {
-    if (isCompact && hasMore && !loading && !loadingMore) setPage((p) => p + 1);
+  // Next page loads automatically as the end approaches on desktop and
+  // compact layouts alike.
+  const loadMore = useCallback(() => {
+    if (hasMore && !loading && !loadingMore) {
+      setLoadingMore(true);
+      setPage((p) => p + 1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCompact, hasMore, loading, loadingMore]);
+  }, [hasMore, loading, loadingMore]);
 
   const openContact = useCallback((rec) => {
     navigate(`/contacts/${encodeURIComponent(rec.username || rec.email)}`, { state: { contact: rec } });
@@ -470,61 +493,22 @@ function ContactsPage() {
       ) : (
         <div className="nw-discover-panel">
            <div className="nw-discover-label">Contacts · <span title={totalItems}>{totalItems.toLocaleString()}</span></div>
-          {isCompact ? (
-            // Window scroll (no fixed-height box — the page scrolls exactly
-            // like before). Only the visible window mounts, so appended pages
-            // never slow rendering down; endReached pre-loads the next page
-            // before the bottom is hit.
-            <Virtuoso
-              className="nw-contact-list"
-              useWindowScroll
-              data={filtered}
-              endReached={loadMoreCompact}
-              overscan={360}
-              itemContent={renderCompactRow}
-            />
-           ) : (
-           <div className="nw-contact-list">
-             {filtered.map((rec) => (
-               <ContactRow
-                 key={rec.email || rec.key}
-                 rec={rec}
-                 onOpen={openContact}
-                 onEdit={setEditingContact}
-               />
-             ))}
-           </div>
-          )}
-          {isCompact && (loadingMore ? (
+          <Virtuoso
+            className="nw-contact-list"
+            useWindowScroll
+            data={filtered}
+            endReached={loadMore}
+            overscan={360}
+            itemContent={renderCompactRow}
+          />
+          {loadingMore ? (
             <div className="nw-list-loader">
               <Spin size="small" />
               <span>Loading more contacts...</span>
             </div>
           ) : (
             !hasMore && <div className="nw-list-end">No more contacts</div>
-          ))}
-        </div>
-      )}
-      {!isCompact && totalItems > DEFAULT_PAGE_SIZE && (
-        <div className="nw-table-pagination">
-          <Pagination
-            current={page + 1}
-            pageSize={pageSize}
-            total={totalItems}
-            showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} items`}
-            showSizeChanger
-           pageSizeOptions={pageSizeOptionsForTotal(totalItems)}
-            showQuickJumper
-            showLessItems
-            size="small"
-            onChange={(pg, newPageSize) => {
-              setPage(pg - 1);
-               if (newPageSize !== pageSize) {
-                 setPageSize(newPageSize);
-                 setPageSizePreference(accountKey, newPageSize);
-               }
-            }}
-          />
+          )}
         </div>
       )}
 

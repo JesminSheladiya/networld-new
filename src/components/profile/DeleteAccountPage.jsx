@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { deleteAccount, requestDeleteOtp, verifyOtp } from "../../Services/authService";
 import { useAuth } from "../../context/AuthContext";
+import { useRateLimitBlock } from "../../hooks/useRateLimitBlock";
 import ConfirmPopup from "../shared/ConfirmPopup";
 import "../css/profile-page.css";
 import "../css/Auth.css";
@@ -32,6 +33,9 @@ function DeleteAccountPage() {
   const [checking, setChecking] = useState(false);
   const [otpError, setOtpError] = useState("");
   const lastCheckedRef = useRef("");
+  // Keep send/resend cooldown and OTP verification limits independent.
+  const sendLimit = useRateLimitBlock();
+  const verifyLimit = useRateLimitBlock();
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -65,6 +69,10 @@ function DeleteAccountPage() {
       })
       .catch((e) => {
         setOtpVerified(false);
+        if (verifyLimit.trigger(e, undefined, { silent: true })) {
+          setOtpError("");
+          return;
+        }
         setOtpError(e.response?.data?.error || e.response?.data?.message || "Invalid OTP.");
         otpRefs.current[5]?.focus();
       })
@@ -98,7 +106,7 @@ function DeleteAccountPage() {
   };
 
   const handleSendOtp = async () => {
-    if (!canArm || sendLoading || (otpSent && cooldown > 0)) return;
+    if (!canArm || sendLoading || sendLimit.blockedSeconds > 0 || (otpSent && cooldown > 0)) return;
     setSendLoading(true);
     try {
       const res = await requestDeleteOtp();
@@ -107,6 +115,7 @@ function DeleteAccountPage() {
         return;
       }
       message.success(`OTP sent to ${user?.email || "your email"}.`);
+      sendLimit.clear();
       setOtpDigits(["", "", "", "", "", ""]);
       setOtpVerified(false);
       setOtpError("");
@@ -119,6 +128,10 @@ function DeleteAccountPage() {
         otpCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }, 100);
     } catch (e) {
+      if (sendLimit.trigger(e, undefined, { silent: true })) {
+        setOtpError("");
+        return;
+      }
       message.error(e.response?.data?.error || e.response?.data?.message || "Failed to send OTP!");
     } finally {
       setSendLoading(false);
@@ -163,6 +176,10 @@ function DeleteAccountPage() {
       logout();
       navigate("/login", { replace: true });
     } catch (e) {
+      if (verifyLimit.trigger(e)) {
+        setDeleting(false);
+        return;
+      }
       message.error(e.response?.data?.error || e.response?.data?.message || "Could not delete account, try again");
       setDeleting(false);
     }
@@ -231,19 +248,28 @@ function DeleteAccountPage() {
                 <button
                   type="button"
                   className="pf-primary-btn pf-inline-otp-btn"
-                  disabled={!canArm || sendLoading || (otpSent && cooldown > 0)}
+                   disabled={!canArm || sendLoading || sendLimit.blockedSeconds > 0 || (otpSent && cooldown > 0)}
                   onClick={handleSendOtp}
                 >
-                  {sendLoading
-                    ? "Sending..."
-                    : !otpSent
-                      ? "Send OTP"
-                      : "Resend"}
+                   {sendLimit.blockedSeconds > 0
+                     ? sendLimit.blockedLabel
+                     : sendLoading
+                       ? "Sending..."
+                     : !otpSent
+                       ? "Send OTP"
+                       : cooldown > 0
+                         ? `Resend in ${cooldown}s`
+                         : "Resend"}
                 </button>
               }
             />
             {confirmError !== "" && (
               <div className="auth-username-status auth-err">{confirmError}</div>
+            )}
+            {sendLimit.blockedSeconds > 0 && (
+              <div className="auth-username-status auth-err" role="alert">
+                {sendLimit.blockedMessageLive || "OTP limit reached."}
+              </div>
             )}
 
             {otpSent && (
@@ -261,6 +287,7 @@ function DeleteAccountPage() {
                           ref={(el) => (otpRefs.current[i] = el)}
                           className={`auth-otp-box${otpVerified ? " verified" : ""}`}
                           value={d}
+                           disabled={verifyLimit.blockedSeconds > 0 || otpVerified}
                           inputMode="numeric"
                           maxLength={1}
                           autoComplete="one-time-code"
@@ -277,6 +304,8 @@ function DeleteAccountPage() {
                         <span className="auth-otp-err">{otpError}</span>
                       ) : otpVerified ? (
                         <span className="auth-otp-ok">✓ Verified — you can delete now.</span>
+                      ) : verifyLimit.blockedSeconds > 0 ? (
+                        <span className="auth-otp-err">{verifyLimit.blockedMessageLive}</span>
                       ) : (
                         <span className="auth-otp-status">Type the 6-digit code</span>
                       )}
