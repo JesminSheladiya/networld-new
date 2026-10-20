@@ -897,6 +897,16 @@ public class UserRelationService {
                 genericRel = relationOfEnglish(genericName, relationCache);
             }
 
+            // If the graph proves mutual connections but no family relation
+            // can be resolved, treat the pair as a Friend suggestion. Keep
+            // this fallback conservative so unrelated users are not suggested
+            // as friends without at least two shared accepted connections.
+            int mutualConnections = countMutualConnections(me, otherId, adjLabels);
+            if (genericRel == null && mutualConnections >= MIN_MUTUALS_FOR_FRIEND_SUGGESTION) {
+                genericName = "Friend";
+                genericRel = relationOf(genericName, relationCache);
+            }
+
             // Distant/unnamed pairs get a descriptive chain ("Brother's
             // Brother-in-law") composed through a bridge person; close blood
             // truths always keep their generic label. Every NON-BLOOD generic
@@ -922,7 +932,7 @@ public class UserRelationService {
             }
 
             if ("Friend".equalsIgnoreCase(finalName)
-                    && countMutualConnections(me, otherId, adjLabels) < MIN_MUTUALS_FOR_FRIEND_SUGGESTION) {
+                    && mutualConnections < MIN_MUTUALS_FOR_FRIEND_SUGGESTION) {
                 continue;
             }
 
