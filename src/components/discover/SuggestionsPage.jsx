@@ -120,8 +120,8 @@ function SuggestionsPage() {
   const [editedEmails, setEditedEmails] = useState([]);
   const [dismissTarget, setDismissTarget] = useState(null);
   const [pageSize, setPageSize] = useState(() => getPageSizePreference(accountKey));
-  const { bump, key: refreshKey, setSuggestionsCount } = useRefresh();
-  const { relName } = useRelationDisplay();
+  const { setSuggestionsCount } = useRefresh();
+  const { relName, format } = useRelationDisplay();
 
   const abortSuggRef = useRef(null);
   const reqIdRef = useRef(0);
@@ -149,7 +149,7 @@ function SuggestionsPage() {
       setSuggestionsTotal(total);
       setSuggestionsCount(total);
       if (!append) {
-        suggestionsCache.set(accountKey, { refreshKey, pageSize, data, total });
+        suggestionsCache.set(accountKey, { pageSize, format, data, total });
       }
       if (!append) setEditedEmails([]);
     } catch (e) {
@@ -168,7 +168,7 @@ function SuggestionsPage() {
   useEffect(() => {
     setLoadingMore(false);
     const cached = suggestionsCache.get(accountKey);
-    if (cached && cached.refreshKey === refreshKey && cached.pageSize === pageSize) {
+    if (cached && cached.pageSize === pageSize && cached.format === format) {
       setSuggestionsPage(0);
       setSuggestions(cached.data || []);
       setSuggestionsTotal(cached.total || 0);
@@ -178,7 +178,7 @@ function SuggestionsPage() {
     setSuggestionsPage(0);
     fetchSuggestions(0, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountKey, refreshKey, isCompact, pageSize]);
+  }, [accountKey, isCompact, pageSize, format]);
 
   // Next pages: append on compact, replace on desktop (pagination turns).
   useEffect(() => {
@@ -232,20 +232,39 @@ function SuggestionsPage() {
   const sendRequest = async (s) => {
     try {
       await api.suggestionsSend(s.suggestedUserEmail, s.inferredRelation);
-      bump();
+      // Remove from suggestions cache — request sent, no longer a suggestion
+      setSuggestions((prev) => prev.filter((x) => x.suggestedUserEmail !== s.suggestedUserEmail));
+      setSuggestionsTotal((t) => Math.max(0, t - 1));
+      setSuggestionsCount(Math.max(0, (suggestionsTotal || 0) - 1));
+      const cached = suggestionsCache.get(accountKey) || {};
+      suggestionsCache.set(accountKey, {
+        ...cached,
+        pageSize,
+        format,
+        data: (cached.data || []).filter((x) => x.suggestedUserEmail !== s.suggestedUserEmail),
+        total: Math.max(0, (cached.total || 0) - 1),
+      });
       message.success("Connection request sent");
     } catch (e) {
-      // Server is the source of truth — show its message and re-fetch.
       message.error(e?.response?.data?.message || "Could not send request");
-      bump();
     }
   };
 
   const dismiss = async (s) => {
     try {
       await api.dismissSuggestion(s.pendingRelationId);
-      bump();
-      message.success("Suggestion dismissed");
+      // Remove from suggestions cache — dismissed, no longer a suggestion
+      setSuggestions((prev) => prev.filter((x) => x.pendingRelationId !== s.pendingRelationId));
+      setSuggestionsTotal((t) => Math.max(0, t - 1));
+      setSuggestionsCount(Math.max(0, (suggestionsTotal || 0) - 1));
+      const cached = suggestionsCache.get(accountKey) || {};
+      suggestionsCache.set(accountKey, {
+        ...cached,
+        pageSize,
+        format,
+        data: (cached.data || []).filter((x) => x.pendingRelationId !== s.pendingRelationId),
+        total: Math.max(0, (cached.total || 0) - 1),
+      });
     } catch {
       // silent
     }

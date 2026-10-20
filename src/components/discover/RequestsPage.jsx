@@ -139,8 +139,8 @@ function RequestsPage() {
   const [cancelId, setCancelId] = useState(null);
   const [editingSent, setEditingSent] = useState(null);
   const [sentPickerOpen, setSentPickerOpen] = useState(false);
-  const { bump, key: refreshKey, setPendingCount } = useRefresh();
-  const { relName, relCategory } = useRelationDisplay();
+  const { setPendingCount } = useRefresh();
+  const { relName, relCategory, format } = useRelationDisplay();
   const chipsRef = useRef(null);
   const chipRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
@@ -148,6 +148,10 @@ function RequestsPage() {
   const abortSentRef = useRef(null);
   const pendingReqRef = useRef(0);
   const sentReqRef = useRef(0);
+  // Tracks whether page 0 was just fetched by the mount/refresh effect,
+  // so the page-change effect doesn't skip a legitimate return to page 1.
+  const pendingPageZeroFresh = useRef(false);
+  const sentPageZeroFresh = useRef(false);
   useEffect(() => {
     const mq = window.matchMedia(MQ_COMPACT);
     const onChange = (e) => setIsCompact(e.matches);
@@ -178,40 +182,42 @@ function RequestsPage() {
   const categoryLabel = (key) =>
     key === "inlaws" ? "In-Laws" : key === "family" ? "Family" : key === "others" ? "Others" : "All";
 
-  // Contacts-page pattern per tab: replace on page 0, append after.
-  const fetchPending = async (pageNum, append = false) => {
+  // Contacts-page pattern per tab: replace on page 0, append only for mobile
+  // infinite-scroll (page > 0). Desktop pagination always replaces data.
+  const fetchPending = async (pageNum, isInfiniteScrollAppend = false) => {
     const id = ++pendingReqRef.current;
     if (abortPendingRef.current) abortPendingRef.current.abort();
     const ctrl = new AbortController();
     abortPendingRef.current = ctrl;
-    if (!append) setLoading(true);
+    const isReplace = !isInfiniteScrollAppend;
+    if (isReplace) setLoading(true);
     try {
       const res = await api.pending(pageNum, pageSize, ctrl.signal);
       if (id !== pendingReqRef.current) return;
       const data = res.data?.content || [];
       const total = res.data?.totalElements ?? data.length;
-      setPending((prev) => (append ? [...prev, ...data] : data));
+      setPending((prev) => (isInfiniteScrollAppend ? [...prev, ...data] : data));
       setPendingTotal(total);
       setPendingCount(total);
-      if (!append) {
+      if (isReplace) {
         const cached = requestCache.get(accountKey) || {};
         requestCache.set(accountKey, {
           ...cached,
-          refreshKey,
           pageSize,
+          format,
           pending: data,
           pendingTotal: total,
         });
       }
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
-      if (!append && id === pendingReqRef.current) {
+      if (isReplace && id === pendingReqRef.current) {
         setPending([]);
         setPendingTotal(0);
         setPendingCount(0);
       }
     } finally {
-      if (!append && id === pendingReqRef.current) setLoading(false);
+      if (isReplace && id === pendingReqRef.current) setLoading(false);
     }
   };
 
@@ -232,8 +238,8 @@ function RequestsPage() {
         const cached = requestCache.get(accountKey) || {};
         requestCache.set(accountKey, {
           ...cached,
-          refreshKey,
           pageSize,
+          format,
           sent: data,
           sentTotal: total,
         });
@@ -254,7 +260,7 @@ function RequestsPage() {
     setLoadingMore(false);
     setSentLoadingMore(false);
     const cached = requestCache.get(accountKey);
-    if (cached && cached.refreshKey === refreshKey && cached.pageSize === pageSize) {
+    if (cached && cached.pageSize === pageSize && cached.format === format) {
       setPendingPage(0);
       setSentPage(0);
       setPending(cached.pending || []);
@@ -262,26 +268,46 @@ function RequestsPage() {
       setPendingCount(cached.pendingTotal || 0);
       setSent(cached.sent || []);
       setSentTotal(cached.sentTotal || 0);
+      pendingPageZeroFresh.current = true;
+      sentPageZeroFresh.current = true;
       return;
     }
     setPendingPage(0);
     setSentPage(0);
     fetchPending(0, false);
     fetchSent(0, false);
+    pendingPageZeroFresh.current = true;
+    sentPageZeroFresh.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountKey, refreshKey, isCompact, pageSize]);
+  }, [accountKey, isCompact, pageSize, format]);
 
   useEffect(() => {
-    if (pendingPage === 0) return;
-    if (isCompact) setLoadingMore(true);
-    fetchPending(pendingPage, isCompact).finally(() => setLoadingMore(false));
+    if (pendingPage === 0 && pendingPageZeroFresh.current) {
+      pendingPageZeroFresh.current = false;
+      return;
+    }
+    const isInitialLoad = pendingPage === 0;
+    if (isCompact && !isInitialLoad) setLoadingMore(true);
+    else if (isInitialLoad) setLoading(true);
+    fetchPending(pendingPage, isCompact && !isInitialLoad).finally(() => {
+      if (isCompact && !isInitialLoad) setLoadingMore(false);
+      else if (isInitialLoad) setLoading(false);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingPage]);
 
   useEffect(() => {
-    if (sentPage === 0) return;
-    if (isCompact) setSentLoadingMore(true);
-    fetchSent(sentPage, isCompact).finally(() => setSentLoadingMore(false));
+    if (sentPage === 0 && sentPageZeroFresh.current) {
+      sentPageZeroFresh.current = false;
+      return;
+    }
+    const isInitialLoad = sentPage === 0;
+    if (isCompact && !isInitialLoad) setSentLoadingMore(true);
+    else if (isInitialLoad) setSentLoading(true);
+    fetchSent(sentPage, isCompact && !isInitialLoad).finally(() => {
+      if (isCompact && !isInitialLoad) setSentLoadingMore(false);
+      else if (isInitialLoad) setSentLoading(false);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentPage]);
 
@@ -355,24 +381,42 @@ function RequestsPage() {
     const item = pending.find((x) => x.pendingRelationId === id);
     try {
       await api.accept(id);
+      // Remove from local cache immediately — no full reload
+      setPending((prev) => prev.filter((p) => p.pendingRelationId !== id));
+      setPendingTotal((t) => Math.max(0, t - 1));
+      setPendingCount(Math.max(0, (pendingTotal || 0) - 1));
+      const cached = requestCache.get(accountKey) || {};
+      requestCache.set(accountKey, {
+        ...cached,
+        pageSize,
+        pending: (cached.pending || []).filter((p) => p.pendingRelationId !== id),
+        pendingTotal: Math.max(0, (cached.pendingTotal || 0) - 1),
+      });
       const inv = getInverseRelation(item?.inferredRelation, item?.suggestedUserGender) || "";
       const cat = categoryOfRelation(inv);
-      bump();
       message.success(`Accepted — added to ${categoryLabel(cat)}`);
       navigate("/contacts", { state: { category: cat } });
     } catch (e) {
       message.error(e?.response?.data?.message || "Could not accept request");
-      bump();
     }
   };
 
   const decline = async (id) => {
     try {
       await api.decline(id);
-      bump();
+      // Remove from local cache immediately — no full reload
+      setPending((prev) => prev.filter((p) => p.pendingRelationId !== id));
+      setPendingTotal((t) => Math.max(0, t - 1));
+      setPendingCount(Math.max(0, (pendingTotal || 0) - 1));
+      const cached = requestCache.get(accountKey) || {};
+      requestCache.set(accountKey, {
+        ...cached,
+        pageSize,
+        pending: (cached.pending || []).filter((p) => p.pendingRelationId !== id),
+        pendingTotal: Math.max(0, (cached.pendingTotal || 0) - 1),
+      });
     } catch (e) {
       message.error(e?.response?.data?.message || "Could not decline request");
-      bump();
     }
   };
 
@@ -408,11 +452,19 @@ function RequestsPage() {
   const cancelSent = async (id) => {
     try {
       await api.cancel(id);
-      bump();
+      // Remove from local cache immediately — no full reload
+      setSent((prev) => prev.filter((p) => p.pendingRelationId !== id));
+      setSentTotal((t) => Math.max(0, t - 1));
+      const cached = requestCache.get(accountKey) || {};
+      requestCache.set(accountKey, {
+        ...cached,
+        pageSize,
+        sent: (cached.sent || []).filter((p) => p.pendingRelationId !== id),
+        sentTotal: Math.max(0, (cached.sentTotal || 0) - 1),
+      });
       message.success("Request cancelled");
     } catch (e) {
       message.error(e?.response?.data?.message || "Could not cancel request");
-      bump();
     }
   };
 
@@ -427,8 +479,8 @@ function RequestsPage() {
       )));
       requestCache.set(accountKey, {
         ...(requestCache.get(accountKey) || {}),
-        refreshKey,
         pageSize,
+        format,
         sent: sent.map((p) => p.pendingRelationId === editingSent.pendingRelationId
           ? { ...p, inferredRelation: relationName }
           : p),
@@ -436,7 +488,6 @@ function RequestsPage() {
       });
       setEditingSent(null);
       setSentPickerOpen(false);
-      bump();
       message.success("Request relation updated");
     } catch (e) {
       message.error(e?.response?.data?.message || "Could not update request relation");
@@ -578,10 +629,12 @@ function RequestsPage() {
                   showQuickJumper
                   size="small"
                   onChange={(pg, newPageSize) => {
-                    setPendingPage(pg - 1);
                     if (newPageSize !== pageSize) {
                       setPageSize(newPageSize);
                       setPageSizePreference(accountKey, newPageSize);
+                      setPendingPage(0);
+                    } else {
+                      setPendingPage(pg - 1);
                     }
                   }}
                 />
@@ -641,10 +694,12 @@ function RequestsPage() {
                   showQuickJumper
                   size="small"
                   onChange={(pg, newPageSize) => {
-                    setSentPage(pg - 1);
                     if (newPageSize !== pageSize) {
                       setPageSize(newPageSize);
                       setPageSizePreference(accountKey, newPageSize);
+                      setSentPage(0);
+                    } else {
+                      setSentPage(pg - 1);
                     }
                   }}
                 />
