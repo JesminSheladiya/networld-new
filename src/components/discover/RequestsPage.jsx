@@ -196,6 +196,8 @@ function RequestsPage() {
       if (id !== pendingReqRef.current) return;
       const data = res.data?.content || [];
       const total = res.data?.totalElements ?? data.length;
+      // Backend adjusts page size based on network conditions — sync frontend state
+      const actualPageSize = res.data.pageable?.size || pageSize;
       setPending((prev) => (isInfiniteScrollAppend ? [...prev, ...data] : data));
       setPendingTotal(total);
       setPendingCount(total);
@@ -203,11 +205,15 @@ function RequestsPage() {
         const cached = requestCache.get(accountKey) || {};
         requestCache.set(accountKey, {
           ...cached,
-          pageSize,
+          pageSize: actualPageSize,
           format,
           pending: data,
           pendingTotal: total,
         });
+      }
+      if (actualPageSize !== pageSize) {
+        setPageSize(actualPageSize);
+        setPageSizePreference(accountKey, actualPageSize);
       }
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
@@ -233,16 +239,22 @@ function RequestsPage() {
       const data = res.data?.content || [];
       setSent((prev) => (append ? [...prev, ...data] : data));
       const total = res.data?.totalElements ?? data.length;
+      // Backend adjusts page size based on network conditions — sync frontend state
+      const actualPageSize = res.data.pageable?.size || pageSize;
       setSentTotal(total);
       if (!append) {
         const cached = requestCache.get(accountKey) || {};
         requestCache.set(accountKey, {
           ...cached,
-          pageSize,
+          pageSize: actualPageSize,
           format,
           sent: data,
           sentTotal: total,
         });
+      }
+      if (actualPageSize !== pageSize) {
+        setPageSize(actualPageSize);
+        setPageSizePreference(accountKey, actualPageSize);
       }
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
