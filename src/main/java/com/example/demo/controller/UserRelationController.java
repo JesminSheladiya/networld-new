@@ -176,10 +176,13 @@ public class UserRelationController {
     public ResponseEntity<Page<UserRelationSuggestionDTO>> getPending(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String downlink,
+            @RequestParam(required = false) String effectiveType,
             @AuthenticationPrincipal UserDetails ud) {
         // Bounded pages: the old unbounded list shipped 10k rows (5MB+ DOM).
         int safeSize = Math.min(1000, Math.max(1, size));
-        Pageable pageable = PageRequest.of(Math.max(0, page), safeSize);
+        int networkSize = adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
+        Pageable pageable = PageRequest.of(Math.max(0, page), networkSize);
         return ResponseEntity.ok(userRelationService.getPendingRequests(getCurrentUser(ud), pageable));
     }
 
@@ -195,9 +198,12 @@ public class UserRelationController {
     public ResponseEntity<Page<UserRelationSuggestionDTO>> getSent(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String downlink,
+            @RequestParam(required = false) String effectiveType,
             @AuthenticationPrincipal UserDetails ud) {
         int safeSize = Math.min(1000, Math.max(1, size));
-        Pageable pageable = PageRequest.of(Math.max(0, page), safeSize);
+        int networkSize = adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
+        Pageable pageable = PageRequest.of(Math.max(0, page), networkSize);
         return ResponseEntity.ok(userRelationService.getSentRequests(getCurrentUser(ud), pageable));
     }
 
@@ -225,9 +231,12 @@ public class UserRelationController {
     public ResponseEntity<Page<UserRelationSuggestionDTO>> getSuggestions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String downlink,
+            @RequestParam(required = false) String effectiveType,
             @AuthenticationPrincipal UserDetails ud) {
         int safeSize = Math.min(1000, Math.max(1, size));
-        Pageable pageable = PageRequest.of(Math.max(0, page), safeSize);
+        int networkSize = adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
+        Pageable pageable = PageRequest.of(Math.max(0, page), networkSize);
         return ResponseEntity.ok(userRelationService.getInferredSuggestions(getCurrentUser(ud), pageable));
     }
 
@@ -288,19 +297,50 @@ public class UserRelationController {
             @RequestParam(defaultValue = "true") boolean includePhone,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String downlink,
+            @RequestParam(required = false) String effectiveType,
             @AuthenticationPrincipal UserDetails ud) {
         // Clamp: unbounded size (frontend offers up to 1000) × concurrent
         // users = multi-MB pages + expensive COUNT(*) with LIKE predicates.
-        // 50/100/200/500/1000 options keep desktop fast and mobile (50/page
-        // infinite scroll) chatty-free on 4G.
         int safePage = Math.max(0, page);
         int safeSize = Math.min(1000, Math.max(1, size));
+        // Network-based page size adjustment: slow networks get fewer rows
+        // per page (faster load, less data), fast networks get more.
+        int networkSize = adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
         if (relations != null && relations.size() > 50) {
             relations = relations.subList(0, 50);
         }
-        Pageable pageable = PageRequest.of(safePage, safeSize, toSort(sort));
+        Pageable pageable = PageRequest.of(safePage, networkSize, toSort(sort));
         return ResponseEntity.ok(userRelationService.getMyConnectionsPaged(
                 getCurrentUser(ud), query, category, relations, includePhone, pageable));
+    }
+
+    // Adjust page size based on client network conditions.
+    // Actual downlink speed (Mbps) is the deciding factor — not the network
+    // type label (5G can be slow, 4G can be fast).
+    private int adjustPageSizeForNetwork(String downlinkStr, String effectiveType, int requestedSize) {
+        if (downlinkStr == null && effectiveType == null) {
+            return requestedSize; // No network info — use requested size
+        }
+        double downlink = 0;
+        try {
+            downlink = Double.parseDouble(downlinkStr);
+        } catch (NumberFormatException ignored) {
+            downlink = 0;
+        }
+        int maxSize;
+        // Prioritize actual downlink speed over network type label
+        if (downlink < 0.5) {
+            maxSize = 20;    // Very slow connection
+        } else if (downlink < 1.5) {
+            maxSize = 30;    // Slow connection
+        } else if (downlink < 5) {
+            maxSize = 50;    // Medium connection
+        } else {
+            maxSize = 100;   // Fast connection (5G+, fast 4G, WiFi)
+        }
+        // Never exceed the frontend-requested size
+        return Math.min(requestedSize, maxSize);
     }
 
     @GetMapping("/connections/counts")

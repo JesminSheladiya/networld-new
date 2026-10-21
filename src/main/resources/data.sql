@@ -42,7 +42,7 @@ INSERT INTO relations (relation_name, generation_level, gender, relation_categor
 ('Cousin Sister', 0, 'F', 'COUSIN', true, 'Parent''s Sibling''s Daughter', 'Cousin Behen'),
 ('Brother', 0, 'M', 'SIBLING', true, 'Brother', 'Bhai'),
 ('Sister', 0, 'F', 'SIBLING', true, 'Sister', 'Behen'),
-('Uncle', 1, 'M', 'PIBLING', true, 'Uncle', 'Chacha'),
+
 ('Aunt', 1, 'F', 'PIBLING', true, 'Aunt', 'Bua'),
 ('Husband', 0, 'M', 'SPOUSE', false, 'Husband', 'Pati'),
 ('Wife', 0, 'F', 'SPOUSE', false, 'Wife', 'Patni'),
@@ -50,7 +50,6 @@ INSERT INTO relations (relation_name, generation_level, gender, relation_categor
 ('Mother-in-law', 1, 'F', 'INLAW', false, 'Spouse''s Mother', 'Saas'),
 ('Brother-in-law', 0, 'M', 'INLAW', false, 'Brother-in-law', 'Jija'),
 ('Sister-in-law', 0, 'F', 'INLAW', false, 'Sister-in-law', 'Nanad'),
-('Paternal Uncle', 1, 'M', 'PIBLING', true, 'Father''s Brother', 'Chacha'),
 ('Father Younger Brother', 1, 'M', 'PIBLING', true, 'Father''s Younger Brother', 'Chacha'),
 ('Paternal Aunt', 1, 'F', 'PIBLING', true, 'Father''s Sister', 'Bua'),
 ('Maternal Uncle', 1, 'M', 'PIBLING', true, 'Mother''s Brother', 'Mama'),
@@ -257,9 +256,9 @@ INSERT INTO relation_inference_rules
 ('SPOUSE','F','PARENT','M','Daughter-in-law'),
 ('SPOUSE','F','PARENT','F','Daughter-in-law'),
 
--- SIBLING + CHILD → Uncle/Aunt
-('SIBLING','M','CHILD','M','Uncle'),
-('SIBLING','M','CHILD','F','Uncle'),
+-- SIBLING + CHILD → Father Younger Brother/Aunt
+('SIBLING','M','CHILD','M','Father Younger Brother'),
+('SIBLING','M','CHILD','F','Father Younger Brother'),
 ('SIBLING','F','CHILD','M','Aunt'),
 ('SIBLING','F','CHILD','F','Aunt'),
 
@@ -304,8 +303,8 @@ INSERT INTO relation_inference_rules
 -- =============================================
 
 -- PIBLING + SIBLING → same PIBLING (my uncle is also my sibling's uncle)
-('PIBLING','M','SIBLING','M','Uncle'),
-('PIBLING','M','SIBLING','F','Uncle'),
+('PIBLING','M','SIBLING','M','Father Younger Brother'),
+('PIBLING','M','SIBLING','F','Father Younger Brother'),
 ('PIBLING','F','SIBLING','M','Aunt'),
 ('PIBLING','F','SIBLING','F','Aunt'),
 
