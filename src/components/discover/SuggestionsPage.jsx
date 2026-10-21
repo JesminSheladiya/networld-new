@@ -145,11 +145,17 @@ function SuggestionsPage() {
       if (id !== reqIdRef.current) return;
       const data = res.data?.content || [];
       const total = res.data?.totalElements ?? data.length;
+      // Backend adjusts page size based on network conditions — sync frontend state
+      const actualPageSize = res.data.pageable?.size || pageSize;
       setSuggestions((prev) => (append ? [...prev, ...data] : data));
       setSuggestionsTotal(total);
       setSuggestionsCount(total);
       if (!append) {
-        suggestionsCache.set(accountKey, { pageSize, format, data, total });
+        suggestionsCache.set(accountKey, { pageSize: actualPageSize, format, data, total });
+      }
+      if (actualPageSize !== pageSize) {
+        setPageSize(actualPageSize);
+        setPageSizePreference(accountKey, actualPageSize);
       }
       if (!append) setEditedEmails([]);
     } catch (e) {

@@ -13,6 +13,7 @@ import EditRelationModal from "../shared/EditRelationModal";
 import { getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
+import { estimateDownlinkMbps } from "../../Services/connectionMonitor";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 
 const CATEGORIES = [
@@ -108,8 +109,23 @@ function ContactsPage() {
   const [counts, setCounts] = useState({ all: 0, family: 0, inlaws: 0, others: 0 });
   const [relationOptions, setRelationOptions] = useState([]);
   const [editingContact, setEditingContact] = useState(null);
+  // Network-based page size for mobile/compact layouts.
+  // Slow networks → smaller pages (faster initial load, less data).
+  // Fast networks → larger pages (fewer round-trips).
+  const getNetworkPageSize = () => {
+    if (!isCompact) return getPageSizePreference(accountKey);
+    const downlink = estimateDownlinkMbps(); // Mbps from RTT measurement
+    if (downlink < 0.5) return 20;    // Very slow (Slow 3G / 2G)
+    if (downlink < 1.5) return 30;    // Slow (3G)
+    if (downlink < 5) return 50;      // Medium (4G)
+    return 100;                       // Fast (5G / WiFi)
+  };
+
   const [page, setPage] = useState(() => cachedContacts?.page || 0);
-  const [pageSize, setPageSize] = useState(() => getPageSizePreference(accountKey));
+  const [pageSize, setPageSize] = useState(() => {
+    if (isCompact) return getNetworkPageSize();
+    return getPageSizePreference(accountKey);
+  });
   const [sortParam, setSortParam] = useState(() => cachedContacts?.sortParam || null);
   const [loadingMore, setLoadingMore] = useState(false);
   const chipsRef = useRef(null);
@@ -119,6 +135,37 @@ function ContactsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [mobileQ, setMobileQ] = useState("");
   const [sortDraft, setSortDraft] = useState(null);
+
+  // Re-evaluate page size when network or compact mode changes.
+  // Poll every 30s because RTT-based downlink estimate updates automatically
+  // as API responses slow down or speed up (works with DevTools throttling).
+  // Also re-check when user returns to this tab (visibilitychange).
+  useEffect(() => {
+    if (!isCompact) return;
+    const checkAndUpdate = () => {
+      const next = getNetworkPageSize();
+      if (next !== pageSize) {
+        setPageSize(next);
+        setPageSizePreference(accountKey, next);
+      }
+    };
+    // Check on mount
+    checkAndUpdate();
+    // Periodic check every 30s for network changes
+    const interval = setInterval(checkAndUpdate, 30000);
+    // Re-check when user returns to this tab (tab switch back)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkAndUpdate();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCompact]);
 
   // Sort applies only via Show — picking chips just stages the choice.
   useEffect(() => {
@@ -192,14 +239,21 @@ function ContactsPage() {
       if (id !== reqIdRef.current) return; // stale — a newer request is in flight
       const mapped = res.data.content.map(mapContact);
       const nextTotal = res.data.totalElements;
+      // Backend adjusts page size based on network conditions — sync frontend state
+      const actualPageSize = res.data.pageable?.size || pageSize;
       setDataSource((prev) => {
         const next = append ? [...prev, ...mapped] : mapped;
         contactsCache.set(accountKey, {
-          searchText, category, selectedRelations, sortParam, pageSize, format,
+          searchText, category, selectedRelations, sortParam,
+          pageSize: actualPageSize, format,
           page: pageNum, dataSource: next, totalItems: nextTotal,
         });
         return next;
       });
+      if (actualPageSize !== pageSize) {
+        setPageSize(actualPageSize);
+        setPageSizePreference(accountKey, actualPageSize);
+      }
       setTotalItems(nextTotal);
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
@@ -218,6 +272,9 @@ function ContactsPage() {
   // so the page effect doesn't fire a duplicate for the same page
   const resetFetchRef = useRef(false);
   const restoredCacheRef = useRef(false);
+  // Tracks whether the component is still mounted — guards against
+  // setState on unmounted component when navigating away mid-fetch.
+  const mountedRef = useRef(true);
 
   // Reset + load first page when anything filter-ish changes.
   // Always fetches page 0 directly: on mobile the page effect skips page 0,
@@ -241,6 +298,10 @@ function ContactsPage() {
         && JSON.stringify(cached.selectedRelations || []) === JSON.stringify(selectedRelations);
       if (cacheMatches) {
         restoredCacheRef.current = true;
+        // Populate dataSource from cache so the list is visible immediately,
+        // then still trigger a background refresh via the page effect below.
+        setDataSource(cached.dataSource || []);
+        setTotalItems(cached.totalItems ?? 0);
         setLoading(false);
         return;
       }
@@ -261,21 +322,45 @@ function ContactsPage() {
 
   // Desktop: each pagination click replaces the list with that page.
   // Compact/mobile: appended pages feed the infinite-scroll Virtuoso list.
+  // Always refetch when page changes to 0 — never leave the list stuck
+  // in loading state, especially when returning from an inner profile page.
   useEffect(() => {
-    if (restoredCacheRef.current) {
-      restoredCacheRef.current = false;
-      return;
+    if (!mountedRef.current) return;
+    if (page === 0) {
+      setLoading(true);
+      fetchList(page, false).finally(() => {
+        if (mountedRef.current) setLoading(false);
+      });
+    } else {
+      setLoadingMore(true);
+      fetchList(page, isCompact).finally(() => {
+        if (mountedRef.current) setLoadingMore(false);
+      });
     }
-    if (page === 0 && (firstMountRef.current || resetFetchRef.current)) {
-      firstMountRef.current = false;
-      resetFetchRef.current = false;
-      return;
-    }
-    resetFetchRef.current = false;
-    setLoadingMore(true);
-    fetchList(page, isCompact).finally(() => setLoadingMore(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  // Abort in-flight request and mark unmounted when leaving the page.
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, []);
+
+  // Also re-fetch when user returns to this tab (visibility change).
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && mountedRef.current) {
+        setPage(0);
+        fetchList(0, false).finally(() => {
+          if (mountedRef.current) setLoading(false);
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
 
   // Server counts for tabs/dropdown + relation options for filters.
   // Mount fires immediately with the list; only keystroke search is
@@ -414,31 +499,31 @@ function ContactsPage() {
             </div>
           )}
           {!isMobileTools && (
-          <div className="nw-contact-toolbar">
-            <div className="nw-contact-toolbar-row">
-              <Select
-                className="nw-sort-select"
-                placeholder="Sort"
-                allowClear
-                value={sortParam || undefined}
-                onChange={(v) => setSortParam(v || null)}
-                options={sortOptions}
-                suffixIcon={<FontAwesomeIcon icon={faArrowDownWideShort} style={{ color: "#64748b", fontSize: 12 }} />}
-              />
-              <Tooltip title="Filter by relation">
-                <button
-                  className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
-                  onClick={() => { setMobileQ(""); setFilterOpen(true); }}
-                  aria-label="Filter by relation"
-                >
-                  <FontAwesomeIcon icon={faFilter} />
-                  {selectedRelations.length > 0 && (
-                    <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
-                  )}
-                </button>
-              </Tooltip>
+            <div className="nw-contact-toolbar">
+              <div className="nw-contact-toolbar-row">
+                <Select
+                  className="nw-sort-select"
+                  placeholder="Sort"
+                  allowClear
+                  value={sortParam || undefined}
+                  onChange={(v) => setSortParam(v || null)}
+                  options={sortOptions}
+                  suffixIcon={<FontAwesomeIcon icon={faArrowDownWideShort} style={{ color: "#64748b", fontSize: 12 }} />}
+                />
+                <Tooltip title="Filter by relation">
+                  <button
+                    className={`nw-mobile-filter-btn${selectedRelations.length > 0 ? " active" : ""}`}
+                    onClick={() => { setMobileQ(""); setFilterOpen(true); }}
+                    aria-label="Filter by relation"
+                  >
+                    <FontAwesomeIcon icon={faFilter} />
+                    {selectedRelations.length > 0 && (
+                      <span className="nw-mobile-filter-count">{selectedRelations.length}</span>
+                    )}
+                  </button>
+                </Tooltip>
+              </div>
             </div>
-          </div>
           )}
         </div>
         {(selectedRelations.length > 0 || sortParam) && (
@@ -493,7 +578,7 @@ function ContactsPage() {
         </div>
       ) : (
         <div className="nw-discover-panel">
-           <div className="nw-discover-label">Contacts · <span title={totalItems}>{totalItems.toLocaleString()}</span></div>
+          <div className="nw-discover-label">Contacts · <span title={totalItems}>{totalItems.toLocaleString()}</span></div>
           {isCompact ? (
             <>
               <Virtuoso
@@ -560,36 +645,36 @@ function ContactsPage() {
         open={!!editingContact}
         onClose={() => setEditingContact(null)}
         onSaved={(newRel) => {
-           if (editingContact) {
-             const editedEmail = editingContact.email;
-             const previousRel = editingContact.relation;
-             setDataSource((prev) => {
-               const index = prev.findIndex((item) => item.email === editedEmail);
-               if (index < 0) return prev;
-               const updated = { ...prev[index], relation: newRel };
-               return [updated, ...prev.slice(0, index), ...prev.slice(index + 1)];
-             });
-             // A relation used as a filter must disappear immediately when
-             // the last matching contact is edited away from it. Keep the
-             // filter picker/counts in sync without waiting for a reload.
-             if (previousRel && previousRel !== newRel) {
-               setSelectedRelations((prev) => prev.filter((r) => r !== previousRel));
-               setRelationOptions((prev) => {
-                 const next = prev
-                   .map((item) => {
-                     if (item.value === previousRel) return { ...item, count: Math.max(0, item.count - 1) };
-                     if (item.value === newRel) return { ...item, count: item.count + 1 };
-                     return item;
-                   })
-                   .filter((item) => item.count > 0);
-                 if (!next.some((item) => item.value === newRel)) {
-                   next.push({ value: newRel, count: 1 });
-                 }
-                 return next;
-               });
-             }
-           }
-         }}
+          if (editingContact) {
+            const editedEmail = editingContact.email;
+            const previousRel = editingContact.relation;
+            setDataSource((prev) => {
+              const index = prev.findIndex((item) => item.email === editedEmail);
+              if (index < 0) return prev;
+              const updated = { ...prev[index], relation: newRel };
+              return [updated, ...prev.slice(0, index), ...prev.slice(index + 1)];
+            });
+            // A relation used as a filter must disappear immediately when
+            // the last matching contact is edited away from it. Keep the
+            // filter picker/counts in sync without waiting for a reload.
+            if (previousRel && previousRel !== newRel) {
+              setSelectedRelations((prev) => prev.filter((r) => r !== previousRel));
+              setRelationOptions((prev) => {
+                const next = prev
+                  .map((item) => {
+                    if (item.value === previousRel) return { ...item, count: Math.max(0, item.count - 1) };
+                    if (item.value === newRel) return { ...item, count: item.count + 1 };
+                    return item;
+                  })
+                  .filter((item) => item.count > 0);
+                if (!next.some((item) => item.value === newRel)) {
+                  next.push({ value: newRel, count: 1 });
+                }
+                return next;
+              });
+            }
+          }
+        }}
       />
 
       <Modal

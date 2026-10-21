@@ -1,9 +1,15 @@
 import axios from "axios";
 import { HTTP_TIMEOUT_MS, STORAGE_KEYS } from "../constants";
+import { installHttpInterceptors } from "./connectionMonitor";
 
 // Single shared HTTP client: auth header, expiry logout and timeout.
 // All Services must use this instead of raw axios.
 export const http = axios.create({ timeout: HTTP_TIMEOUT_MS, withCredentials: true });
+
+// Install RTT measurement interceptors so we can estimate downlink
+// from actual API response times (works with DevTools throttling,
+// unlike navigator.connection.downlink which is unsupported in most browsers).
+installHttpInterceptors(http);
 
 http.interceptors.request.use(
   (config) => {
