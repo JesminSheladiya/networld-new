@@ -106,8 +106,8 @@ function ContactsPage() {
   const [loading, setLoading] = useState(() => !cachedContacts);
   const [dataSource, setDataSource] = useState(() => cachedContacts?.dataSource || []);
   const [totalItems, setTotalItems] = useState(() => cachedContacts?.totalItems || 0);
-  const [counts, setCounts] = useState({ all: 0, family: 0, inlaws: 0, others: 0 });
-  const [relationOptions, setRelationOptions] = useState([]);
+  const [counts, setCounts] = useState(() => cachedContacts?.counts || { all: 0, family: 0, inlaws: 0, others: 0 });
+  const [relationOptions, setRelationOptions] = useState(() => cachedContacts?.relationOptions || []);
   const [editingContact, setEditingContact] = useState(null);
   // Network-based page size for mobile/compact layouts.
   // Slow networks → smaller pages (faster initial load, less data).
@@ -136,34 +136,14 @@ function ContactsPage() {
   const [mobileQ, setMobileQ] = useState("");
   const [sortDraft, setSortDraft] = useState(null);
 
-  // Re-evaluate page size when network or compact mode changes.
-  // Poll every 30s because RTT-based downlink estimate updates automatically
-  // as API responses slow down or speed up (works with DevTools throttling).
-  // Also re-check when user returns to this tab (visibilitychange).
+  // Page size is chosen up front (getNetworkPageSize in the pageSize
+  // initializer above). We intentionally do NOT poll/re-shuffle it here:
+  // changing pageSize mid-list resets the loaded data and triggers fresh
+  // fetches, which on 3G/4G looks like "everything reloads". The backend's
+  // pageable.size still syncs per fetch (fetchList), so the list adapts
+  // without wiping state on network fluctuations.
   useEffect(() => {
     if (!isCompact) return;
-    const checkAndUpdate = () => {
-      const next = getNetworkPageSize();
-      if (next !== pageSize) {
-        setPageSize(next);
-        setPageSizePreference(accountKey, next);
-      }
-    };
-    // Check on mount
-    checkAndUpdate();
-    // Periodic check every 30s for network changes
-    const interval = setInterval(checkAndUpdate, 30000);
-    // Re-check when user returns to this tab (tab switch back)
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        checkAndUpdate();
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCompact]);
 
@@ -243,10 +223,13 @@ function ContactsPage() {
       const actualPageSize = res.data.pageable?.size || pageSize;
       setDataSource((prev) => {
         const next = append ? [...prev, ...mapped] : mapped;
+        const prevCache = contactsCache.get(accountKey) || {};
         contactsCache.set(accountKey, {
-          searchText, category, selectedRelations, sortParam,
+          ...prevCache,
+          searchText, category, selectedRelations, sortParam, isCompact,
           pageSize: actualPageSize, format,
           page: pageNum, dataSource: next, totalItems: nextTotal,
+          scrollY: prevCache.scrollY,
         });
         return next;
       });
@@ -272,6 +255,7 @@ function ContactsPage() {
   // so the page effect doesn't fire a duplicate for the same page
   const resetFetchRef = useRef(false);
   const restoredCacheRef = useRef(false);
+  const restoredPageRef = useRef(null);
   // Tracks whether the component is still mounted — guards against
   // setState on unmounted component when navigating away mid-fetch.
   const mountedRef = useRef(true);
@@ -298,11 +282,19 @@ function ContactsPage() {
         && JSON.stringify(cached.selectedRelations || []) === JSON.stringify(selectedRelations);
       if (cacheMatches) {
         restoredCacheRef.current = true;
+        restoredPageRef.current = cached.page ?? 0;
         // Populate dataSource from cache so the list is visible immediately,
         // then still trigger a background refresh via the page effect below.
         setDataSource(cached.dataSource || []);
         setTotalItems(cached.totalItems ?? 0);
+        setCounts(cached.counts || { all: 0, family: 0, inlaws: 0, others: 0 });
+        setRelationOptions(cached.relationOptions || []);
         setLoading(false);
+        // Preserve the user's scroll position across in-app navigations.
+        const savedScrollY = cached.scrollY;
+        if (savedScrollY) {
+          setTimeout(() => window.scrollTo(0, savedScrollY), 0);
+        }
         return;
       }
       setLoadingMore(false);
@@ -315,7 +307,13 @@ function ContactsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText, category, selectedRelations, pageSize, sortParam, isCompact, format]);
 
+  // Reset page/size only when the signed-in account actually changes,
+  // not on every mount with the same account (which would wipe a
+  // cached/restored list on in-app navigation back).
+  const prevAccountKeyRef = useRef(accountKey);
   useEffect(() => {
+    if (prevAccountKeyRef.current === accountKey) return;
+    prevAccountKeyRef.current = accountKey;
     setPageSize(getPageSizePreference(accountKey));
     setPage(0);
   }, [accountKey]);
@@ -326,6 +324,14 @@ function ContactsPage() {
   // in loading state, especially when returning from an inner profile page.
   useEffect(() => {
     if (!mountedRef.current) return;
+    // If this page came straight from a restored cache, don't re-fetch it.
+    if (restoredCacheRef.current && page === restoredPageRef.current) {
+      restoredCacheRef.current = false;
+      restoredPageRef.current = null;
+      setLoading(false);
+      setLoadingMore(false);
+      return;
+    }
     if (page === 0) {
       setLoading(true);
       fetchList(page, false).finally(() => {
@@ -342,26 +348,21 @@ function ContactsPage() {
 
   // Abort in-flight request and mark unmounted when leaving the page.
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      // Preserve scroll position across in-app navigations.
+      const cached = contactsCache.get(accountKey);
+      if (cached) {
+        contactsCache.set(accountKey, { ...cached, scrollY: window.scrollY });
+      }
       mountedRef.current = false;
       if (abortRef.current) abortRef.current.abort();
     };
-  }, []);
+  }, [accountKey]);
 
-  // Also re-fetch when user returns to this tab (visibility change).
-  useEffect(() => {
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && mountedRef.current) {
-        setPage(0);
-        fetchList(0, false).finally(() => {
-          if (mountedRef.current) setLoading(false);
-        });
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, []);
-
+  // Intentionally no auto-refetch on visibility change: resetting the list
+  // on every tab switch/navigation flash-wiped restored data and caused
+  // delayed "blank" reloads. In-app cache handles restoration instead.
   // Server counts for tabs/dropdown + relation options for filters.
   // Mount fires immediately with the list; only keystroke search is
   // debounced (same rhythm as the list fetch above).
@@ -372,18 +373,37 @@ function ContactsPage() {
     prevCountSearchRef.current = searchText;
     const delay = searchChanged ? SEARCH_DEBOUNCE_MS : 0;
     const handler = setTimeout(async () => {
+      const cached = contactsCache.get(accountKey);
+      const countsCacheMatches = !!cached
+        && cached.searchText === searchText
+        && cached.isCompact === isCompact
+        && cached.counts
+        && cached.relationOptions;
+      if (countsCacheMatches) {
+        setCounts(cached.counts);
+        setRelationOptions(cached.relationOptions);
+        return;
+      }
       try {
         const [cRes, rRes] = await Promise.all([
           api.connectionCounts(searchText, !isCompact, ctrl.signal),
           api.connectionRelations(searchText, !isCompact, ctrl.signal),
         ]);
-        setCounts({
+        const nextCounts = {
           all: cRes.data?.all ?? 0,
           family: cRes.data?.family ?? 0,
           inlaws: cRes.data?.inlaws ?? 0,
           others: cRes.data?.others ?? 0,
+        };
+        const nextRelations = rRes.data || [];
+        setCounts(nextCounts);
+        setRelationOptions(nextRelations);
+        const prev = contactsCache.get(accountKey) || {};
+        contactsCache.set(accountKey, {
+          ...prev,
+          searchText, isCompact,
+          counts: nextCounts, relationOptions: nextRelations,
         });
-        setRelationOptions(rRes.data || []);
       } catch (e) {
         if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
         setCounts({ all: 0, family: 0, inlaws: 0, others: 0 });
