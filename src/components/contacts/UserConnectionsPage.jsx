@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, memo } from "react";
+import { useCallback, useEffect, useState, useRef, memo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Virtuoso } from "react-virtuoso";
 import { Avatar, Spin, Input, Empty } from "antd";
@@ -16,6 +16,9 @@ import "../css/profile-page.css";
 // unbounded fetch shipped the whole graph with photos on every open —
 // fine at 100 rows, stalled on 4G at 10k, impossible at 1M.
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
+
+// Keep connections per slug so in-app back preserves data + scroll (like contacts).
+const connectionsCache = new Map();
 
 // Memoized row — same markup as before. Virtuoso mounts only the visible
 // window (contacts-page pattern), so long lists never grow the DOM.
@@ -74,12 +77,30 @@ function UserConnectionsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const restoredRef = useRef(false);
 
   // Resolve slug → email without downloading the whole graph: a bounded
   // paged query first (matches when the target is already a connection),
   // then the typeahead fallback for strangers.
   useEffect(() => {
+    const cached = connectionsCache.get(slug);
+    if (cached) {
+      restoredRef.current = true;
+      setEmail(cached.email || "");
+      setItems(cached.items || []);
+      setTotal(cached.total ?? 0);
+      setPage(cached.page || 0);
+      setSearchText(cached.searchText || "");
+      setSearchQuery(cached.searchQuery || "");
+      setLoading(false);
+      if (cached.scrollY) setTimeout(() => window.scrollTo(0, cached.scrollY), 0);
+      return () => {
+        const c = connectionsCache.get(slug);
+        if (c) connectionsCache.set(slug, { ...c, scrollY: window.scrollY });
+      };
+    }
     let cancelled = false;
+    restoredRef.current = false;
     setEmail(seedMatchesSlug(seedContact, slug) ? seedContact.email || "" : "");
     setItems([]);
     setTotal(null);
@@ -122,6 +143,12 @@ function UserConnectionsPage() {
   // Paged list for the resolved email.
   useEffect(() => {
     if (!email) return;
+    if (restoredRef.current) {
+      restoredRef.current = false;
+      setLoading(false);
+      setLoadingMore(false);
+      return;
+    }
     let cancelled = false;
     const ctrl = new AbortController();
     (async () => {
@@ -134,8 +161,14 @@ function UserConnectionsPage() {
         const mapped = Array.isArray(data.items)
           ? data.items.map((item, i) => mapConnectionToContact(item, page * PAGE_SIZE + i))
           : [];
-        setTotal(data.total ?? 0);
-        setItems((prev) => (page === 0 ? mapped : [...prev, ...mapped]));
+        const nextTotal = data.total ?? 0;
+        setTotal(nextTotal);
+        setItems((prev) => {
+          const next = page === 0 ? mapped : [...prev, ...mapped];
+          const c = connectionsCache.get(slug) || {};
+          connectionsCache.set(slug, { ...c, email, items: next, total: nextTotal, page, searchText, searchQuery, scrollY: c.scrollY });
+          return next;
+        });
       } catch (e) {
         if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
         if (page === 0) {

@@ -29,7 +29,15 @@ function getAvgRttMs() {
 // Very rough mapping — only used for page-size bucketing.
 function estimateDownlinkMbps() {
   const rtt = getAvgRttMs();
-  if (rtt === 0) return 10; // No measurements yet — assume fast
+  if (rtt === 0) {
+    // No RTT measurements yet. Prefer navigator.connection (when available)
+    // and otherwise assume a mid-tier 4G-ish link instead of "fastest",
+    // so first paint on slow networks doesn't request an oversized page.
+    if (typeof navigator !== "undefined" && navigator.connection && typeof navigator.connection.downlink === "number") {
+      return navigator.connection.downlink;
+    }
+    return 5; // Medium fallback (4G-ish) — conservative for first load
+  }
   if (rtt < 100) return 10;   // Fast: 5G / WiFi
   if (rtt < 300) return 5;    // 4G
   if (rtt < 700) return 1.5;  // 3G
