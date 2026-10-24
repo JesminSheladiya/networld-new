@@ -111,7 +111,7 @@ function SuggestionsPage() {
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
   const [suggestions, setSuggestions] = useState(() => cachedSuggestions?.data || []);
   const [suggestionsTotal, setSuggestionsTotal] = useState(() => cachedSuggestions?.total || 0);
-  const [suggestionsPage, setSuggestionsPage] = useState(0);
+  const [suggestionsPage, setSuggestionsPage] = useState(() => cachedSuggestions?.page || 0);
   const [loading, setLoading] = useState(() => !cachedSuggestions);
   const [loadingMore, setLoadingMore] = useState(false);
   const [editingEmail, setEditingEmail] = useState(null);
@@ -125,12 +125,25 @@ function SuggestionsPage() {
 
   const abortSuggRef = useRef(null);
   const reqIdRef = useRef(0);
+  const mountedRef = useRef(true);
+  const restoredCacheRef = useRef(false);
+  const restoredPageRef = useRef(null);
   useEffect(() => {
     const mq = window.matchMedia(MQ_COMPACT);
     const onChange = (e) => setIsCompact(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      const cached = suggestionsCache.get(accountKey);
+      if (cached) suggestionsCache.set(accountKey, { ...cached, scrollY: window.scrollY });
+      mountedRef.current = false;
+      if (abortSuggRef.current) abortSuggRef.current.abort();
+    };
+  }, [accountKey]);
 
   // Contacts-page pattern: DB-paged (50/page), replace on page 0, append
   // after. Stale responses are dropped; stale requests are aborted.
@@ -147,12 +160,14 @@ function SuggestionsPage() {
       const total = res.data?.totalElements ?? data.length;
       // Backend adjusts page size based on network conditions — sync frontend state
       const actualPageSize = res.data.pageable?.size || pageSize;
-      setSuggestions((prev) => (append ? [...prev, ...data] : data));
+      setSuggestions((prev) => {
+        const next = append ? [...prev, ...data] : data;
+        const prevCache = suggestionsCache.get(accountKey) || {};
+        suggestionsCache.set(accountKey, { pageSize: actualPageSize, format, data: next, total, page: pageNum, scrollY: prevCache.scrollY });
+        return next;
+      });
       setSuggestionsTotal(total);
       setSuggestionsCount(total);
-      if (!append) {
-        suggestionsCache.set(accountKey, { pageSize: actualPageSize, format, data, total });
-      }
       if (actualPageSize !== pageSize) {
         setPageSize(actualPageSize);
         setPageSizePreference(accountKey, actualPageSize);
@@ -175,10 +190,15 @@ function SuggestionsPage() {
     setLoadingMore(false);
     const cached = suggestionsCache.get(accountKey);
     if (cached && cached.pageSize === pageSize && cached.format === format) {
-      setSuggestionsPage(0);
+      setSuggestionsPage(cached.page || 0);
       setSuggestions(cached.data || []);
       setSuggestionsTotal(cached.total || 0);
       setSuggestionsCount(cached.total || 0);
+      restoredCacheRef.current = true;
+      restoredPageRef.current = cached.page || 0;
+      setLoading(false);
+      const saved = cached.scrollY;
+      if (saved) setTimeout(() => window.scrollTo(0, saved), 0);
       return;
     }
     setSuggestionsPage(0);
@@ -188,6 +208,14 @@ function SuggestionsPage() {
 
   // Next pages: append on compact, replace on desktop (pagination turns).
   useEffect(() => {
+    if (!mountedRef.current) return;
+    if (restoredCacheRef.current && suggestionsPage === restoredPageRef.current) {
+      restoredCacheRef.current = false;
+      restoredPageRef.current = null;
+      setLoading(false);
+      setLoadingMore(false);
+      return;
+    }
     if (suggestionsPage === 0) return;
     if (isCompact) setLoadingMore(true);
     fetchSuggestions(suggestionsPage, isCompact).finally(() => setLoadingMore(false));

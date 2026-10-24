@@ -152,6 +152,12 @@ function RequestsPage() {
   // so the page-change effect doesn't skip a legitimate return to page 1.
   const pendingPageZeroFresh = useRef(false);
   const sentPageZeroFresh = useRef(false);
+  // Restored-from-cache guards so the page effects don't re-fetch the
+  // already-loaded pages on an in-app "back".
+  const pendingRestoredRef = useRef(false);
+  const pendingRestoredPageRef = useRef(null);
+  const sentRestoredRef = useRef(false);
+  const sentRestoredPageRef = useRef(null);
   useEffect(() => {
     const mq = window.matchMedia(MQ_COMPACT);
     const onChange = (e) => setIsCompact(e.matches);
@@ -198,19 +204,22 @@ function RequestsPage() {
       const total = res.data?.totalElements ?? data.length;
       // Backend adjusts page size based on network conditions — sync frontend state
       const actualPageSize = res.data.pageable?.size || pageSize;
-      setPending((prev) => (isInfiniteScrollAppend ? [...prev, ...data] : data));
-      setPendingTotal(total);
-      setPendingCount(total);
-      if (isReplace) {
+      setPending((prev) => {
+        const next = isInfiniteScrollAppend ? [...prev, ...data] : data;
         const cached = requestCache.get(accountKey) || {};
         requestCache.set(accountKey, {
           ...cached,
           pageSize: actualPageSize,
           format,
-          pending: data,
+          pending: next,
           pendingTotal: total,
+          pendingPage: pageNum,
+          scrollY: cached.scrollY,
         });
-      }
+        return next;
+      });
+      setPendingTotal(total);
+      setPendingCount(total);
       if (actualPageSize !== pageSize) {
         setPageSize(actualPageSize);
         setPageSizePreference(accountKey, actualPageSize);
@@ -237,21 +246,24 @@ function RequestsPage() {
       const res = await api.sent(pageNum, pageSize, ctrl.signal);
       if (id !== sentReqRef.current) return;
       const data = res.data?.content || [];
-      setSent((prev) => (append ? [...prev, ...data] : data));
       const total = res.data?.totalElements ?? data.length;
       // Backend adjusts page size based on network conditions — sync frontend state
       const actualPageSize = res.data.pageable?.size || pageSize;
-      setSentTotal(total);
-      if (!append) {
+      setSent((prev) => {
+        const next = append ? [...prev, ...data] : data;
         const cached = requestCache.get(accountKey) || {};
         requestCache.set(accountKey, {
           ...cached,
           pageSize: actualPageSize,
           format,
-          sent: data,
+          sent: next,
           sentTotal: total,
+          sentPage: pageNum,
+          scrollY: cached.scrollY,
         });
-      }
+        return next;
+      });
+      setSentTotal(total);
       if (actualPageSize !== pageSize) {
         setPageSize(actualPageSize);
         setPageSizePreference(accountKey, actualPageSize);
@@ -273,8 +285,8 @@ function RequestsPage() {
     setSentLoadingMore(false);
     const cached = requestCache.get(accountKey);
     if (cached && cached.pageSize === pageSize && cached.format === format) {
-      setPendingPage(0);
-      setSentPage(0);
+      setPendingPage(cached.pendingPage || 0);
+      setSentPage(cached.sentPage || 0);
       setPending(cached.pending || []);
       setPendingTotal(cached.pendingTotal || 0);
       setPendingCount(cached.pendingTotal || 0);
@@ -282,6 +294,11 @@ function RequestsPage() {
       setSentTotal(cached.sentTotal || 0);
       pendingPageZeroFresh.current = true;
       sentPageZeroFresh.current = true;
+      pendingRestoredRef.current = true;
+      pendingRestoredPageRef.current = cached.pendingPage || 0;
+      sentRestoredRef.current = true;
+      sentRestoredPageRef.current = cached.sentPage || 0;
+      if (cached.scrollY) setTimeout(() => window.scrollTo(0, cached.scrollY), 0);
       return;
     }
     setPendingPage(0);
@@ -294,6 +311,13 @@ function RequestsPage() {
   }, [accountKey, isCompact, pageSize, format]);
 
   useEffect(() => {
+    if (pendingRestoredRef.current && pendingPage === pendingRestoredPageRef.current) {
+      pendingRestoredRef.current = false;
+      pendingRestoredPageRef.current = null;
+      setLoading(false);
+      setLoadingMore(false);
+      return;
+    }
     if (pendingPage === 0 && pendingPageZeroFresh.current) {
       pendingPageZeroFresh.current = false;
       return;
@@ -309,6 +333,13 @@ function RequestsPage() {
   }, [pendingPage]);
 
   useEffect(() => {
+    if (sentRestoredRef.current && sentPage === sentRestoredPageRef.current) {
+      sentRestoredRef.current = false;
+      sentRestoredPageRef.current = null;
+      setLoadingMore(false);
+      setSentLoading(false);
+      return;
+    }
     if (sentPage === 0 && sentPageZeroFresh.current) {
       sentPageZeroFresh.current = false;
       return;
@@ -537,6 +568,13 @@ function RequestsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [openSentProfile]
   );
+
+  useEffect(() => {
+    return () => {
+      const cached = requestCache.get(accountKey);
+      if (cached) requestCache.set(accountKey, { ...cached, scrollY: window.scrollY });
+    };
+  }, [accountKey]);
 
   const isReceived = tab === "received";
   const busy = isReceived ? loading : sentLoading;
