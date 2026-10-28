@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, memo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Virtuoso } from "react-virtuoso";
 import { Spin, Button, Tooltip, message, Avatar, Pagination } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -105,21 +105,35 @@ const SuggestionRow = memo(function SuggestionRow({
 
 function SuggestionsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const accountKey = user?.email || "anonymous";
   const cachedSuggestions = suggestionsCache.get(accountKey);
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
+
+  // Parse URL params
+  const getInitialState = () => {
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const pageSize = parseInt(searchParams.get("size") || String(getPageSizePreference(accountKey)), 10);
+    return { page, pageSize };
+  };
+
+  const initial = getInitialState();
+
   const [suggestions, setSuggestions] = useState(() => cachedSuggestions?.data || []);
   const [suggestionsTotal, setSuggestionsTotal] = useState(() => cachedSuggestions?.total || 0);
-  const [suggestionsPage, setSuggestionsPage] = useState(() => cachedSuggestions?.page || 0);
-  const [loading, setLoading] = useState(() => !cachedSuggestions);
+  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [editingEmail, setEditingEmail] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editedEmails, setEditedEmails] = useState([]);
   const [dismissTarget, setDismissTarget] = useState(null);
-  const [pageSize, setPageSize] = useState(() => getPageSizePreference(accountKey));
+
+  // Page is 1-indexed in URL, 0-indexed internally
+  const [page, setPage] = useState(initial.page);
+  const [pageSize, setPageSize] = useState(initial.pageSize);
+
   const { setSuggestionsCount } = useRefresh();
   const { relName, format } = useRelationDisplay();
 
@@ -128,6 +142,7 @@ function SuggestionsPage() {
   const mountedRef = useRef(true);
   const restoredCacheRef = useRef(false);
   const restoredPageRef = useRef(null);
+
   useEffect(() => {
     const mq = window.matchMedia(MQ_COMPACT);
     const onChange = (e) => setIsCompact(e.matches);
@@ -145,6 +160,25 @@ function SuggestionsPage() {
     };
   }, [accountKey]);
 
+  // Sync URL when state changes
+  const syncUrl = useCallback((updates = {}, replace = true) => {
+    const nextParams = new URLSearchParams();
+    const nextPage = updates.page ?? page;
+    const nextPageSize = updates.pageSize ?? pageSize;
+
+    nextParams.set("page", String(nextPage)); // Always include page (even page=1) for explicit URL state
+    if (nextPageSize !== getPageSizePreference(accountKey)) nextParams.set("size", String(nextPageSize));
+
+    setSearchParams(nextParams, { replace });
+  }, [page, pageSize, setSearchParams, accountKey]);
+
+  // Handle browser back/forward — sync state from URL
+  useEffect(() => {
+    const next = getInitialState();
+    if (next.page !== page) { setPage(next.page); }
+    if (next.pageSize !== pageSize) { setPageSize(next.pageSize); }
+  }, [searchParams]);
+
   // Contacts-page pattern: DB-paged (50/page), replace on page 0, append
   // after. Stale responses are dropped; stale requests are aborted.
   const fetchSuggestions = async (pageNum, append = false) => {
@@ -154,7 +188,7 @@ function SuggestionsPage() {
     abortSuggRef.current = ctrl;
     if (!append) setLoading(true);
     try {
-      const res = await api.suggestions(pageNum, pageSize, ctrl.signal);
+      const res = await api.suggestions(pageNum - 1, pageSize, ctrl.signal);
       if (id !== reqIdRef.current) return;
       const data = res.data?.content || [];
       const total = res.data?.totalElements ?? data.length;
@@ -171,6 +205,7 @@ function SuggestionsPage() {
       if (actualPageSize !== pageSize) {
         setPageSize(actualPageSize);
         setPageSizePreference(accountKey, actualPageSize);
+        syncUrl({ pageSize: actualPageSize });
       }
       if (!append) setEditedEmails([]);
     } catch (e) {
@@ -190,47 +225,48 @@ function SuggestionsPage() {
     setLoadingMore(false);
     const cached = suggestionsCache.get(accountKey);
     if (cached && cached.pageSize === pageSize && cached.format === format) {
-      setSuggestionsPage(cached.page || 0);
+      setPage(cached.page + 1 || 1);
       setSuggestions(cached.data || []);
       setSuggestionsTotal(cached.total || 0);
       setSuggestionsCount(cached.total || 0);
       restoredCacheRef.current = true;
-      restoredPageRef.current = cached.page || 0;
+      restoredPageRef.current = cached.page + 1 || 1;
       setLoading(false);
       const saved = cached.scrollY;
       if (saved) setTimeout(() => window.scrollTo(0, saved), 0);
       return;
     }
-    setSuggestionsPage(0);
-    fetchSuggestions(0, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Don't reset page to 1 - use the page from URL (already in state)
+    // Don't call syncUrl({ page: 1 }) - it would overwrite the URL
+    fetchSuggestions(page, false);
   }, [accountKey, isCompact, pageSize, format]);
 
   // Next pages: append on compact, replace on desktop (pagination turns).
   useEffect(() => {
     if (!mountedRef.current) return;
-    if (restoredCacheRef.current && suggestionsPage === restoredPageRef.current) {
+    if (restoredCacheRef.current && page === restoredPageRef.current) {
       restoredCacheRef.current = false;
       restoredPageRef.current = null;
       setLoading(false);
       setLoadingMore(false);
       return;
     }
-    if (suggestionsPage === 0) return;
+    if (page === 1) return;
     if (isCompact) setLoadingMore(true);
-    fetchSuggestions(suggestionsPage, isCompact).finally(() => setLoadingMore(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suggestionsPage]);
+    fetchSuggestions(page, isCompact).finally(() => setLoadingMore(false));
+  }, [page]);
 
   const hasMore = suggestions.length < suggestionsTotal;
 
   // Next page pre-loads as the end approaches — no waiting at the bottom.
   const loadMore = useCallback(() => {
     if (isCompact && hasMore && !loading && !loadingMore) {
-      setSuggestionsPage((p) => p + 1);
+      setLoadingMore(true);
+      const nextPage = page + 1;
+      setPage(nextPage);
+      syncUrl({ page: nextPage }, false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCompact, hasMore, loading, loadingMore]);
+  }, [isCompact, hasMore, loading, loadingMore, page, syncUrl]);
 
   // Instagram-style: open anyone's profile from a result row.
   const openProfile = useCallback((s) => {
@@ -350,8 +386,9 @@ function SuggestionsPage() {
   );
 
   const refresh = () => {
-    setSuggestionsPage(0);
-    fetchSuggestions(0, false);
+    setPage(1);
+    syncUrl({ page: 1 });
+    fetchSuggestions(1, false);
   };
 
   return (
@@ -421,7 +458,7 @@ function SuggestionsPage() {
       {!isCompact && suggestionsTotal > DEFAULT_PAGE_SIZE && (
         <div className="nw-table-pagination">
           <Pagination
-            current={suggestionsPage + 1}
+            current={page}
             pageSize={pageSize}
             total={suggestionsTotal}
             showSizeChanger
@@ -434,11 +471,13 @@ function SuggestionsPage() {
                 // Page size changed: reset to page 0 and update preference
                 setPageSize(nextPageSize);
                 setPageSizePreference(accountKey, nextPageSize);
-                setSuggestionsPage(0);
+                setPage(1);
+                syncUrl({ pageSize: nextPageSize, page: 1 }, false);
                 return;
               }
-              // Page changed: update page (convert from 1-indexed to 0-indexed)
-              setSuggestionsPage(pg - 1);
+              // Page changed: update page
+              setPage(pg);
+              syncUrl({ page: pg }, false);
             }}
           />
         </div>
