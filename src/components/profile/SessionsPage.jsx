@@ -46,6 +46,7 @@ function SessionsPage() {
   const [revokingId, setRevokingId] = useState(null);
   const [wipeOpen, setWipeOpen] = useState(false);
   const [wiping, setWiping] = useState(false);
+  const [revokeConfirm, setRevokeConfirm] = useState(null); // { sessionId, deviceName }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,16 +70,24 @@ function SessionsPage() {
   };
 
   const handleRevoke = async (id) => {
-    if (revokingId) return;
-    setRevokingId(id);
+    const session = sessions.find((s) => s.id === id);
+    const dev = session ? displayDevice(session) : { name: "this session" };
+    setRevokeConfirm({ sessionId: id, deviceName: dev.name });
+  };
+
+  const handleRevokeConfirm = async () => {
+    if (!revokeConfirm) return;
+    const { sessionId } = revokeConfirm;
+    setRevokingId(sessionId);
     try {
-      await revokeSession(id);
+      await revokeSession(sessionId);
       message.success("Session logged out.");
-      setSessions((prev) => prev.filter((s) => s.id !== id));
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
     } catch (e) {
       message.error(e.response?.data?.error || e.response?.data?.message || "Could not revoke session");
     } finally {
       setRevokingId(null);
+      setRevokeConfirm(null);
     }
   };
 
@@ -187,6 +196,14 @@ function SessionsPage() {
         okText="Yes, log out all"
         onCancel={() => setWipeOpen(false)}
         onOk={handleWipeAll}
+      />
+      <ConfirmPopup
+        open={!!revokeConfirm}
+        title="Log out this session?"
+        message={`This will log out "${revokeConfirm?.deviceName || "this session"}". The device will need to log in again to reconnect.`}
+        okText="Yes, log out"
+        onCancel={() => setRevokeConfirm(null)}
+        onOk={handleRevokeConfirm}
       />
     </div>
   );
