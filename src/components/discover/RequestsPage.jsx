@@ -12,7 +12,7 @@ import { getInverseRelation } from "../../utils/relationUtils";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";
-import { avatarColorFor, DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, formatCount, MQ_COMPACT } from "../../constants";
+import { avatarColorFor, DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, PAGE_SIZE_OPTIONS_LIMITED, formatCount, MQ_COMPACT } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
 import RelationPickerModal from "../shared/RelationPickerModal";
@@ -675,17 +675,18 @@ function RequestsPage() {
                   pageSize={pageSize}
                   total={pendingTotal}
                   showSizeChanger
-                  pageSizeOptions={pageSizeOptionsForTotal(pendingTotal)}
+                  pageSizeOptions={pageSizeOptionsForTotal(pendingTotal, PAGE_SIZE_OPTIONS_LIMITED)}
                   showQuickJumper
                   size="small"
                   onChange={(pg, newPageSize) => {
-                    if (newPageSize !== pageSize) {
-                      setPageSize(newPageSize);
-                      setPageSizePreference(accountKey, newPageSize);
+                    const nextPageSize = Number(newPageSize);
+                    if (nextPageSize !== pageSize) {
+                      setPageSize(nextPageSize);
+                      setPageSizePreference(accountKey, nextPageSize);
                       setPendingPage(0);
-                    } else {
-                      setPendingPage(pg - 1);
+                      return;
                     }
+                    setPendingPage(pg - 1);
                   }}
                 />
               </div>
@@ -740,17 +741,18 @@ function RequestsPage() {
                   pageSize={pageSize}
                   total={sentTotal}
                   showSizeChanger
-                  pageSizeOptions={pageSizeOptionsForTotal(sentTotal)}
+                  pageSizeOptions={pageSizeOptionsForTotal(sentTotal, PAGE_SIZE_OPTIONS_LIMITED)}
                   showQuickJumper
                   size="small"
                   onChange={(pg, newPageSize) => {
-                    if (newPageSize !== pageSize) {
-                      setPageSize(newPageSize);
-                      setPageSizePreference(accountKey, newPageSize);
+                    const nextPageSize = Number(newPageSize);
+                    if (nextPageSize !== pageSize) {
+                      setPageSize(nextPageSize);
+                      setPageSizePreference(accountKey, nextPageSize);
                       setSentPage(0);
-                    } else {
-                      setSentPage(pg - 1);
+                      return;
                     }
+                    setSentPage(pg - 1);
                   }}
                 />
               </div>

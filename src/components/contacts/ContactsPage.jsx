@@ -10,7 +10,7 @@ import { mapConnectionToContact as mapContact } from "../../utils/contactMapper"
 
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
-import { getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
+import { getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, PAGE_SIZE_OPTIONS_LIMITED, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
 import { estimateDownlinkMbps } from "../../Services/connectionMonitor";
@@ -641,16 +641,17 @@ function ContactsPage() {
             total={totalItems}
             showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} items`}
             showSizeChanger
-            pageSizeOptions={pageSizeOptionsForTotal(totalItems)}
+            pageSizeOptions={pageSizeOptionsForTotal(totalItems, PAGE_SIZE_OPTIONS_LIMITED)}
             showQuickJumper
             showLessItems
             size="small"
             onChange={(pg, newPageSize) => {
-              if (newPageSize !== pageSize) {
+              const nextPageSize = Number(newPageSize);
+              if (nextPageSize !== pageSize) {
                 // Size change always resets to page 1. The pageSize effect
                 // also fetches page 0, so this is not a duplicate request.
-                setPageSizePreference(accountKey, newPageSize);
-                setPageSize(newPageSize);
+                setPageSizePreference(accountKey, nextPageSize);
+                setPageSize(nextPageSize);
                 setPage(0);
                 return;
               }

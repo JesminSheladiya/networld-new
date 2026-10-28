@@ -11,7 +11,7 @@ import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationPickerModal from "../shared/RelationPickerModal";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";
-import { avatarColorFor, DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, MQ_COMPACT } from "../../constants";
+import { avatarColorFor, DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, PAGE_SIZE_OPTIONS_LIMITED, MQ_COMPACT } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
 
@@ -425,15 +425,20 @@ function SuggestionsPage() {
             pageSize={pageSize}
             total={suggestionsTotal}
             showSizeChanger
-            pageSizeOptions={pageSizeOptionsForTotal(suggestionsTotal)}
+            pageSizeOptions={pageSizeOptionsForTotal(suggestionsTotal, PAGE_SIZE_OPTIONS_LIMITED)}
             showQuickJumper
             size="small"
             onChange={(pg, newPageSize) => {
-              setSuggestionsPage(pg - 1);
-              if (newPageSize !== pageSize) {
-                setPageSize(newPageSize);
-                setPageSizePreference(accountKey, newPageSize);
+              const nextPageSize = Number(newPageSize);
+              if (nextPageSize !== pageSize) {
+                // Page size changed: reset to page 0 and update preference
+                setPageSize(nextPageSize);
+                setPageSizePreference(accountKey, nextPageSize);
+                setSuggestionsPage(0);
+                return;
               }
+              // Page changed: update page (convert from 1-indexed to 0-indexed)
+              setSuggestionsPage(pg - 1);
             }}
           />
         </div>
