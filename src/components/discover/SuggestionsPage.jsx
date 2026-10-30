@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, memo } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, memo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Virtuoso } from "react-virtuoso";
 import { Spin, Button, Tooltip, message, Avatar, Pagination } from "antd";
@@ -142,6 +142,14 @@ function SuggestionsPage() {
   const mountedRef = useRef(true);
   const restoredCacheRef = useRef(false);
   const restoredPageRef = useRef(null);
+  // Pagination fix refs
+  const isRenderingRef = useRef(true);
+  useLayoutEffect(() => { isRenderingRef.current = false; }, []);
+  const isPageSizeChangeRef = useRef(false);
+  const prevPageSizeRef = useRef(null);
+  useEffect(() => {
+    prevPageSizeRef.current = pageSize;
+  }, [pageSize]);
 
   useEffect(() => {
     const mq = window.matchMedia(MQ_COMPACT);
@@ -167,7 +175,7 @@ function SuggestionsPage() {
     const nextPageSize = updates.pageSize ?? pageSize;
 
     nextParams.set("page", String(nextPage)); // Always include page (even page=1) for explicit URL state
-    if (nextPageSize !== getPageSizePreference(accountKey)) nextParams.set("size", String(nextPageSize));
+    nextParams.set("size", String(nextPageSize)); // Always include size so back/forward remembers it
 
     setSearchParams(nextParams, { replace });
   }, [page, pageSize, setSearchParams, accountKey]);
@@ -466,18 +474,38 @@ function SuggestionsPage() {
             showQuickJumper
             size="small"
             onChange={(pg, newPageSize) => {
+              // Ignore Pagination mount calls
+              if (isRenderingRef.current) return;
+              // Ignore if we're handling a pageSize change (onShowSizeChange already handled it)
+              if (isPageSizeChangeRef.current) {
+                isPageSizeChangeRef.current = false;
+                return;
+              }
               const nextPageSize = Number(newPageSize);
-              if (nextPageSize !== pageSize) {
-                // Page size changed: reset to page 0 and update preference
+              // Use prevPageSizeRef to detect pageSize changes
+              if (nextPageSize !== prevPageSizeRef.current) {
+                isPageSizeChangeRef.current = true;
                 setPageSize(nextPageSize);
                 setPageSizePreference(accountKey, nextPageSize);
                 setPage(1);
                 syncUrl({ pageSize: nextPageSize, page: 1 }, false);
                 return;
               }
-              // Page changed: update page
+              // Only handle page changes here
               setPage(pg);
               syncUrl({ page: pg }, false);
+            }}
+            onShowSizeChange={(current, size) => {
+              // Ignore Pagination mount calls
+              if (isRenderingRef.current) return;
+              const nextPageSize = Number(size);
+              if (nextPageSize !== pageSize) {
+                isPageSizeChangeRef.current = true;
+                setPageSize(nextPageSize);
+                setPageSizePreference(accountKey, nextPageSize);
+                setPage(1);
+                syncUrl({ pageSize: nextPageSize, page: 1 }, false);
+              }
             }}
           />
         </div>

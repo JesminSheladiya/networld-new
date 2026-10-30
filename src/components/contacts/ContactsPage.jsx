@@ -122,11 +122,13 @@ function ContactsPage() {
   const [editingContact, setEditingContact] = useState(null);
 
   // Track if component has been interacted with (to ignore Pagination mount calls)
-  const hasInteractedRef = useRef(false);
-  const paginationChangeCountRef = useRef(0);
   const isRenderingRef = useRef(true);
   // Reset render flag after paint
   useLayoutEffect(() => { isRenderingRef.current = false; }, []);
+  // Track if we're handling a pageSize change (to ignore duplicate onChange call)
+  const isPageSizeChangeRef = useRef(false);
+  // Track previous pageSize to detect changes in onChange (since closure may have new state)
+  const prevPageSizeRef = useRef(null);
 
   const getNetworkPageSize = () => {
     if (!isCompact) return getPageSizePreference(accountKey);
@@ -143,6 +145,10 @@ function ContactsPage() {
     if (isCompact) return getNetworkPageSize();
     return initial.pageSize;
   });
+  // Update prevPageSizeRef after pageSize state is initialized
+  useEffect(() => {
+    prevPageSizeRef.current = pageSize;
+  }, [pageSize]);
   const [sortParam, setSortParam] = useState(initial.sortParam);
   const [loadingMore, setLoadingMore] = useState(false);
   const chipsRef = useRef(null);
@@ -155,6 +161,15 @@ function ContactsPage() {
 
   // Track effect setup count to skip Strict Mode double-mount
   const filterEffectSetupCountRef = useRef(0);
+
+  // Generation counter for URL sync (browser back/forward)
+  // Incremented when searchParams effect detects a browser navigation
+  // Effects that call syncUrl check this to avoid overwriting history
+  const urlSyncGenerationRef = useRef(0);
+  const filterEffectGenerationRef = useRef(0);
+
+  // Track if a user action initiated the searchParams change
+  const isUserActionRef = useRef(false);
 
   // Sync URL when state changes — this is the single sync point
   // replace: true for automatic syncs (pagination), false for explicit user actions (search, filter, sort, category)
@@ -169,7 +184,7 @@ function ContactsPage() {
     const nextSelectedRelations = updates.selectedRelations ?? selectedRelations;
 
     nextParams.set("page", String(nextPage)); // Always include page (even page=1) for explicit URL state
-    if (nextPageSize !== getPageSizePreference(accountKey)) nextParams.set("size", String(nextPageSize));
+    nextParams.set("size", String(nextPageSize)); // Always include size so back/forward remembers it
     if (nextSearchText) nextParams.set("q", nextSearchText);
     if (nextCategory !== "all") nextParams.set("cat", nextCategory);
     if (nextSortParam) nextParams.set("sort", nextSortParam);
@@ -178,37 +193,57 @@ function ContactsPage() {
     setSearchParams(nextParams, { replace });
   }, [page, pageSize, searchText, category, sortParam, selectedRelations, setSearchParams, accountKey]);
 
+  // Wrapper for user actions that change URL - marks the action so searchParams effect knows it's not browser navigation
+  const syncUrlUserAction = useCallback((updates = {}, replace = false) => {
+    isUserActionRef.current = true;
+    syncUrl(updates, replace);
+  }, [syncUrl]);
+
   // Handle browser back/forward — sync state from URL
   const isFirstUrlSyncRef = useRef(true);
   useEffect(() => {
     // Skip first render - initial state already set from searchParams
     if (isFirstUrlSyncRef.current) {
       isFirstUrlSyncRef.current = false;
+      isUserActionRef.current = false; // Reset so subsequent back/forward is processed correctly
       return;
     }
     const next = getInitialState(searchParams);
     // Only update state that actually changed to avoid unnecessary fetches
-    let changed = false;
-    if (next.page !== page) { setPage(next.page); changed = true; }
-    if (next.pageSize !== pageSize) { setPageSize(next.pageSize); changed = true; }
-    if (next.searchText !== searchText) { setSearchText(next.searchText); changed = true; }
-    if (next.category !== category) { setCategory(next.category); changed = true; }
-    if (next.sortParam !== sortParam) { setSortParam(next.sortParam); changed = true; }
-    if (JSON.stringify(next.selectedRelations) !== JSON.stringify(selectedRelations)) {
-      setSelectedRelations(next.selectedRelations);
-      changed = true;
+    let hasUrlSync = false;
+    if (isUserActionRef.current) {
+      // This searchParams change came from a user action (syncUrlUserAction)
+      // Reset the flag and don't treat as URL sync
+      isUserActionRef.current = false;
+    } else {
+      // This is a browser back/forward navigation
+      if (next.page !== page) { setPage(next.page); hasUrlSync = true; }
+      if (next.pageSize !== pageSize) { setPageSize(next.pageSize); hasUrlSync = true; }
+      if (next.searchText !== searchText) { setSearchText(next.searchText); hasUrlSync = true; }
+      if (next.category !== category) { setCategory(next.category); hasUrlSync = true; }
+      if (next.sortParam !== sortParam) { setSortParam(next.sortParam); hasUrlSync = true; }
+      if (JSON.stringify(next.selectedRelations) !== JSON.stringify(selectedRelations)) {
+        setSelectedRelations(next.selectedRelations);
+        hasUrlSync = true;
+      }
+      if (hasUrlSync) {
+        // Increment generation to signal a URL sync happened
+        urlSyncGenerationRef.current += 1;
+      }
     }
   }, [searchParams]);
 
-  // Sync URL when page or pageSize changes (but not on initial mount)
+  // No automatic syncUrl for page/pageSize — all changes go through syncUrlUserAction
+  // or filter effect. This effect previously caused double-sync and history corruption.
+  // Kept only to track first mount if needed elsewhere.
   const isFirstPageSyncRef = useRef(true);
   useEffect(() => {
     if (isFirstPageSyncRef.current) {
       isFirstPageSyncRef.current = false;
       return;
     }
-    syncUrl({ page, pageSize });
-  }, [page, pageSize, syncUrl]);
+    // Intentionally no syncUrl here — handlers and filter effect own URL updates.
+  }, [page, pageSize]);
 
   // Page size is chosen up front (getNetworkPageSize in the pageSize
   // initializer above). We intentionally do NOT poll/re-shuffle it here:
@@ -348,12 +383,21 @@ function ContactsPage() {
         return;
       }
       setLoadingMore(false);
+      // Skip if a URL sync (browser back/forward) happened since last check
+      // currentGen > filterEffectGenerationRef.current means generation incremented
+      const currentGen = urlSyncGenerationRef.current;
+      if (currentGen > filterEffectGenerationRef.current) {
+        filterEffectGenerationRef.current = currentGen;
+        return;
+      }
+      filterEffectGenerationRef.current = currentGen;
       setPage(1);
-      syncUrlRef.current({ page: 1 });
+      // Use syncUrlUserAction (replace: false) to create history entry for filter changes
+      syncUrlRef.current({ page: 1 }, false);
       fetchList(1, false);
     }, delay);
     return () => clearTimeout(handler);
-  }, [searchText, category, selectedRelations, pageSize, sortParam, isCompact, format]);
+  }, [searchText, category, selectedRelations, sortParam, isCompact, format]);
 
   // Reset page/size only when the signed-in account actually changes
   const prevAccountKeyRef = useRef(accountKey);
@@ -442,7 +486,7 @@ function ContactsPage() {
   const changeCategory = (v) => {
     setSelectedRelations([]);
     setCategory(v);
-    syncUrl({ category: v, selectedRelations: [], page: 1 }, false);
+    syncUrlUserAction({ category: v, selectedRelations: [], page: 1 });
   };
 
   const filtered = dataSource;
@@ -453,9 +497,9 @@ function ContactsPage() {
       setLoadingMore(true);
       const nextPage = page + 1;
       setPage(nextPage);
-      syncUrl({ page: nextPage }, false);
+      syncUrlUserAction({ page: nextPage });
     }
-  }, [isCompact, hasMore, loading, loadingMore, page, syncUrl]);
+  }, [isCompact, hasMore, loading, loadingMore, page, syncUrlUserAction]);
 
   const openContact = useCallback((rec) => {
     navigate(`/contacts/${encodeURIComponent(rec.username || rec.email)}`, { state: { contact: rec } });
@@ -478,7 +522,7 @@ function ContactsPage() {
   const handleSortChange = (v) => {
     const nextSort = v || null;
     setSortParam(nextSort);
-    syncUrl({ sort: nextSort, page: 1 }, false);
+    syncUrlUserAction({ sort: nextSort, page: 1 });
   };
 
   const handleSearchChange = (e) => {
@@ -486,7 +530,7 @@ function ContactsPage() {
   };
 
   const handleSearchSubmit = () => {
-    syncUrl({ searchText, page: 1 }, false);
+    syncUrlUserAction({ searchText, page: 1 });
   };
 
   return (
@@ -590,7 +634,7 @@ function ContactsPage() {
                 className="nw-mfilter-active-chip"
                 onClick={() => {
                   setSortParam(null);
-                  syncUrl({ sort: null, page: 1 }, false);
+                  syncUrlUserAction({ sort: null, page: 1 });
                 }}
                 title="Clear sort"
               >
@@ -605,7 +649,7 @@ function ContactsPage() {
                 onClick={() => {
                   const nextRelations = selectedRelations.filter((k) => k !== r);
                   setSelectedRelations(nextRelations);
-                  syncUrl({ selectedRelations: nextRelations, page: 1 }, false);
+                  syncUrlUserAction({ selectedRelations: nextRelations, page: 1 });
                 }}
               >
                 <RelationChip relation={r} style={{ fontSize: 11 }} />
@@ -615,7 +659,7 @@ function ContactsPage() {
             <button className="nw-mfilter-active-clear" onClick={() => {
               setSelectedRelations([]);
               setSortParam(null);
-              syncUrl({ selectedRelations: [], sort: null, page: 1 }, false);
+              syncUrlUserAction({ selectedRelations: [], sort: null, page: 1 });
             }}>
               Clear all
             </button>
@@ -693,16 +737,38 @@ function ContactsPage() {
             onChange={(pg, newPageSize) => {
               // Ignore Pagination mount calls (Ant Design may call onChange during render)
               if (isRenderingRef.current) return;
+              // Ignore if we're handling a pageSize change (onShowSizeChange already handled it)
+              if (isPageSizeChangeRef.current) {
+                isPageSizeChangeRef.current = false;
+                return;
+              }
               const nextPageSize = Number(newPageSize);
-              if (nextPageSize !== pageSize) {
+              // Use prevPageSizeRef to detect pageSize changes (closure may have new state after re-render)
+              if (nextPageSize !== prevPageSizeRef.current) {
+                isPageSizeChangeRef.current = true;
                 setPageSizePreference(accountKey, nextPageSize);
                 setPageSize(nextPageSize);
                 setPage(1);
-                syncUrl({ pageSize: nextPageSize, page: 1 }, false);
+                syncUrlUserAction({ pageSize: nextPageSize, page: 1 });
                 return;
               }
-              setPage(pg);
-              syncUrl({ page: pg }, false);
+              // Only handle page changes here
+              if (pg !== page) {
+                setPage(pg);
+                syncUrlUserAction({ page: pg });
+              }
+            }}
+            onShowSizeChange={(current, size) => {
+              // Ignore Pagination mount calls
+              if (isRenderingRef.current) return;
+              const nextPageSize = Number(size);
+              if (nextPageSize !== pageSize) {
+                isPageSizeChangeRef.current = true;
+                setPageSizePreference(accountKey, nextPageSize);
+                setPageSize(nextPageSize);
+                setPage(1);
+                syncUrlUserAction({ pageSize: nextPageSize, page: 1 });
+              }
             }}
           />
         </div>
@@ -822,7 +888,7 @@ function ContactsPage() {
           </button>
           <button className="nw-relation-filter-btn apply" onClick={() => {
             setSortParam(sortDraft);
-            syncUrl({ sort: sortDraft, selectedRelations, page: 1 }, false);
+            syncUrlUserAction({ sort: sortDraft, selectedRelations, page: 1 });
             setFilterOpen(false);
           }}>
             Show{selectedRelations.length > 0 ? ` (${selectedRelations.length})` : ""}
