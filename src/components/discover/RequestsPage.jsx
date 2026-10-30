@@ -247,14 +247,12 @@ function RequestsPage() {
       if (id !== pendingReqRef.current) return;
       const data = res.data?.content || [];
       const total = res.data?.totalElements ?? data.length;
-      // Backend adjusts page size based on network conditions — sync frontend state
-      const actualPageSize = res.data.pageable?.size || pageSize;
       setPending((prev) => {
         const next = isInfiniteScrollAppend ? [...prev, ...data] : data;
         const cached = requestCache.get(accountKey) || {};
         requestCache.set(accountKey, {
           ...cached,
-          pageSize: actualPageSize,
+          pageSize,
           format,
           pending: next,
           pendingTotal: total,
@@ -265,11 +263,6 @@ function RequestsPage() {
       });
       setPendingTotal(total);
       setPendingCount(total);
-      if (actualPageSize !== pageSize) {
-        setPageSize(actualPageSize);
-        setPageSizePreference(accountKey, actualPageSize);
-        syncUrl({ pageSize: actualPageSize });
-      }
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
       if (isReplace && id === pendingReqRef.current) {
@@ -293,14 +286,12 @@ function RequestsPage() {
       if (id !== sentReqRef.current) return;
       const data = res.data?.content || [];
       const total = res.data?.totalElements ?? data.length;
-      // Backend adjusts page size based on network conditions — sync frontend state
-      const actualPageSize = res.data.pageable?.size || pageSize;
       setSent((prev) => {
         const next = append ? [...prev, ...data] : data;
         const cached = requestCache.get(accountKey) || {};
         requestCache.set(accountKey, {
           ...cached,
-          pageSize: actualPageSize,
+          pageSize,
           format,
           sent: next,
           sentTotal: total,
@@ -310,11 +301,6 @@ function RequestsPage() {
         return next;
       });
       setSentTotal(total);
-      if (actualPageSize !== pageSize) {
-        setPageSize(actualPageSize);
-        setPageSizePreference(accountKey, actualPageSize);
-        syncUrl({ pageSize: actualPageSize });
-      }
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
       if (!append && id === sentReqRef.current) {
