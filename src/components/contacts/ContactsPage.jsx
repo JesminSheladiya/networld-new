@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, memo } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, memo } from "react";
 import { Virtuoso } from "react-virtuoso";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Input, Spin, Avatar, Empty, Tooltip, Pagination, Modal, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
@@ -10,7 +10,7 @@ import { mapConnectionToContact as mapContact } from "../../utils/contactMapper"
 
 import RelationChip from "../shared/RelationChip";
 import EditRelationModal from "../shared/EditRelationModal";
-import { getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
+import { getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, PAGE_SIZE_OPTIONS_LIMITED, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
 import { estimateDownlinkMbps } from "../../Services/connectionMonitor";
@@ -27,8 +27,6 @@ const contactsCache = new Map();
 
 // Memoized row — Virtuoso mounts only the visible window, so a 10k list
 // never grows the DOM and every append stays as fast as the first one.
-// Markup + classes are identical to the plain list (no fixed-height box,
-// page scrolls normally).
 const ContactRow = memo(function ContactRow({ rec, onOpen, onEdit }) {
   return (
     <div
@@ -39,8 +37,6 @@ const ContactRow = memo(function ContactRow({ rec, onOpen, onEdit }) {
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter") onOpen(rec); }}
     >
-      {/* Avatar is not clickable here (Instagram-style): the photo opens
-          only on the profile page, never from a list. */}
       <span className="nw-contact-avatar">
         <Avatar
           size={44}
@@ -83,58 +79,171 @@ const ContactRow = memo(function ContactRow({ rec, onOpen, onEdit }) {
 
 function ContactsPage() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const accountKey = user?.email || "anonymous";
   const { format } = useRelationDisplay();
   const cachedContacts = contactsCache.get(accountKey);
 
+  // Parse URL params — use searchParams from useSearchParams (react-router)
+  // Lazy initialization ensures we read the URL at mount time
+  const getInitialState = useCallback((params) => {
+    const page = Math.max(1, parseInt(params.get("page") || "1", 10));
+    const pageSize = parseInt(params.get("size") || String(getPageSizePreference(accountKey)), 10);
+    const searchText = params.get("q") || "";
+    const category = params.get("cat") || "all";
+    const sortParam = params.get("sort") || null;
+    const selectedRelations = params.get("rel") ? params.get("rel").split(",").filter(Boolean) : [];
+    return { page, pageSize, searchText, category, sortParam, selectedRelations };
+  }, [accountKey]);
+
+  const initial = getInitialState(searchParams);
+
   // Coming from Requests accept → open the tab where the contact landed
+  // This overrides URL category temporarily, then URL sync will take over
+  const [urlOverride, setUrlOverride] = useState(null);
   useEffect(() => {
-    const c = location.state?.category;
+    const c = urlOverride;
     if (c) {
-      setSelectedRelations([]);
-      setCategory(c);
+      setUrlOverride(null);
+      // We'll handle this in the sync effect
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [urlOverride]);
 
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
   const [isNarrow, setIsNarrow] = useState(() => window.matchMedia(MQ_NARROW).matches);
-  const [searchText, setSearchText] = useState(() => cachedContacts?.searchText || "");
-  const [category, setCategory] = useState(() => cachedContacts?.category || "all");
-  const [loading, setLoading] = useState(() => !cachedContacts);
+  const [searchText, setSearchText] = useState(initial.searchText);
+  const [category, setCategory] = useState(initial.category);
+  const [loading, setLoading] = useState(true);
   const [dataSource, setDataSource] = useState(() => cachedContacts?.dataSource || []);
   const [totalItems, setTotalItems] = useState(() => cachedContacts?.totalItems || 0);
   const [counts, setCounts] = useState(() => cachedContacts?.counts || { all: 0, family: 0, inlaws: 0, others: 0 });
   const [relationOptions, setRelationOptions] = useState(() => cachedContacts?.relationOptions || []);
   const [editingContact, setEditingContact] = useState(null);
-  // Network-based page size for mobile/compact layouts.
-  // Slow networks → smaller pages (faster initial load, less data).
-  // Fast networks → larger pages (fewer round-trips).
+
+  // Track if component has been interacted with (to ignore Pagination mount calls)
+  const isRenderingRef = useRef(true);
+  // Reset render flag after paint
+  useLayoutEffect(() => { isRenderingRef.current = false; }, []);
+  // Track if we're handling a pageSize change (to ignore duplicate onChange call)
+  const isPageSizeChangeRef = useRef(false);
+  // Track previous pageSize to detect changes in onChange (since closure may have new state)
+  const prevPageSizeRef = useRef(null);
+
   const getNetworkPageSize = () => {
     if (!isCompact) return getPageSizePreference(accountKey);
-    const downlink = estimateDownlinkMbps(); // Mbps from RTT measurement
-    if (downlink < 0.5) return 20;    // Very slow (Slow 3G / 2G)
-    if (downlink < 1.5) return 30;    // Slow (3G)
-    if (downlink < 5) return 50;      // Medium (4G)
-    return 100;                       // Fast (5G / WiFi)
+    const downlink = estimateDownlinkMbps();
+    if (downlink < 0.5) return 20;
+    if (downlink < 1.5) return 30;
+    if (downlink < 5) return 50;
+    return 100;
   };
 
-  const [page, setPage] = useState(() => cachedContacts?.page || 0);
+  // Page is 1-indexed in URL, 0-indexed internally
+  const [page, setPage] = useState(initial.page);
   const [pageSize, setPageSize] = useState(() => {
     if (isCompact) return getNetworkPageSize();
-    return getPageSizePreference(accountKey);
+    return initial.pageSize;
   });
-  const [sortParam, setSortParam] = useState(() => cachedContacts?.sortParam || null);
+  // Update prevPageSizeRef after pageSize state is initialized
+  useEffect(() => {
+    prevPageSizeRef.current = pageSize;
+  }, [pageSize]);
+  const [sortParam, setSortParam] = useState(initial.sortParam);
   const [loadingMore, setLoadingMore] = useState(false);
   const chipsRef = useRef(null);
   const chipRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
-  const [selectedRelations, setSelectedRelations] = useState(() => cachedContacts?.selectedRelations || []);
+  const [selectedRelations, setSelectedRelations] = useState(initial.selectedRelations);
   const [filterOpen, setFilterOpen] = useState(false);
   const [mobileQ, setMobileQ] = useState("");
   const [sortDraft, setSortDraft] = useState(null);
+
+  // Track effect setup count to skip Strict Mode double-mount
+  const filterEffectSetupCountRef = useRef(0);
+
+  // Generation counter for URL sync (browser back/forward)
+  // Incremented when searchParams effect detects a browser navigation
+  // Effects that call syncUrl check this to avoid overwriting history
+  const urlSyncGenerationRef = useRef(0);
+  const filterEffectGenerationRef = useRef(0);
+
+  // Track if a user action initiated the searchParams change
+  const isUserActionRef = useRef(false);
+
+  // Sync URL when state changes — this is the single sync point
+  // replace: true for automatic syncs (pagination), false for explicit user actions (search, filter, sort, category)
+  const syncUrl = useCallback((updates = {}, replace = true) => {
+    const nextParams = new URLSearchParams();
+
+    const nextPage = updates.page ?? page;
+    const nextPageSize = updates.pageSize ?? pageSize;
+    const nextSearchText = updates.searchText ?? searchText;
+    const nextCategory = updates.category ?? category;
+    const nextSortParam = updates.sortParam ?? sortParam;
+    const nextSelectedRelations = updates.selectedRelations ?? selectedRelations;
+
+    nextParams.set("page", String(nextPage)); // Always include page (even page=1) for explicit URL state
+    nextParams.set("size", String(nextPageSize)); // Always include size so back/forward remembers it
+    if (nextSearchText) nextParams.set("q", nextSearchText);
+    if (nextCategory !== "all") nextParams.set("cat", nextCategory);
+    if (nextSortParam) nextParams.set("sort", nextSortParam);
+    if (nextSelectedRelations?.length) nextParams.set("rel", nextSelectedRelations.join(","));
+
+    setSearchParams(nextParams, { replace });
+  }, [page, pageSize, searchText, category, sortParam, selectedRelations, setSearchParams, accountKey]);
+
+  // Wrapper for user actions that change URL - marks the action so searchParams effect knows it's not browser navigation
+  const syncUrlUserAction = useCallback((updates = {}, replace = false) => {
+    isUserActionRef.current = true;
+    syncUrl(updates, replace);
+  }, [syncUrl]);
+
+  // Handle browser back/forward — sync state from URL
+  const isFirstUrlSyncRef = useRef(true);
+  useEffect(() => {
+    // Skip first render - initial state already set from searchParams
+    if (isFirstUrlSyncRef.current) {
+      isFirstUrlSyncRef.current = false;
+      isUserActionRef.current = false; // Reset so subsequent back/forward is processed correctly
+      return;
+    }
+    const next = getInitialState(searchParams);
+    // Only update state that actually changed to avoid unnecessary fetches
+    let hasUrlSync = false;
+    if (isUserActionRef.current) {
+      // This searchParams change came from a user action (syncUrlUserAction)
+      // Reset the flag and don't treat as URL sync
+      isUserActionRef.current = false;
+    } else {
+      // This is a browser back/forward navigation
+      if (next.page !== page) { setPage(next.page); hasUrlSync = true; }
+      if (next.pageSize !== pageSize) { setPageSize(next.pageSize); hasUrlSync = true; }
+      if (next.searchText !== searchText) { setSearchText(next.searchText); hasUrlSync = true; }
+      if (next.category !== category) { setCategory(next.category); hasUrlSync = true; }
+      if (next.sortParam !== sortParam) { setSortParam(next.sortParam); hasUrlSync = true; }
+      if (JSON.stringify(next.selectedRelations) !== JSON.stringify(selectedRelations)) {
+        setSelectedRelations(next.selectedRelations);
+        hasUrlSync = true;
+      }
+      if (hasUrlSync) {
+        // Increment generation to signal a URL sync happened
+        urlSyncGenerationRef.current += 1;
+      }
+    }
+  }, [searchParams]);
+
+  // No automatic syncUrl for page/pageSize — all changes go through syncUrlUserAction
+  // or filter effect. This effect previously caused double-sync and history corruption.
+  // Kept only to track first mount if needed elsewhere.
+  const isFirstPageSyncRef = useRef(true);
+  useEffect(() => {
+    if (isFirstPageSyncRef.current) {
+      isFirstPageSyncRef.current = false;
+      return;
+    }
+    // Intentionally no syncUrl here — handlers and filter effect own URL updates.
+  }, [page, pageSize]);
 
   // Page size is chosen up front (getNetworkPageSize in the pageSize
   // initializer above). We intentionally do NOT poll/re-shuffle it here:
@@ -144,16 +253,13 @@ function ContactsPage() {
   // without wiping state on network fluctuations.
   useEffect(() => {
     if (!isCompact) return;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCompact]);
 
   // Sort applies only via Show — picking chips just stages the choice.
   useEffect(() => {
     if (filterOpen) setSortDraft(sortParam);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterOpen]);
 
-  // All tabs always visible (with counts)
   const visibleCategories = CATEGORIES;
 
   useEffect(() => {
@@ -185,8 +291,6 @@ function ContactsPage() {
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  // Mobile tools layout (≤640px): search + filter share one row,
-  // sort lives inside the filter popup.
   const [isMobileTools, setIsMobileTools] = useState(
     () => window.matchMedia("(max-width: 640px)").matches
   );
@@ -199,10 +303,7 @@ function ContactsPage() {
   }, []);
 
   // Server list: paging + category + relations + sort all in backend.
-  // reqIdRef drops stale responses (fast filter changes must not overwrite newer results).
   const reqIdRef = useRef(0);
-  // Abort stale in-flight list requests: reqIdRef discards responses, but
-  // without abort the server still executes every discarded keystroke query.
   const abortRef = useRef(null);
   const fetchList = async (pageNum, append = false) => {
     const id = ++reqIdRef.current;
@@ -211,15 +312,12 @@ function ContactsPage() {
     abortRef.current = ctrl;
     if (!append) setLoading(true);
     try {
-      // Desktop searches name/username/mobile, mobile only name/username
-      // (server-side via includePhone — keeps paging + counts consistent).
       const res = await api.connectionsPaged(
-        pageNum, pageSize, searchText, category, selectedRelations, sortParam, !isCompact, ctrl.signal
+        pageNum - 1, pageSize, searchText, category, selectedRelations, sortParam, !isCompact, ctrl.signal
       );
-      if (id !== reqIdRef.current) return; // stale — a newer request is in flight
+      if (id !== reqIdRef.current) return;
       const mapped = res.data.content.map(mapContact);
       const nextTotal = res.data.totalElements;
-      // Backend adjusts page size based on network conditions — sync frontend state
       const actualPageSize = res.data.pageable?.size || pageSize;
       setDataSource((prev) => {
         const next = append ? [...prev, ...mapped] : mapped;
@@ -236,6 +334,7 @@ function ContactsPage() {
       if (actualPageSize !== pageSize) {
         setPageSize(actualPageSize);
         setPageSizePreference(accountKey, actualPageSize);
+        syncUrl({ pageSize: actualPageSize });
       }
       setTotalItems(nextTotal);
     } catch (e) {
@@ -249,25 +348,16 @@ function ContactsPage() {
     }
   };
 
-  // Skip only the very first mount fetch (reset effect below does it)
-  const firstMountRef = useRef(true);
-  // True while the reset effect's own page-0 fetch is authoritative,
-  // so the page effect doesn't fire a duplicate for the same page
-  const resetFetchRef = useRef(false);
-  const restoredCacheRef = useRef(false);
-  const restoredPageRef = useRef(null);
-  // Tracks whether the component is still mounted — guards against
-  // setState on unmounted component when navigating away mid-fetch.
-  const mountedRef = useRef(true);
-
   // Reset + load first page when anything filter-ish changes.
-  // Always fetches page 0 directly: on mobile the page effect skips page 0,
-  // so delegating via setPage(0) alone would leave the stale list in place.
-  // Only keystroke search waits out the debounce — mount, tab switches,
-  // filters and sort fetch immediately (the connections list style: no
-  // blank 350ms wait on entry).
   const prevSearchRef = useRef(searchText);
+  const syncUrlRef = useRef(syncUrl);
+  syncUrlRef.current = syncUrl;
   useEffect(() => {
+    filterEffectSetupCountRef.current++;
+    // Skip first two setups (Strict Mode double-mount in dev)
+    if (filterEffectSetupCountRef.current <= 2) {
+      return;
+    }
     const searchChanged = prevSearchRef.current !== searchText;
     prevSearchRef.current = searchText;
     const delay = searchChanged ? SEARCH_DEBOUNCE_MS : 0;
@@ -281,16 +371,11 @@ function ContactsPage() {
         && cached.format === format
         && JSON.stringify(cached.selectedRelations || []) === JSON.stringify(selectedRelations);
       if (cacheMatches) {
-        restoredCacheRef.current = true;
-        restoredPageRef.current = cached.page ?? 0;
-        // Populate dataSource from cache so the list is visible immediately,
-        // then still trigger a background refresh via the page effect below.
         setDataSource(cached.dataSource || []);
         setTotalItems(cached.totalItems ?? 0);
         setCounts(cached.counts || { all: 0, family: 0, inlaws: 0, others: 0 });
         setRelationOptions(cached.relationOptions || []);
         setLoading(false);
-        // Preserve the user's scroll position across in-app navigations.
         const savedScrollY = cached.scrollY;
         if (savedScrollY) {
           setTimeout(() => window.scrollTo(0, savedScrollY), 0);
@@ -298,74 +383,59 @@ function ContactsPage() {
         return;
       }
       setLoadingMore(false);
-      firstMountRef.current = false;
-      resetFetchRef.current = true;
-      setPage(0);
-      fetchList(0, false);
+      // Skip if a URL sync (browser back/forward) happened since last check
+      // currentGen > filterEffectGenerationRef.current means generation incremented
+      const currentGen = urlSyncGenerationRef.current;
+      if (currentGen > filterEffectGenerationRef.current) {
+        filterEffectGenerationRef.current = currentGen;
+        return;
+      }
+      filterEffectGenerationRef.current = currentGen;
+      setPage(1);
+      // Use syncUrlUserAction (replace: false) to create history entry for filter changes
+      syncUrlRef.current({ page: 1 }, false);
+      fetchList(1, false);
     }, delay);
     return () => clearTimeout(handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText, category, selectedRelations, pageSize, sortParam, isCompact, format]);
+  }, [searchText, category, selectedRelations, sortParam, isCompact, format]);
 
-  // Reset page/size only when the signed-in account actually changes,
-  // not on every mount with the same account (which would wipe a
-  // cached/restored list on in-app navigation back).
+  // Reset page/size only when the signed-in account actually changes
   const prevAccountKeyRef = useRef(accountKey);
   useEffect(() => {
     if (prevAccountKeyRef.current === accountKey) return;
     prevAccountKeyRef.current = accountKey;
-    setPageSize(getPageSizePreference(accountKey));
-    setPage(0);
-  }, [accountKey]);
+    const newPageSize = getPageSizePreference(accountKey);
+    setPageSize(newPageSize);
+    setPage(1);
+    syncUrl({ pageSize: newPageSize, page: 1 });
+  }, [accountKey, syncUrl]);
 
   // Desktop: each pagination click replaces the list with that page.
   // Compact/mobile: appended pages feed the infinite-scroll Virtuoso list.
-  // Always refetch when page changes to 0 — never leave the list stuck
-  // in loading state, especially when returning from an inner profile page.
   useEffect(() => {
-    if (!mountedRef.current) return;
-    // If this page came straight from a restored cache, don't re-fetch it.
-    if (restoredCacheRef.current && page === restoredPageRef.current) {
-      restoredCacheRef.current = false;
-      restoredPageRef.current = null;
-      setLoading(false);
-      setLoadingMore(false);
-      return;
-    }
-    if (page === 0) {
+    if (page === 1) {
       setLoading(true);
-      fetchList(page, false).finally(() => {
-        if (mountedRef.current) setLoading(false);
+      fetchList(1, false).finally(() => {
+        setLoading(false);
       });
     } else {
       setLoadingMore(true);
       fetchList(page, isCompact).finally(() => {
-        if (mountedRef.current) setLoadingMore(false);
+        setLoadingMore(false);
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  // Abort in-flight request and mark unmounted when leaving the page.
   useEffect(() => {
-    mountedRef.current = true;
     return () => {
-      // Preserve scroll position across in-app navigations.
       const cached = contactsCache.get(accountKey);
       if (cached) {
         contactsCache.set(accountKey, { ...cached, scrollY: window.scrollY });
       }
-      mountedRef.current = false;
       if (abortRef.current) abortRef.current.abort();
     };
   }, [accountKey]);
 
-  // Intentionally no auto-refetch on visibility change: resetting the list
-  // on every tab switch/navigation flash-wiped restored data and caused
-  // delayed "blank" reloads. In-app cache handles restoration instead.
-  // Server counts for tabs/dropdown + relation options for filters.
-  // Mount fires immediately with the list; only keystroke search is
-  // debounced (same rhythm as the list fetch above).
   const prevCountSearchRef = useRef(searchText);
   useEffect(() => {
     const ctrl = new AbortController();
@@ -413,26 +483,23 @@ function ContactsPage() {
     return () => { clearTimeout(handler); ctrl.abort(); };
   }, [searchText, isCompact]);
 
-  // Switching tabs starts a fresh filter context (stale relation sub-filter
-  // would otherwise combine with the new tab and show confusing results)
   const changeCategory = (v) => {
     setSelectedRelations([]);
     setCategory(v);
+    syncUrlUserAction({ category: v, selectedRelations: [], page: 1 });
   };
 
-  // Server already filtered + paged; nothing left to do client-side
   const filtered = dataSource;
   const hasMore = dataSource.length < totalItems;
 
-  // Infinite scroll only exists on compact/mobile; desktop uses the
-  // pagination control below.
   const loadMore = useCallback(() => {
     if (isCompact && hasMore && !loading && !loadingMore) {
       setLoadingMore(true);
-      setPage((p) => p + 1);
+      const nextPage = page + 1;
+      setPage(nextPage);
+      syncUrlUserAction({ page: nextPage });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCompact, hasMore, loading, loadingMore]);
+  }, [isCompact, hasMore, loading, loadingMore, page, syncUrlUserAction]);
 
   const openContact = useCallback((rec) => {
     navigate(`/contacts/${encodeURIComponent(rec.username || rec.email)}`, { state: { contact: rec } });
@@ -445,13 +512,26 @@ function ContactsPage() {
     [openContact]
   );
 
-  // Same sort options on every screen (no phone sorts — numbers hidden).
   const sortOptions = [
     { value: "name,asc", label: "Name A–Z" },
     { value: "name,desc", label: "Name Z–A" },
     { value: "username,asc", label: "Username A–Z" },
     { value: "username,desc", label: "Username Z–A" },
   ];
+
+  const handleSortChange = (v) => {
+    const nextSort = v || null;
+    setSortParam(nextSort);
+    syncUrlUserAction({ sort: nextSort, page: 1 });
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchText(e.target.value);
+  };
+
+  const handleSearchSubmit = () => {
+    syncUrlUserAction({ searchText, page: 1 });
+  };
 
   return (
     <div className="nw-page">
@@ -471,7 +551,8 @@ function ContactsPage() {
             placeholder={isCompact ? "Search name or username..." : "Search name, username, mobile..."}
             allowClear={{ clearIcon: <FontAwesomeIcon icon={faXmark} style={{ color: "#64748b", fontSize: 12 }} /> }}
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={handleSearchChange}
+            onPressEnter={handleSearchSubmit}
           />
           {isMobileTools && (
             <Tooltip title="Filter by relation">
@@ -526,7 +607,7 @@ function ContactsPage() {
                   placeholder="Sort"
                   allowClear
                   value={sortParam || undefined}
-                  onChange={(v) => setSortParam(v || null)}
+                  onChange={handleSortChange}
                   options={sortOptions}
                   suffixIcon={<FontAwesomeIcon icon={faArrowDownWideShort} style={{ color: "#64748b", fontSize: 12 }} />}
                 />
@@ -551,7 +632,10 @@ function ContactsPage() {
             {sortParam && (
               <button
                 className="nw-mfilter-active-chip"
-                onClick={() => setSortParam(null)}
+                onClick={() => {
+                  setSortParam(null);
+                  syncUrlUserAction({ sort: null, page: 1 });
+                }}
                 title="Clear sort"
               >
                 <span className="nw-mfilter-active-label">Sort: {sortOptions.find((o) => o.value === sortParam)?.label || sortParam}</span>
@@ -562,22 +646,27 @@ function ContactsPage() {
               <button
                 key={r}
                 className="nw-mfilter-active-chip"
-                onClick={() => setSelectedRelations((prev) => prev.filter((k) => k !== r))}
+                onClick={() => {
+                  const nextRelations = selectedRelations.filter((k) => k !== r);
+                  setSelectedRelations(nextRelations);
+                  syncUrlUserAction({ selectedRelations: nextRelations, page: 1 });
+                }}
               >
                 <RelationChip relation={r} style={{ fontSize: 11 }} />
                 <FontAwesomeIcon icon={faXmark} className="nw-mfilter-active-x" />
               </button>
             ))}
-            <button className="nw-mfilter-active-clear" onClick={() => { setSelectedRelations([]); setSortParam(null); }}>
+            <button className="nw-mfilter-active-clear" onClick={() => {
+              setSelectedRelations([]);
+              setSortParam(null);
+              syncUrlUserAction({ selectedRelations: [], sort: null, page: 1 });
+            }}>
               Clear all
             </button>
           </div>
         )}
       </div>
 
-      {/* Full-screen spinner only when there is nothing to show yet —
-          refetches (tab switch, filter, pull of page 0) keep the old rows on
-          screen like the connections list, instead of blanking every time. */}
       {loading ? (
         <div className="nw-state-box"><Spin size="large" /><span className="nw-state-text">Loading contacts...</span></div>
       ) : filtered.length === 0 ? (
@@ -636,25 +725,50 @@ function ContactsPage() {
       {!isCompact && totalItems > pageSize && (
         <div className="nw-table-pagination">
           <Pagination
-            current={page + 1}
+            current={page}
             pageSize={pageSize}
             total={totalItems}
             showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} items`}
             showSizeChanger
-            pageSizeOptions={pageSizeOptionsForTotal(totalItems)}
+            pageSizeOptions={pageSizeOptionsForTotal(totalItems, PAGE_SIZE_OPTIONS_LIMITED)}
             showQuickJumper
             showLessItems
             size="small"
             onChange={(pg, newPageSize) => {
-              if (newPageSize !== pageSize) {
-                // Size change always resets to page 1. The pageSize effect
-                // also fetches page 0, so this is not a duplicate request.
-                setPageSizePreference(accountKey, newPageSize);
-                setPageSize(newPageSize);
-                setPage(0);
+              // Ignore Pagination mount calls (Ant Design may call onChange during render)
+              if (isRenderingRef.current) return;
+              // Ignore if we're handling a pageSize change (onShowSizeChange already handled it)
+              if (isPageSizeChangeRef.current) {
+                isPageSizeChangeRef.current = false;
                 return;
               }
-              setPage(pg - 1);
+              const nextPageSize = Number(newPageSize);
+              // Use prevPageSizeRef to detect pageSize changes (closure may have new state after re-render)
+              if (nextPageSize !== prevPageSizeRef.current) {
+                isPageSizeChangeRef.current = true;
+                setPageSizePreference(accountKey, nextPageSize);
+                setPageSize(nextPageSize);
+                setPage(1);
+                syncUrlUserAction({ pageSize: nextPageSize, page: 1 });
+                return;
+              }
+              // Only handle page changes here
+              if (pg !== page) {
+                setPage(pg);
+                syncUrlUserAction({ page: pg });
+              }
+            }}
+            onShowSizeChange={(current, size) => {
+              // Ignore Pagination mount calls
+              if (isRenderingRef.current) return;
+              const nextPageSize = Number(size);
+              if (nextPageSize !== pageSize) {
+                isPageSizeChangeRef.current = true;
+                setPageSizePreference(accountKey, nextPageSize);
+                setPageSize(nextPageSize);
+                setPage(1);
+                syncUrlUserAction({ pageSize: nextPageSize, page: 1 });
+              }
             }}
           />
         </div>
@@ -674,9 +788,6 @@ function ContactsPage() {
               const updated = { ...prev[index], relation: newRel };
               return [updated, ...prev.slice(0, index), ...prev.slice(index + 1)];
             });
-            // A relation used as a filter must disappear immediately when
-            // the last matching contact is edited away from it. Keep the
-            // filter picker/counts in sync without waiting for a reload.
             if (previousRel && previousRel !== newRel) {
               setSelectedRelations((prev) => prev.filter((r) => r !== previousRel));
               setRelationOptions((prev) => {
@@ -736,7 +847,9 @@ function ContactsPage() {
                     className={`nw-mfilter-item${checked ? " checked" : ""}`}
                     onClick={() =>
                       setSelectedRelations((prev) =>
-                        prev.includes(o.value) ? prev.filter((k) => k !== o.value) : [...prev, o.value]
+                        prev.includes(o.value)
+                          ? prev.filter((k) => k !== o.value)
+                          : [...prev, o.value]
                       )
                     }
                   >
@@ -767,10 +880,17 @@ function ContactsPage() {
           </div>
         </div>
         <div className="nw-mfilter-footer">
-          <button className="nw-relation-filter-btn reset" onClick={() => { setSelectedRelations([]); setSortDraft(sortParam); }}>
+          <button className="nw-relation-filter-btn reset" onClick={() => {
+            setSelectedRelations([]);
+            setSortDraft(sortParam);
+          }}>
             <FontAwesomeIcon icon={faRotateLeft} /> Reset
           </button>
-          <button className="nw-relation-filter-btn apply" onClick={() => { setSortParam(sortDraft); setFilterOpen(false); }}>
+          <button className="nw-relation-filter-btn apply" onClick={() => {
+            setSortParam(sortDraft);
+            syncUrlUserAction({ sort: sortDraft, selectedRelations, page: 1 });
+            setFilterOpen(false);
+          }}>
             Show{selectedRelations.length > 0 ? ` (${selectedRelations.length})` : ""}
           </button>
         </div>

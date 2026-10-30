@@ -34,11 +34,15 @@ export const SMALL_SCREEN_PX = 390; // bottom-nav notch sizing
 // Contacts pagination (50 default; 20 removed — too chatty at scale on 4G.
 // Instagram-style: bigger pages = fewer round-trips, smooth on 1M graphs.)
 export const DEFAULT_PAGE_SIZE = 50;
+// Page size options for Contacts (supports up to 1000 per backend)
 export const PAGE_SIZE_OPTIONS = ["50", "100", "200", "500", "1000"];
-export function pageSizeOptionsForTotal(total) {
+// Page size options for Suggestions/Requests (backend caps at 100)
+export const PAGE_SIZE_OPTIONS_LIMITED = ["50", "100"];
+
+export function pageSizeOptionsForTotal(total, options = PAGE_SIZE_OPTIONS) {
   const count = Number(total) || 0;
-  const firstLargerOrEqual = PAGE_SIZE_OPTIONS.find((size) => Number(size) >= count);
-  return PAGE_SIZE_OPTIONS.filter(
+  const firstLargerOrEqual = options.find((size) => Number(size) >= count);
+  return options.filter(
     (size) => Number(size) <= count || size === firstLargerOrEqual
   );
 }

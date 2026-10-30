@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, useRef, memo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, memo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Virtuoso } from "react-virtuoso";
 import { Spin, Button, Tooltip, message, Avatar, Pagination } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -12,7 +12,7 @@ import { getInverseRelation } from "../../utils/relationUtils";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 import RelationChip from "../shared/RelationChip";
 import ConfirmPopup from "../shared/ConfirmPopup";
-import { avatarColorFor, DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, formatCount, MQ_COMPACT } from "../../constants";
+import { avatarColorFor, DEFAULT_PAGE_SIZE, getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, PAGE_SIZE_OPTIONS_LIMITED, formatCount, MQ_COMPACT } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
 import RelationPickerModal from "../shared/RelationPickerModal";
@@ -119,23 +119,36 @@ const SentRow = memo(function SentRow({ p, rel, avColor, reason, onOpen, onEdit,
 
 function RequestsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const accountKey = user?.email || "anonymous";
   const cachedRequests = requestCache.get(accountKey);
   const [isCompact, setIsCompact] = useState(() => window.matchMedia(MQ_COMPACT).matches);
-  const [tab, setTab] = useState("received");
+
+  // Parse URL params
+  const getInitialState = () => {
+    const tab = searchParams.get("tab") || "received";
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const pageSize = parseInt(searchParams.get("size") || String(getPageSizePreference(accountKey)), 10);
+    return { tab, page, pageSize };
+  };
+
+  const initial = getInitialState();
+
+  const [tab, setTab] = useState(initial.tab);
   const [pending, setPending] = useState(() => cachedRequests?.pending || []);
   const [pendingTotal, setPendingTotal] = useState(() => cachedRequests?.pendingTotal || 0);
-  const [pendingPage, setPendingPage] = useState(0);
+  // Page is 1-indexed in URL, 0-indexed internally
+  const [pendingPage, setPendingPage] = useState(initial.tab === "received" ? initial.page - 1 : 0);
   const [loading, setLoading] = useState(() => !cachedRequests?.pending);
   const [loadingMore, setLoadingMore] = useState(false);
   const [declineId, setDeclineId] = useState(null);
   const [sent, setSent] = useState(() => cachedRequests?.sent || []);
   const [sentTotal, setSentTotal] = useState(() => cachedRequests?.sentTotal || 0);
-  const [sentPage, setSentPage] = useState(0);
+  const [sentPage, setSentPage] = useState(initial.tab === "sent" ? initial.page - 1 : 0);
   const [sentLoading, setSentLoading] = useState(() => !cachedRequests?.sent);
   const [sentLoadingMore, setSentLoadingMore] = useState(false);
-  const [pageSize, setPageSize] = useState(() => getPageSizePreference(accountKey));
+  const [pageSize, setPageSize] = useState(initial.pageSize);
   const [cancelId, setCancelId] = useState(null);
   const [editingSent, setEditingSent] = useState(null);
   const [sentPickerOpen, setSentPickerOpen] = useState(false);
@@ -158,6 +171,15 @@ function RequestsPage() {
   const pendingRestoredPageRef = useRef(null);
   const sentRestoredRef = useRef(false);
   const sentRestoredPageRef = useRef(null);
+  // Pagination fix refs
+  const isRenderingRef = useRef(true);
+  useLayoutEffect(() => { isRenderingRef.current = false; }, []);
+  const isPageSizeChangeRef = useRef(false);
+  const prevPageSizeRef = useRef(null);
+  useEffect(() => {
+    prevPageSizeRef.current = pageSize;
+  }, [pageSize]);
+
   useEffect(() => {
     const mq = window.matchMedia(MQ_COMPACT);
     const onChange = (e) => setIsCompact(e.matches);
@@ -187,6 +209,29 @@ function RequestsPage() {
   const categoryOfRelation = (name) => relCategory(name);
   const categoryLabel = (key) =>
     key === "inlaws" ? "In-Laws" : key === "family" ? "Family" : key === "others" ? "Others" : "All";
+
+  // Sync URL when state changes
+  const syncUrl = useCallback((updates = {}, replace = true) => {
+    const nextParams = new URLSearchParams();
+    const nextTab = updates.tab ?? tab;
+    const nextPage = updates.page ?? (nextTab === "received" ? pendingPage + 1 : sentPage + 1);
+    const nextPageSize = updates.pageSize ?? pageSize;
+
+    if (nextTab !== "received") nextParams.set("tab", nextTab);
+    nextParams.set("page", String(nextPage)); // Always include page (even page=1) for explicit URL state
+    nextParams.set("size", String(nextPageSize)); // Always include size so back/forward remembers it
+
+    setSearchParams(nextParams, { replace });
+  }, [tab, pendingPage, sentPage, pageSize, setSearchParams, accountKey]);
+
+  // Handle browser back/forward — sync state from URL
+  useEffect(() => {
+    const next = getInitialState();
+    if (next.tab !== tab) { setTab(next.tab); }
+    if (next.tab === "received" && next.page - 1 !== pendingPage) { setPendingPage(next.page - 1); }
+    if (next.tab === "sent" && next.page - 1 !== sentPage) { setSentPage(next.page - 1); }
+    if (next.pageSize !== pageSize) { setPageSize(next.pageSize); }
+  }, [searchParams]);
 
   // Contacts-page pattern per tab: replace on page 0, append only for mobile
   // infinite-scroll (page > 0). Desktop pagination always replaces data.
@@ -223,6 +268,7 @@ function RequestsPage() {
       if (actualPageSize !== pageSize) {
         setPageSize(actualPageSize);
         setPageSizePreference(accountKey, actualPageSize);
+        syncUrl({ pageSize: actualPageSize });
       }
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
@@ -267,6 +313,7 @@ function RequestsPage() {
       if (actualPageSize !== pageSize) {
         setPageSize(actualPageSize);
         setPageSizePreference(accountKey, actualPageSize);
+        syncUrl({ pageSize: actualPageSize });
       }
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
@@ -301,10 +348,10 @@ function RequestsPage() {
       if (cached.scrollY) setTimeout(() => window.scrollTo(0, cached.scrollY), 0);
       return;
     }
-    setPendingPage(0);
-    setSentPage(0);
-    fetchPending(0, false);
-    fetchSent(0, false);
+    // Don't reset pages to 0 - use the pages from URL (already in state)
+    // Don't call syncUrl({ page: 1 }) - it would overwrite the URL
+    fetchPending(pendingPage, false);
+    fetchSent(sentPage, false);
     pendingPageZeroFresh.current = true;
     sentPageZeroFresh.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -359,17 +406,21 @@ function RequestsPage() {
 
   const loadMorePending = useCallback(() => {
     if (isCompact && pendingHasMore && !loading && !loadingMore) {
-      setPendingPage((p) => p + 1);
+      const nextPage = pendingPage + 1;
+      setPendingPage(nextPage);
+      syncUrl({ page: nextPage + 1 }, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCompact, pendingHasMore, loading, loadingMore]);
+  }, [isCompact, pendingHasMore, loading, loadingMore, pendingPage, syncUrl]);
 
   const loadMoreSent = useCallback(() => {
     if (isCompact && sentHasMore && !sentLoading && !sentLoadingMore) {
-      setSentPage((p) => p + 1);
+      const nextPage = sentPage + 1;
+      setSentPage(nextPage);
+      syncUrl({ page: nextPage + 1 }, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCompact, sentHasMore, sentLoading, sentLoadingMore]);
+  }, [isCompact, sentHasMore, sentLoading, sentLoadingMore, sentPage, syncUrl]);
 
   // Sliding pill indicator — same segmented control as Contacts tabs.
   useEffect(() => {
@@ -389,6 +440,7 @@ function RequestsPage() {
   const refreshAll = () => {
     setPendingPage(0);
     setSentPage(0);
+    syncUrl({ page: 1 }, false);
     fetchPending(0, false);
     fetchSent(0, false);
   };
@@ -579,6 +631,19 @@ function RequestsPage() {
   const isReceived = tab === "received";
   const busy = isReceived ? loading : sentLoading;
 
+  // Tab click handlers that sync URL - always reset to page 1 when switching tabs
+  const handleTabReceived = () => {
+    setTab("received");
+    setPendingPage(0);
+    syncUrl({ tab: "received", page: 1 }, false);
+  };
+
+  const handleTabSent = () => {
+    setTab("sent");
+    setSentPage(0);
+    syncUrl({ tab: "sent", page: 1 }, false);
+  };
+
   return (
     <div className="nw-page">
       <div className="nw-page-head">
@@ -606,7 +671,7 @@ function RequestsPage() {
               aria-selected={isReceived}
               ref={(el) => (chipRefs.current[0] = el)}
               className={isReceived ? "nw-chip active" : "nw-chip"}
-              onClick={() => setTab("received")}
+              onClick={handleTabReceived}
             >
               Received
               <span className="nw-chip-count" title={pendingTotal}>{formatCount(pendingTotal)}</span>
@@ -616,7 +681,7 @@ function RequestsPage() {
               aria-selected={!isReceived}
               ref={(el) => (chipRefs.current[1] = el)}
               className={!isReceived ? "nw-chip active" : "nw-chip"}
-              onClick={() => setTab("sent")}
+              onClick={handleTabSent}
             >
               Sent
               <span className="nw-chip-count" title={sentTotal}>{formatCount(sentTotal)}</span>
@@ -675,16 +740,41 @@ function RequestsPage() {
                   pageSize={pageSize}
                   total={pendingTotal}
                   showSizeChanger
-                  pageSizeOptions={pageSizeOptionsForTotal(pendingTotal)}
+                  pageSizeOptions={pageSizeOptionsForTotal(pendingTotal, PAGE_SIZE_OPTIONS_LIMITED)}
                   showQuickJumper
                   size="small"
                   onChange={(pg, newPageSize) => {
-                    if (newPageSize !== pageSize) {
-                      setPageSize(newPageSize);
-                      setPageSizePreference(accountKey, newPageSize);
+                    // Ignore Pagination mount calls
+                    if (isRenderingRef.current) return;
+                    // Ignore if we're handling a pageSize change (onShowSizeChange already handled it)
+                    if (isPageSizeChangeRef.current) {
+                      isPageSizeChangeRef.current = false;
+                      return;
+                    }
+                    const nextPageSize = Number(newPageSize);
+                    // Use prevPageSizeRef to detect pageSize changes
+                    if (nextPageSize !== prevPageSizeRef.current) {
+                      isPageSizeChangeRef.current = true;
+                      setPageSize(nextPageSize);
+                      setPageSizePreference(accountKey, nextPageSize);
                       setPendingPage(0);
-                    } else {
-                      setPendingPage(pg - 1);
+                      syncUrl({ pageSize: nextPageSize, page: 1 }, false);
+                      return;
+                    }
+                    // Only handle page changes here
+                    setPendingPage(pg - 1);
+                    syncUrl({ page: pg }, false);
+                  }}
+                  onShowSizeChange={(current, size) => {
+                    // Ignore Pagination mount calls
+                    if (isRenderingRef.current) return;
+                    const nextPageSize = Number(size);
+                    if (nextPageSize !== pageSize) {
+                      isPageSizeChangeRef.current = true;
+                      setPageSize(nextPageSize);
+                      setPageSizePreference(accountKey, nextPageSize);
+                      setPendingPage(0);
+                      syncUrl({ pageSize: nextPageSize, page: 1 }, false);
                     }
                   }}
                 />
@@ -740,16 +830,41 @@ function RequestsPage() {
                   pageSize={pageSize}
                   total={sentTotal}
                   showSizeChanger
-                  pageSizeOptions={pageSizeOptionsForTotal(sentTotal)}
+                  pageSizeOptions={pageSizeOptionsForTotal(sentTotal, PAGE_SIZE_OPTIONS_LIMITED)}
                   showQuickJumper
                   size="small"
                   onChange={(pg, newPageSize) => {
-                    if (newPageSize !== pageSize) {
-                      setPageSize(newPageSize);
-                      setPageSizePreference(accountKey, newPageSize);
+                    // Ignore Pagination mount calls
+                    if (isRenderingRef.current) return;
+                    // Ignore if we're handling a pageSize change (onShowSizeChange already handled it)
+                    if (isPageSizeChangeRef.current) {
+                      isPageSizeChangeRef.current = false;
+                      return;
+                    }
+                    const nextPageSize = Number(newPageSize);
+                    // Use prevPageSizeRef to detect pageSize changes
+                    if (nextPageSize !== prevPageSizeRef.current) {
+                      isPageSizeChangeRef.current = true;
+                      setPageSize(nextPageSize);
+                      setPageSizePreference(accountKey, nextPageSize);
                       setSentPage(0);
-                    } else {
-                      setSentPage(pg - 1);
+                      syncUrl({ pageSize: nextPageSize, page: 1 }, false);
+                      return;
+                    }
+                    // Only handle page changes here
+                    setSentPage(pg - 1);
+                    syncUrl({ page: pg }, false);
+                  }}
+                  onShowSizeChange={(current, size) => {
+                    // Ignore Pagination mount calls
+                    if (isRenderingRef.current) return;
+                    const nextPageSize = Number(size);
+                    if (nextPageSize !== pageSize) {
+                      isPageSizeChangeRef.current = true;
+                      setPageSize(nextPageSize);
+                      setPageSizePreference(accountKey, nextPageSize);
+                      setSentPage(0);
+                      syncUrl({ pageSize: nextPageSize, page: 1 }, false);
                     }
                   }}
                 />
