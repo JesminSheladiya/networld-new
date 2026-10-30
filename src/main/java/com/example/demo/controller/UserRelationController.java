@@ -6,6 +6,7 @@ import com.example.demo.model.UserRelation;
 import com.example.demo.repository.UserRelationRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.UserRelationService;
+import com.example.demo.util.NetworkPageSizeUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -181,7 +182,7 @@ public class UserRelationController {
             @AuthenticationPrincipal UserDetails ud) {
         // Bounded pages: the old unbounded list shipped 10k rows (5MB+ DOM).
         int safeSize = Math.min(1000, Math.max(1, size));
-        int networkSize = adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
+        int networkSize = NetworkPageSizeUtil.adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
         Pageable pageable = PageRequest.of(Math.max(0, page), networkSize);
         return ResponseEntity.ok(userRelationService.getPendingRequests(getCurrentUser(ud), pageable));
     }
@@ -202,7 +203,7 @@ public class UserRelationController {
             @RequestParam(required = false) String effectiveType,
             @AuthenticationPrincipal UserDetails ud) {
         int safeSize = Math.min(1000, Math.max(1, size));
-        int networkSize = adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
+        int networkSize = NetworkPageSizeUtil.adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
         Pageable pageable = PageRequest.of(Math.max(0, page), networkSize);
         return ResponseEntity.ok(userRelationService.getSentRequests(getCurrentUser(ud), pageable));
     }
@@ -235,7 +236,7 @@ public class UserRelationController {
             @RequestParam(required = false) String effectiveType,
             @AuthenticationPrincipal UserDetails ud) {
         int safeSize = Math.min(1000, Math.max(1, size));
-        int networkSize = adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
+        int networkSize = NetworkPageSizeUtil.adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
         Pageable pageable = PageRequest.of(Math.max(0, page), networkSize);
         return ResponseEntity.ok(userRelationService.getInferredSuggestions(getCurrentUser(ud), pageable));
     }
@@ -306,41 +307,13 @@ public class UserRelationController {
         int safeSize = Math.min(1000, Math.max(1, size));
         // Network-based page size adjustment: slow networks get fewer rows
         // per page (faster load, less data), fast networks get more.
-        int networkSize = adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
+        int networkSize = NetworkPageSizeUtil.adjustPageSizeForNetwork(downlink, effectiveType, safeSize);
         if (relations != null && relations.size() > 50) {
             relations = relations.subList(0, 50);
         }
         Pageable pageable = PageRequest.of(safePage, networkSize, toSort(sort));
         return ResponseEntity.ok(userRelationService.getMyConnectionsPaged(
                 getCurrentUser(ud), query, category, relations, includePhone, pageable));
-    }
-
-    // Adjust page size based on client network conditions.
-    // Actual downlink speed (Mbps) is the deciding factor — not the network
-    // type label (5G can be slow, 4G can be fast).
-    private int adjustPageSizeForNetwork(String downlinkStr, String effectiveType, int requestedSize) {
-        if (downlinkStr == null && effectiveType == null) {
-            return requestedSize; // No network info — use requested size
-        }
-        double downlink = 0;
-        try {
-            downlink = Double.parseDouble(downlinkStr);
-        } catch (NumberFormatException ignored) {
-            downlink = 0;
-        }
-        int maxSize;
-        // Prioritize actual downlink speed over network type label
-        if (downlink < 0.5) {
-            maxSize = 20;    // Very slow connection
-        } else if (downlink < 1.5) {
-            maxSize = 30;    // Slow connection
-        } else if (downlink < 5) {
-            maxSize = 50;    // Medium connection
-        } else {
-            maxSize = 100;   // Fast connection (5G+, fast 4G, WiFi)
-        }
-        // Never exceed the frontend-requested size
-        return Math.min(requestedSize, maxSize);
     }
 
     @GetMapping("/connections/counts")

@@ -9,6 +9,7 @@ import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.ContactService;
 import com.example.demo.service.RelationService;
+import com.example.demo.util.NetworkPageSizeUtil;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -123,9 +124,15 @@ public class ContactController {
     public Page<ContactDTO> getContactsPaginated(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String downlink,
+            @RequestParam(required = false) String effectiveType,
             @AuthenticationPrincipal UserDetails userDetails) {
         User user = getCurrentUser(userDetails);
-        Pageable pageable = PageRequest.of(page, size);
+        // Network-speed-based page size: slow networks get fewer rows per page
+        // (faster load, less data), fast networks get more. Based on measured
+        // downlink (RTT-derived), not the network type label.
+        int networkSize = NetworkPageSizeUtil.adjustPageSizeForNetwork(downlink, effectiveType, size);
+        Pageable pageable = PageRequest.of(page, networkSize);
         Page<Contact> contactsPage = contactService.getAllContacts(user, pageable);
         return contactsPage.map(ContactMapper::toDTO);
     }
@@ -181,11 +188,16 @@ public class ContactController {
             @RequestParam(required = false) Long relationId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String downlink,
+            @RequestParam(required = false) String effectiveType,
             @AuthenticationPrincipal UserDetails userDetails) {
         User user = getCurrentUser(userDetails);
+        // Network-speed-based page size: slow networks get fewer rows per page
+        // (faster load, less data), fast networks get more.
+        int networkSize = NetworkPageSizeUtil.adjustPageSizeForNetwork(downlink, effectiveType, size);
         Page<Contact> contacts =
                 contactService.searchContacts(name, phone, email, relationId, user,
-                        PageRequest.of(page, size));
+                        PageRequest.of(page, networkSize));
         return contacts.map(ContactMapper::toDTO);
     }
 }
