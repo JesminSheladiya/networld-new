@@ -64,6 +64,7 @@ export const api = {
   connectionCounts: (search, includePhone, signal) =>
     http.get(`${BASE}/user-relations/connections/counts`, {
       params: {
+        ...getNetworkParams(),
         ...(search && search.trim() ? { query: search.trim() } : {}),
         ...(includePhone !== undefined ? { includePhone } : {}),
       },
@@ -72,6 +73,7 @@ export const api = {
   connectionRelations: (search, includePhone, signal) =>
     http.get(`${BASE}/user-relations/connections/relations`, {
       params: {
+        ...getNetworkParams(),
         ...(search && search.trim() ? { query: search.trim() } : {}),
         ...(includePhone !== undefined ? { includePhone } : {}),
       },

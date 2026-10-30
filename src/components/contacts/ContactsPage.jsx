@@ -13,7 +13,6 @@ import EditRelationModal from "../shared/EditRelationModal";
 import { getPageSizePreference, setPageSizePreference, pageSizeOptionsForTotal, PAGE_SIZE_OPTIONS_LIMITED, MQ_COMPACT, MQ_NARROW, SEARCH_DEBOUNCE_MS, avatarColorFor, formatCount } from "../../constants";
 import { toDataUrl } from "../../utils/imageUtils";
 import { useAuth } from "../../context/AuthContext";
-import { estimateDownlinkMbps } from "../../Services/connectionMonitor";
 import { useRelationDisplay } from "../../context/RelationDisplayContext";
 
 const CATEGORIES = [
@@ -130,21 +129,12 @@ function ContactsPage() {
   // Track previous pageSize to detect changes in onChange (since closure may have new state)
   const prevPageSizeRef = useRef(null);
 
-  const getNetworkPageSize = () => {
-    if (!isCompact) return getPageSizePreference(accountKey);
-    const downlink = estimateDownlinkMbps();
-    if (downlink < 0.5) return 20;
-    if (downlink < 1.5) return 30;
-    if (downlink < 5) return 50;
-    return 100;
-  };
-
   // Page is 1-indexed in URL, 0-indexed internally
+  // Page size always comes from the URL (size param) — never silently adjusted
+  // by network conditions. This keeps URL, pagination, and fetched data in sync
+  // on slow networks and all devices.
   const [page, setPage] = useState(initial.page);
-  const [pageSize, setPageSize] = useState(() => {
-    if (isCompact) return getNetworkPageSize();
-    return initial.pageSize;
-  });
+  const [pageSize, setPageSize] = useState(initial.pageSize);
   // Update prevPageSizeRef after pageSize state is initialized
   useEffect(() => {
     prevPageSizeRef.current = pageSize;
@@ -245,16 +235,6 @@ function ContactsPage() {
     // Intentionally no syncUrl here — handlers and filter effect own URL updates.
   }, [page, pageSize]);
 
-  // Page size is chosen up front (getNetworkPageSize in the pageSize
-  // initializer above). We intentionally do NOT poll/re-shuffle it here:
-  // changing pageSize mid-list resets the loaded data and triggers fresh
-  // fetches, which on 3G/4G looks like "everything reloads". The backend's
-  // pageable.size still syncs per fetch (fetchList), so the list adapts
-  // without wiping state on network fluctuations.
-  useEffect(() => {
-    if (!isCompact) return;
-  }, [isCompact]);
-
   // Sort applies only via Show — picking chips just stages the choice.
   useEffect(() => {
     if (filterOpen) setSortDraft(sortParam);
@@ -318,24 +298,18 @@ function ContactsPage() {
       if (id !== reqIdRef.current) return;
       const mapped = res.data.content.map(mapContact);
       const nextTotal = res.data.totalElements;
-      const actualPageSize = res.data.pageable?.size || pageSize;
       setDataSource((prev) => {
         const next = append ? [...prev, ...mapped] : mapped;
         const prevCache = contactsCache.get(accountKey) || {};
         contactsCache.set(accountKey, {
           ...prevCache,
           searchText, category, selectedRelations, sortParam, isCompact,
-          pageSize: actualPageSize, format,
+          pageSize, format,
           page: pageNum, dataSource: next, totalItems: nextTotal,
           scrollY: prevCache.scrollY,
         });
         return next;
       });
-      if (actualPageSize !== pageSize) {
-        setPageSize(actualPageSize);
-        setPageSizePreference(accountKey, actualPageSize);
-        syncUrl({ pageSize: actualPageSize });
-      }
       setTotalItems(nextTotal);
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;

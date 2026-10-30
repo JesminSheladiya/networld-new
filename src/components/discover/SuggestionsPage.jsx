@@ -200,21 +200,14 @@ function SuggestionsPage() {
       if (id !== reqIdRef.current) return;
       const data = res.data?.content || [];
       const total = res.data?.totalElements ?? data.length;
-      // Backend adjusts page size based on network conditions — sync frontend state
-      const actualPageSize = res.data.pageable?.size || pageSize;
       setSuggestions((prev) => {
         const next = append ? [...prev, ...data] : data;
         const prevCache = suggestionsCache.get(accountKey) || {};
-        suggestionsCache.set(accountKey, { pageSize: actualPageSize, format, data: next, total, page: pageNum, scrollY: prevCache.scrollY });
+        suggestionsCache.set(accountKey, { pageSize, format, data: next, total, page: pageNum, scrollY: prevCache.scrollY });
         return next;
       });
       setSuggestionsTotal(total);
       setSuggestionsCount(total);
-      if (actualPageSize !== pageSize) {
-        setPageSize(actualPageSize);
-        setPageSizePreference(accountKey, actualPageSize);
-        syncUrl({ pageSize: actualPageSize });
-      }
       if (!append) setEditedEmails([]);
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
