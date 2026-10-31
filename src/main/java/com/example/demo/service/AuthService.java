@@ -1023,15 +1023,26 @@ public class AuthService {
     }
 
     // Raw bearer token of the current request (null when absent).
+    // Reads both the Authorization header (Bearer) and the NW_AUTH HttpOnly
+    // cookie — mobile browsers send the cookie, not a bearer header.
     static String currentRequestToken() {
         try {
             org.springframework.web.context.request.RequestAttributes attrs =
                     org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
             if (attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra) {
-                String h = sra.getRequest().getHeader("Authorization");
+                jakarta.servlet.http.HttpServletRequest req = sra.getRequest();
+                String h = req.getHeader("Authorization");
                 if (h != null && h.startsWith("Bearer ")) {
                     String t = h.substring(7).trim();
                     if (!t.isEmpty()) return t;
+                }
+                jakarta.servlet.http.Cookie[] cookies = req.getCookies();
+                if (cookies != null) {
+                    for (jakarta.servlet.http.Cookie c : cookies) {
+                        if ("NW_AUTH".equals(c.getName()) && c.getValue() != null && !c.getValue().isBlank()) {
+                            return c.getValue();
+                        }
+                    }
                 }
             }
         } catch (Exception ignored) {

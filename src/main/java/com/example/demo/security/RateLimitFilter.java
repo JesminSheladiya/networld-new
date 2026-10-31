@@ -10,6 +10,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -18,11 +22,13 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Runs before JWT auth. Strict buckets for brute-force targets,
- * generous bucket for everything else under /api/**.
+ * Rate limiting that is PER-USER when authenticated (so multiple devices
+ * logged in as the same user each get their own bucket) and per-IP for
+ * unauthenticated requests (login/register/OTP — brute-force protection).
+ * Runs AFTER JwtAuthenticationFilter so the SecurityContext is populated.
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
+@Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final RateLimitService limiter;
@@ -49,34 +55,33 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String path = pathOf(request);
         String ip = clientIp(request);
 
-        String category;
+        // Per-user bucket when authenticated (multiple devices = separate buckets),
+        // per-IP bucket for unauthenticated requests (brute-force protection).
+        String userKey = authenticatedUser();
+        String bucketKey = (userKey != null) ? categoryPrefix(path) + ":" + userKey : categoryPrefix(path) + ":" + ip;
+
         int maxHits;
         long windowMs;
 
         if (isOtpVerifyPath(path)) {
-            category = "otp-verify";
             maxHits = props.getOtpRequests();
             windowMs = TimeUnit.MINUTES.toMillis(props.getOtpWindowMinutes());
         } else if (isOtpSendPath(path)) {
-            category = "otp-send";
             maxHits = props.getOtpRequests();
             windowMs = TimeUnit.MINUTES.toMillis(props.getOtpWindowMinutes());
         } else if (isAuthPath(path)) {
-            category = "auth";
             maxHits = props.getAuthRequests();
             windowMs = TimeUnit.MINUTES.toMillis(props.getAuthWindowMinutes());
         } else if ("GET".equalsIgnoreCase(request.getMethod())) {
-            category = "read";
             maxHits = props.getReadRequests();
             windowMs = TimeUnit.MINUTES.toMillis(props.getReadWindowMinutes());
         } else {
-            category = "global";
             maxHits = props.getGlobalRequests();
             windowMs = TimeUnit.MINUTES.toMillis(props.getGlobalWindowMinutes());
         }
 
         RateLimitService.Decision decision =
-                limiter.tryConsume(category + ":" + ip, maxHits, windowMs);
+                limiter.tryConsume(bucketKey, maxHits, windowMs);
         limiter.cleanupIfLarge(windowMs);
 
         if (!decision.isAllowed()) {
@@ -135,5 +140,29 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (real != null && !real.isBlank()) return real.trim();
         String ip = request.getRemoteAddr();
         return ip == null ? "unknown" : ip;
+    }
+
+    // Email of the authenticated user, or null when not logged in.
+    private String authenticatedUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()
+                || auth instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        Object principal = auth.getPrincipal();
+        if (principal instanceof UserDetails ud) {
+            return ud.getUsername();
+        }
+        return principal == null ? null : principal.toString();
+    }
+
+    // Short category name used as the rate-limit key prefix.
+    // Only used to separate buckets in the key — actual limits come from the
+    // method-based if/else chain in doFilterInternal.
+    private static String categoryPrefix(String path) {
+        if (isOtpVerifyPath(path)) return "otp-verify";
+        if (isOtpSendPath(path)) return "otp-send";
+        if (isAuthPath(path)) return "auth";
+        return "api";
     }
 }

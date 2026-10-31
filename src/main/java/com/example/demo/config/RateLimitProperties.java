@@ -20,12 +20,12 @@ public class RateLimitProperties {
     private int otpRequests = 3;
     private long otpWindowMinutes = 1;
 
-    /** Fallback for every other /api/** call. */
-    private int globalRequests = 100;
+    /** Fallback for every other /api/** call. Per user when authenticated. */
+    private int globalRequests = 300;
     private long globalWindowMinutes = 1;
 
-    /** Read-only list/search calls can legitimately issue one request per page. */
-    private int readRequests = 600;
+    /** Read-only list/search calls can legitimately issue one request per page. Per user when authenticated. */
+    private int readRequests = 1500;
     private long readWindowMinutes = 1;
 
     /**
