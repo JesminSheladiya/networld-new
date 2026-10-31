@@ -139,8 +139,15 @@ function ContactsPage() {
   useEffect(() => {
     prevPageSizeRef.current = pageSize;
   }, [pageSize]);
+  // True only for the very first render — used to reset a reloaded ?page=N URL
+  // back to page 1, because infinite scroll can't reconstruct earlier pages.
+  const initialMountRef = useRef(true);
+  // Suppresses the page-change effect's first run after an initial-mount reset,
+  // so the mount effect's page-1 load isn't duplicated by a stale page value.
+  const skipPageEffectOnce = useRef(false);
   const [sortParam, setSortParam] = useState(initial.sortParam);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(null);
   const chipsRef = useRef(null);
   const chipRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
@@ -313,12 +320,17 @@ function ContactsPage() {
       setTotalItems(nextTotal);
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
-      if (!append && id === reqIdRef.current) {
+      if (append) {
+        // Infinite-scroll page failed — keep existing data, surface the error
+        // so the user can retry (e.g. after a 429 rate limit or mobile drop-out).
+        if (id === reqIdRef.current) setLoadMoreError(e);
+      } else if (id === reqIdRef.current) {
         setDataSource([]);
         setTotalItems(0);
       }
     } finally {
       if (!append && id === reqIdRef.current) setLoading(false);
+      if (append && id === reqIdRef.current) setLoadingMore(false);
     }
   };
 
@@ -387,6 +399,33 @@ function ContactsPage() {
   // Desktop: each pagination click replaces the list with that page.
   // Compact/mobile: appended pages feed the infinite-scroll Virtuoso list.
   useEffect(() => {
+    // On first mount, never start mid-list: a reloaded ?page=N URL can't be
+    // reconstructed by infinite scroll (pages 1..N-1 don't exist yet), so
+    // reset to page 1 and load fresh. This also avoids the stuck loading
+    // screen (append mode never resets `loading` to false).
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      const pageReset = page !== 1;
+      if (pageReset) {
+        setPage(1);
+        syncUrl({ page: 1 }, true);
+      }
+      setLoading(true);
+      fetchList(1, false).finally(() => {
+        setLoading(false);
+      });
+      // Only suppress the page-change effect re-run if we actually reset the page,
+      // so normal scrolling after a fresh page-1 load still works.
+      if (pageReset) {
+        skipPageEffectOnce.current = true;
+      }
+      return;
+    }
+    // Skip the effect run triggered by setPage(1) during initial-mount reset.
+    if (skipPageEffectOnce.current) {
+      skipPageEffectOnce.current = false;
+      return;
+    }
     if (page === 1) {
       setLoading(true);
       fetchList(1, false).finally(() => {
@@ -468,12 +507,18 @@ function ContactsPage() {
 
   const loadMore = useCallback(() => {
     if (isCompact && hasMore && !loading && !loadingMore) {
+      setLoadMoreError(null);
       setLoadingMore(true);
       const nextPage = page + 1;
       setPage(nextPage);
       syncUrlUserAction({ page: nextPage });
     }
   }, [isCompact, hasMore, loading, loadingMore, page, syncUrlUserAction]);
+
+  const retryLoadMore = useCallback(() => {
+    setLoadMoreError(null);
+    loadMore();
+  }, [loadMore]);
 
   const openContact = useCallback((rec) => {
     navigate(`/contacts/${encodeURIComponent(rec.username || rec.email)}`, { state: { contact: rec } });
@@ -672,7 +717,17 @@ function ContactsPage() {
                 overscan={360}
                 itemContent={renderCompactRow}
               />
-              {loadingMore ? (
+              {loadMoreError ? (
+                <div className="nw-list-loader nw-list-error">
+                  <span>Couldn't load more — {loadMoreError?.response?.data?.message || loadMoreError?.message || "network error"}</span>
+                  <button
+                    className="nw-list-retry"
+                    onClick={retryLoadMore}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : loadingMore ? (
                 <div className="nw-list-loader">
                   <Spin size="small" />
                   <span>Loading more contacts...</span>
