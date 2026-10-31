@@ -124,6 +124,7 @@ function SuggestionsPage() {
   const [suggestionsTotal, setSuggestionsTotal] = useState(() => cachedSuggestions?.total || 0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(null);
   const [editingEmail, setEditingEmail] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -150,6 +151,12 @@ function SuggestionsPage() {
   useEffect(() => {
     prevPageSizeRef.current = pageSize;
   }, [pageSize]);
+  // True only for the very first render — used to reset a reloaded ?page=N URL
+  // back to page 1, because infinite scroll can't reconstruct earlier pages.
+  const initialMountRef = useRef(true);
+  // Suppresses the page-change effect's first run after an initial-mount reset,
+  // so the mount effect's page-1 load isn't duplicated by a stale page value.
+  const skipPageEffectOnce = useRef(false);
 
   useEffect(() => {
     const mq = window.matchMedia(MQ_COMPACT);
@@ -211,13 +218,16 @@ function SuggestionsPage() {
       if (!append) setEditedEmails([]);
     } catch (e) {
       if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
-      if (!append && id === reqIdRef.current) {
+      if (append) {
+        if (id === reqIdRef.current) setLoadMoreError(e);
+      } else if (id === reqIdRef.current) {
         setSuggestions([]);
         setSuggestionsTotal(0);
         setSuggestionsCount(0);
       }
     } finally {
       if (!append && id === reqIdRef.current) setLoading(false);
+      if (append && id === reqIdRef.current) setLoadingMore(false);
     }
   };
 
@@ -237,6 +247,27 @@ function SuggestionsPage() {
       if (saved) setTimeout(() => window.scrollTo(0, saved), 0);
       return;
     }
+    // Don't start mid-list on a fresh/reload: infinite scroll can't reconstruct
+    // earlier pages, so a reloaded ?page=N URL resets to page 1. Also avoids a
+    // stuck loading screen. Only on the very first mount.
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      const pageReset = page !== 1;
+      if (pageReset) {
+        setPage(1);
+        syncUrl({ page: 1 }, true);
+      }
+      setLoading(true);
+      fetchSuggestions(1, false).finally(() => {
+        setLoading(false);
+      });
+      // Only suppress the page-change effect re-run if we actually reset the page,
+      // so normal scrolling after a fresh page-1 load still works.
+      if (pageReset) {
+        skipPageEffectOnce.current = true;
+      }
+      return;
+    }
     // Don't reset page to 1 - use the page from URL (already in state)
     // Don't call syncUrl({ page: 1 }) - it would overwrite the URL
     fetchSuggestions(page, false);
@@ -244,6 +275,11 @@ function SuggestionsPage() {
 
   // Next pages: append on compact, replace on desktop (pagination turns).
   useEffect(() => {
+    // Skip the effect run triggered by setPage(1) during initial-mount reset.
+    if (skipPageEffectOnce.current) {
+      skipPageEffectOnce.current = false;
+      return;
+    }
     if (!mountedRef.current) return;
     if (restoredCacheRef.current && page === restoredPageRef.current) {
       restoredCacheRef.current = false;
@@ -262,12 +298,18 @@ function SuggestionsPage() {
   // Next page pre-loads as the end approaches — no waiting at the bottom.
   const loadMore = useCallback(() => {
     if (isCompact && hasMore && !loading && !loadingMore) {
+      setLoadMoreError(null);
       setLoadingMore(true);
       const nextPage = page + 1;
       setPage(nextPage);
       syncUrl({ page: nextPage }, false);
     }
   }, [isCompact, hasMore, loading, loadingMore, page, syncUrl]);
+
+  const retryLoadMore = useCallback(() => {
+    setLoadMoreError(null);
+    loadMore();
+  }, [loadMore]);
 
   // Instagram-style: open anyone's profile from a result row.
   const openProfile = useCallback((s) => {
@@ -445,7 +487,12 @@ function SuggestionsPage() {
                 />
               ))
             )}
-            {isCompact && (loadingMore ? (
+            {isCompact && (loadMoreError ? (
+              <div className="nw-list-loader nw-list-error">
+                <span>Couldn't load more — {loadMoreError?.response?.data?.message || loadMoreError?.message || "network error"}</span>
+                <button className="nw-list-retry" onClick={retryLoadMore}>Retry</button>
+              </div>
+            ) : loadingMore ? (
               <div className="nw-list-loader">
                 <Spin size="small" />
                 <span>Loading more suggestions...</span>

@@ -179,6 +179,12 @@ function RequestsPage() {
   useEffect(() => {
     prevPageSizeRef.current = pageSize;
   }, [pageSize]);
+  // True only for the very first render — used to reset a reloaded ?page=N URL
+  // back to page 1, because infinite scroll can't reconstruct earlier pages.
+  const initialMountRef = useRef(true);
+  // Suppresses the page-change effects' first run after an initial-mount reset,
+  // so the mount effect's page-0 loads aren't duplicated by stale page values.
+  const skipPageEffectOnce = useRef(false);
 
   useEffect(() => {
     const mq = window.matchMedia(MQ_COMPACT);
@@ -334,8 +340,35 @@ function RequestsPage() {
       if (cached.scrollY) setTimeout(() => window.scrollTo(0, cached.scrollY), 0);
       return;
     }
-    // Don't reset pages to 0 - use the pages from URL (already in state)
-    // Don't call syncUrl({ page: 1 }) - it would overwrite the URL
+    // On initial mount, never start mid-list: infinite scroll can't
+    // reconstruct earlier pages, so a reloaded ?page=N URL resets both tabs
+    // to page 0 (URL page 1) and loads fresh. This also avoids the double
+    // fetch (mount effect + page-change effect both firing at page > 1).
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      const pageReset = pendingPage !== 0 || sentPage !== 0;
+      if (pageReset) {
+        setPendingPage(0);
+        setSentPage(0);
+        syncUrl({ page: 1 }, true);
+      }
+      setLoading(true);
+      setSentLoading(true);
+      fetchPending(0, false).finally(() => {
+        setLoading(false);
+      });
+      fetchSent(0, false).finally(() => {
+        setSentLoading(false);
+      });
+      pendingPageZeroFresh.current = true;
+      sentPageZeroFresh.current = true;
+      // Only suppress the page-change effects re-run if we actually reset the pages,
+      // so normal scrolling after a fresh page-1 load still works.
+      if (pageReset) {
+        skipPageEffectOnce.current = true;
+      }
+      return;
+    }
     fetchPending(pendingPage, false);
     fetchSent(sentPage, false);
     pendingPageZeroFresh.current = true;
@@ -344,6 +377,12 @@ function RequestsPage() {
   }, [accountKey, isCompact, pageSize, format]);
 
   useEffect(() => {
+    // Skip the effect run triggered by setPendingPage(0)/setSentPage(0) during
+    // initial-mount reset.
+    if (skipPageEffectOnce.current) {
+      skipPageEffectOnce.current = false;
+      return;
+    }
     if (pendingRestoredRef.current && pendingPage === pendingRestoredPageRef.current) {
       pendingRestoredRef.current = false;
       pendingRestoredPageRef.current = null;
@@ -366,6 +405,12 @@ function RequestsPage() {
   }, [pendingPage]);
 
   useEffect(() => {
+    // Skip the effect run triggered by setPendingPage(0)/setSentPage(0) during
+    // initial-mount reset.
+    if (skipPageEffectOnce.current) {
+      skipPageEffectOnce.current = false;
+      return;
+    }
     if (sentRestoredRef.current && sentPage === sentRestoredPageRef.current) {
       sentRestoredRef.current = false;
       sentRestoredPageRef.current = null;
