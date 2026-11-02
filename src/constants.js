@@ -1,6 +1,7 @@
 // ── NetWorld app-wide constants (single source of truth) ────────────────────
 // Nothing here is secret: storage keys, timeouts, breakpoints and palettes.
 // Secrets (API host) come from REACT_APP_* env vars — see Services/apiBase.js.
+import { estimateDownlinkMbps } from "./Services/connectionMonitor";
 
 // localStorage keys
 export const STORAGE_KEYS = Object.freeze({
@@ -31,13 +32,44 @@ export const MQ_COMPACT = "(max-width: 1024px)"; // list/tablet layout
 export const MQ_NARROW = "(max-width: 399px)"; // category dropdown layout
 export const SMALL_SCREEN_PX = 390; // bottom-nav notch sizing
 
-// Contacts pagination (50 default; 20 removed — too chatty at scale on 4G.
-// Instagram-style: bigger pages = fewer round-trips, smooth on 1M graphs.)
+// Contacts pagination.
+// Page size options include network-tier sizes (10/20/30/50/100) so the UI
+// can offer the exact sizes the backend will allow for each network speed.
 export const DEFAULT_PAGE_SIZE = 50;
-// Page size options for Contacts (supports up to 1000 per backend)
-export const PAGE_SIZE_OPTIONS = ["50", "100", "200", "500", "1000"];
+export const PAGE_SIZE_OPTIONS = ["10", "20", "30", "50", "100", "200", "500", "1000"];
 // Page size options for Suggestions/Requests (backend caps at 100)
-export const PAGE_SIZE_OPTIONS_LIMITED = ["50", "100"];
+export const PAGE_SIZE_OPTIONS_LIMITED = ["10", "20", "30", "50", "100"];
+
+// Network-speed-based page size tiers (matches backend NetworkPageSizeUtil).
+// Returns the maximum page size the backend will allow for the given downlink (Mbps):
+//   < 0.5  -> 10  (2G / very slow)
+//   < 1.5  -> 20  (3G)
+//   < 5    -> 30  (slow 4G)
+//   < 20   -> 50  (fast 4G)
+//   >= 20  -> 100 (5G / fast WiFi)
+export function getMaxPageSizeForDownlink(downlinkMbps) {
+  if (downlinkMbps < 0.5) return 10;
+  if (downlinkMbps < 1.5) return 20;
+  if (downlinkMbps < 5) return 30;
+  if (downlinkMbps < 20) return 50;
+  return 100;
+}
+
+// Get recommended default page size based on current network conditions.
+// Uses navigator.connection.downlink when available (Chromium mobile),
+// otherwise falls back to RTT-based estimate from connectionMonitor.
+// Returns a size from PAGE_SIZE_OPTIONS that the backend will not clamp down.
+export function getNetworkAdjustedDefaultPageSize() {
+  const downlink = estimateDownlinkMbps();
+  const maxAllowed = getMaxPageSizeForDownlink(downlink);
+  const options = PAGE_SIZE_OPTIONS.map(Number).sort((a, b) => a - b);
+  for (let i = options.length - 1; i >= 0; i--) {
+    if (options[i] <= maxAllowed) return options[i];
+  }
+  // No option fits under maxAllowed — return smallest option. Backend will
+  // clamp down to the network-appropriate size (10, 20, or 30).
+  return options[0];
+}
 
 export function pageSizeOptionsForTotal(total, options = PAGE_SIZE_OPTIONS) {
   const count = Number(total) || 0;
@@ -50,13 +82,22 @@ export const PAGE_SIZE_STORAGE_KEY = "nw-page-size-preferences";
 
 // Keep the user's table size across reloads, separately for each account on
 // shared/browser machines. Invalid or unavailable storage falls back safely.
+// Saved preference is treated as a cap — never exceeded by the network-aware
+// default, so slow networks always get fewer rows.
 export function getPageSizePreference(accountKey = "anonymous") {
   try {
     const saved = JSON.parse(localStorage.getItem(PAGE_SIZE_STORAGE_KEY) || "{}");
     const value = Number(saved[accountKey]);
-    return PAGE_SIZE_OPTIONS.includes(String(value)) ? value : DEFAULT_PAGE_SIZE;
+    const networkSize = getNetworkAdjustedDefaultPageSize();
+    if (PAGE_SIZE_OPTIONS.includes(String(value))) {
+      // User has a saved preference — respect it as a cap, but never exceed
+      // what the current network can handle.
+      return Math.min(value, networkSize);
+    }
+    // No saved preference — use network-adjusted default.
+    return networkSize;
   } catch {
-    return DEFAULT_PAGE_SIZE;
+    return getNetworkAdjustedDefaultPageSize();
   }
 }
 
