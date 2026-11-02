@@ -5,27 +5,31 @@ package com.example.demo.util;
  *
  * Page size is derived from the measured downlink speed (Mbps), NOT from the
  * network type label (4G/5G can be slow; WiFi can be congested). The downlink
- * is estimated client-side from API RTT and sent with every paged request.
+ * is estimated client-side from API RTT (or navigator.connection.downlink on
+ * Chromium mobile) and sent with every paged request.
  *
- * Buckets (downlink in Mbps):
- *   < 0.5  -> max 20  (very slow)
- *   < 1.5  -> max 30  (slow)
- *   < 5    -> max 50  (medium)
- *   >= 5   -> max 100 (fast)
+ * Page size tiers (downlink in Mbps):
+ *   < 0.5  -> max 10  (2G / very slow)
+ *   < 1.5  -> max 20  (3G)
+ *   < 5    -> max 30  (slow 4G)
+ *   < 20   -> max 50  (fast 4G)
+ *   >= 20  -> max 100 (5G / fast WiFi)
  *
  * The adjusted size never exceeds the frontend-requested size, so a user who
  * explicitly asks for a small page always gets at most that many rows.
  */
 public final class NetworkPageSizeUtil {
 
-    private static final int VERY_SLOW_MAX = 20;
-    private static final int SLOW_MAX = 30;
-    private static final int MEDIUM_MAX = 50;
-    private static final int FAST_MAX = 100;
+    private static final int SIZE_2G = 10;
+    private static final int SIZE_3G = 20;
+    private static final int SIZE_SLOW_4G = 30;
+    private static final int SIZE_FAST_4G = 50;
+    private static final int SIZE_5G = 100;
 
-    private static final double VERY_SLOW_THRESHOLD = 0.5;
-    private static final double SLOW_THRESHOLD = 1.5;
-    private static final double MEDIUM_THRESHOLD = 5.0;
+    private static final double THRESHOLD_2G = 0.5;
+    private static final double THRESHOLD_3G = 1.5;
+    private static final double THRESHOLD_SLOW_4G = 5.0;
+    private static final double THRESHOLD_FAST_4G = 20.0;
 
     private NetworkPageSizeUtil() {
     }
@@ -52,14 +56,16 @@ public final class NetworkPageSizeUtil {
             return safeRequested;
         }
         int maxSize;
-        if (downlink < VERY_SLOW_THRESHOLD) {
-            maxSize = VERY_SLOW_MAX;   // 20 rows
-        } else if (downlink < SLOW_THRESHOLD) {
-            maxSize = SLOW_MAX;        // 30 rows
-        } else if (downlink < MEDIUM_THRESHOLD) {
-            maxSize = MEDIUM_MAX;      // 50 rows
+        if (downlink < THRESHOLD_2G) {
+            maxSize = SIZE_2G;      // 10 rows
+        } else if (downlink < THRESHOLD_3G) {
+            maxSize = SIZE_3G;      // 20 rows
+        } else if (downlink < THRESHOLD_SLOW_4G) {
+            maxSize = SIZE_SLOW_4G; // 30 rows
+        } else if (downlink < THRESHOLD_FAST_4G) {
+            maxSize = SIZE_FAST_4G; // 50 rows
         } else {
-            maxSize = FAST_MAX;        // 100 rows
+            maxSize = SIZE_5G;      // 100 rows
         }
         return Math.min(safeRequested, maxSize);
     }
