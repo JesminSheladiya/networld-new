@@ -193,8 +193,10 @@ function ContactsPage() {
   // Wrapper for user actions that change URL - marks the action so searchParams effect knows it's not browser navigation
   const syncUrlUserAction = useCallback((updates = {}, replace = false) => {
     isUserActionRef.current = true;
-    syncUrl(updates, replace);
-  }, [syncUrl]);
+    // Compact lists have no pagination control, so filter/search URL updates
+    // must replace the current entry instead of stacking one per change.
+    syncUrl(updates, isCompact ? true : replace);
+  }, [syncUrl, isCompact]);
 
   // Handle browser back/forward — sync state from URL
   const isFirstUrlSyncRef = useRef(true);
@@ -378,8 +380,10 @@ function ContactsPage() {
       }
       filterEffectGenerationRef.current = currentGen;
       setPage(1);
-      // Use syncUrlUserAction (replace: false) to create history entry for filter changes
-      syncUrlRef.current({ page: 1 }, false);
+      // Handlers already push one history entry for an explicit filter change.
+      // This follow-up only resets the page, so it must replace — otherwise
+      // every search keystroke and chip tap stacks a second URL.
+      syncUrlRef.current({ page: 1 }, true);
       fetchList(1, false);
     }, delay);
     return () => clearTimeout(handler);
@@ -511,9 +515,11 @@ function ContactsPage() {
       setLoadingMore(true);
       const nextPage = page + 1;
       setPage(nextPage);
-      syncUrlUserAction({ page: nextPage });
+      // Replace, don't push: each scrolled page must not become its own
+      // history entry, or Back has to be pressed once per loaded page.
+      syncUrl({ page: nextPage }, true);
     }
-  }, [isCompact, hasMore, loading, loadingMore, page, syncUrlUserAction]);
+  }, [isCompact, hasMore, loading, loadingMore, page, syncUrl]);
 
   const retryLoadMore = useCallback(() => {
     setLoadMoreError(null);

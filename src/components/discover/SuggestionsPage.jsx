@@ -175,6 +175,9 @@ function SuggestionsPage() {
     };
   }, [accountKey]);
 
+  // True while the URL change came from this page (not the browser).
+  const isUserActionRef = useRef(false);
+
   // Sync URL when state changes
   const syncUrl = useCallback((updates = {}, replace = true) => {
     const nextParams = new URLSearchParams();
@@ -184,11 +187,16 @@ function SuggestionsPage() {
     nextParams.set("page", String(nextPage)); // Always include page (even page=1) for explicit URL state
     nextParams.set("size", String(nextPageSize)); // Always include size so back/forward remembers it
 
+    isUserActionRef.current = true;
     setSearchParams(nextParams, { replace });
   }, [page, pageSize, setSearchParams, accountKey]);
 
   // Handle browser back/forward — sync state from URL
   useEffect(() => {
+    if (isUserActionRef.current) {
+      isUserActionRef.current = false;
+      return;
+    }
     const next = getInitialState();
     if (next.page !== page) { setPage(next.page); }
     if (next.pageSize !== pageSize) { setPageSize(next.pageSize); }
@@ -302,7 +310,8 @@ function SuggestionsPage() {
       setLoadingMore(true);
       const nextPage = page + 1;
       setPage(nextPage);
-      syncUrl({ page: nextPage }, false);
+      // Replace, don't push: infinite scroll must not stack history entries.
+      syncUrl({ page: nextPage }, true);
     }
   }, [isCompact, hasMore, loading, loadingMore, page, syncUrl]);
 

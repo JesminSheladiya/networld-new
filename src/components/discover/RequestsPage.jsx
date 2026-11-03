@@ -216,6 +216,9 @@ function RequestsPage() {
   const categoryLabel = (key) =>
     key === "inlaws" ? "In-Laws" : key === "family" ? "Family" : key === "others" ? "Others" : "All";
 
+  // True while the URL change came from this page (not the browser).
+  const isUserActionRef = useRef(false);
+
   // Sync URL when state changes
   const syncUrl = useCallback((updates = {}, replace = true) => {
     const nextParams = new URLSearchParams();
@@ -227,11 +230,16 @@ function RequestsPage() {
     nextParams.set("page", String(nextPage)); // Always include page (even page=1) for explicit URL state
     nextParams.set("size", String(nextPageSize)); // Always include size so back/forward remembers it
 
+    isUserActionRef.current = true;
     setSearchParams(nextParams, { replace });
   }, [tab, pendingPage, sentPage, pageSize, setSearchParams, accountKey]);
 
   // Handle browser back/forward — sync state from URL
   useEffect(() => {
+    if (isUserActionRef.current) {
+      isUserActionRef.current = false;
+      return;
+    }
     const next = getInitialState();
     if (next.tab !== tab) { setTab(next.tab); }
     if (next.tab === "received" && next.page - 1 !== pendingPage) { setPendingPage(next.page - 1); }
@@ -439,7 +447,8 @@ function RequestsPage() {
     if (isCompact && pendingHasMore && !loading && !loadingMore) {
       const nextPage = pendingPage + 1;
       setPendingPage(nextPage);
-      syncUrl({ page: nextPage + 1 }, false);
+      // Replace, don't push: infinite scroll must not stack history entries.
+      syncUrl({ page: nextPage + 1 }, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCompact, pendingHasMore, loading, loadingMore, pendingPage, syncUrl]);
@@ -448,7 +457,8 @@ function RequestsPage() {
     if (isCompact && sentHasMore && !sentLoading && !sentLoadingMore) {
       const nextPage = sentPage + 1;
       setSentPage(nextPage);
-      syncUrl({ page: nextPage + 1 }, false);
+      // Replace, don't push: infinite scroll must not stack history entries.
+      syncUrl({ page: nextPage + 1 }, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCompact, sentHasMore, sentLoading, sentLoadingMore, sentPage, syncUrl]);
@@ -666,13 +676,14 @@ function RequestsPage() {
   const handleTabReceived = () => {
     setTab("received");
     setPendingPage(0);
-    syncUrl({ tab: "received", page: 1 }, false);
+    // Compact has no pager, so tab switches must not stack history entries.
+    syncUrl({ tab: "received", page: 1 }, isCompact);
   };
 
   const handleTabSent = () => {
     setTab("sent");
     setSentPage(0);
-    syncUrl({ tab: "sent", page: 1 }, false);
+    syncUrl({ tab: "sent", page: 1 }, isCompact);
   };
 
   return (
