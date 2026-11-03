@@ -280,7 +280,8 @@ function UserConnectionsPage() {
           ) : (
           <div className="pf-conn-list">
             <Virtuoso
-              useWindowScroll
+              atBottomThreshold={1000}
+                useWindowScroll
               data={connItems}
               endReached={loadMore}
               overscan={360}

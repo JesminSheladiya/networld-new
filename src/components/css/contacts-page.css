@@ -1530,7 +1530,7 @@
   }
 
   .nw-contact-right .nw-rel-chip {
-    max-width: 110px;
+    max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -1540,6 +1540,10 @@
   .nw-contact-row {
     gap: 10px;
     padding: 10px 6px;
+  }
+
+  .nw-contact-actions {
+    display: none;
   }
 
   .nw-contact-chevron {

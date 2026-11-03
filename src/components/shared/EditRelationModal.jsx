@@ -60,10 +60,10 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
     }
   };
 
+  const isTouch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   return (
     <Modal
       styles={{ header: { backgroundColor: "transparent" } }}
-      className="contacts-modal"
       title="Edit Relation"
       open={open}
       onCancel={onClose}
@@ -72,6 +72,7 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
       confirmLoading={saving}
       destroyOnClose
       centered
+      autoFocusButton={null}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ color: "#e2e8f0" }}>
@@ -89,7 +90,8 @@ function EditRelationModal({ contact, open, onClose, onSaved }) {
           style={{ width: "100%" }}
           value={editValue}
           onChange={(val) => setEditValue(val)}
-          showSearch
+          showSearch={!isTouch}
+          autoFocus={false}
           placeholder="Choose a relation"
           filterOption={(input, option) =>
             (option?.searchText || "").includes(input.trim().toLowerCase())

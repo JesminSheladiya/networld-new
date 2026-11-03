@@ -627,6 +627,7 @@ function ContactProfile({ contact, showBack = false, onBack, onRelationSaved, on
                             <Avatar
                               size={44}
                               src={toDataUrl(c.profilePicture)}
+                              imgProps={{ loading: "lazy", decoding: "async" }}
                               style={{
                                 backgroundColor: c.profilePicture
                                   ? "transparent"

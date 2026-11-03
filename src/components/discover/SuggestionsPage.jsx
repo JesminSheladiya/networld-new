@@ -39,6 +39,7 @@ const SuggestionRow = memo(function SuggestionRow({
         <Avatar
           size={40}
           src={toDataUrl(s.suggestedUserProfilePic)}
+          imgProps={{ loading: "lazy", decoding: "async" }}
           style={{
             backgroundColor: s.suggestedUserProfilePic ? "transparent" : avColor,
             fontSize: 15,
@@ -124,6 +125,7 @@ function SuggestionsPage() {
   const [suggestionsTotal, setSuggestionsTotal] = useState(() => cachedSuggestions?.total || 0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreLockRef = useRef(false);
   const [loadMoreError, setLoadMoreError] = useState(null);
   const [editingEmail, setEditingEmail] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -235,7 +237,10 @@ function SuggestionsPage() {
       }
     } finally {
       if (!append && id === reqIdRef.current) setLoading(false);
-      if (append && id === reqIdRef.current) setLoadingMore(false);
+      if (append) {
+        loadingMoreLockRef.current = false;
+        if (id === reqIdRef.current) setLoadingMore(false);
+      }
     }
   };
 
@@ -305,7 +310,8 @@ function SuggestionsPage() {
 
   // Next page pre-loads as the end approaches — no waiting at the bottom.
   const loadMore = useCallback(() => {
-    if (isCompact && hasMore && !loading && !loadingMore) {
+    if (isCompact && hasMore && !loading && !loadingMore && !loadingMoreLockRef.current) {
+      loadingMoreLockRef.current = true;
       setLoadMoreError(null);
       setLoadingMore(true);
       const nextPage = page + 1;
@@ -314,6 +320,21 @@ function SuggestionsPage() {
       syncUrl({ page: nextPage }, true);
     }
   }, [isCompact, hasMore, loading, loadingMore, page, syncUrl]);
+
+  // Safety net: keep loading at the bottom if endReached misses.
+  useEffect(() => {
+    if (!isCompact || loading || loadingMore || !hasMore) return;
+    const tryLoadMore = () => {
+      if (loading || loadingMore) return;
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
+        loadMore();
+      }
+    };
+    window.addEventListener("scroll", tryLoadMore, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", tryLoadMore);
+    };
+  }, [isCompact, loading, loadingMore, hasMore, loadMore, suggestions.length]);
 
   const retryLoadMore = useCallback(() => {
     setLoadMoreError(null);
@@ -471,6 +492,7 @@ function SuggestionsPage() {
              <div className="nw-discover-label">Suggestions · <span title={suggestionsTotal}>{suggestionsTotal.toLocaleString()}</span></div>
             {isCompact ? (
               <Virtuoso
+                atBottomThreshold={1000}
                 useWindowScroll
                 data={suggestions}
                 endReached={loadMore}

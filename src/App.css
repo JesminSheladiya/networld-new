@@ -350,3 +350,9 @@ select:autofill {
   color: #f1f5f9 !important;
   caret-color: #f1f5f9 !important;
 }
+/* Hide tooltips on touch/coarse-pointer devices (they linger on tap). */
+@media (pointer: coarse) {
+  .ant-tooltip {
+    display: none !important;
+  }
+}
