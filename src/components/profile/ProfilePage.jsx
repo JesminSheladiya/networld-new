@@ -78,8 +78,8 @@ function ProfilePage({ hidePassword = false }) {
       .then((res) => setConnCount(res.data?.all ?? 0))
       .catch(() => setConnCount(null));
     api
-      .suggestions()
-      .then((res) => setSuggCount(Array.isArray(res.data) ? res.data.length : 0))
+      .suggestionsCount()
+      .then((res) => setSuggCount(res.data?.count ?? 0))
       .catch(() => setSuggCount(null));
   }, []);
 

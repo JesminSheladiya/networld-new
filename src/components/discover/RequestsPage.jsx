@@ -70,7 +70,12 @@ const PendingRow = memo(function PendingRow({ p, rel, avColor, reason, onOpen, o
   );
 });
 
-const SentRow = memo(function SentRow({ p, rel, avColor, reason, onOpen, onEdit, onCancel }) {
+const SentRow = memo(function SentRow({
+  p, rel, avColor, reason, onOpen, relName,
+  isEditing, editValue, edited,
+  onStartEdit, onSaveEdit, onCancelEdit, onOpenPicker,
+  onCancel,
+}) {
   return (
     <div
       className="nw-req-row"
@@ -98,21 +103,48 @@ const SentRow = memo(function SentRow({ p, rel, avColor, reason, onOpen, onEdit,
           <div className="nw-find-reason">{reason}</div>
         </div>
       </div>
-      <div className="nw-req-right">
-        <RelationChip relation={rel} style={{ fontSize: 11 }} />
+      {isEditing ? (
+        <div className="nw-edit-inline" onClick={(e) => e.stopPropagation()}>
+          <button
+            className="nw-relation-pick-btn"
+            onClick={() => onOpenPicker()}
+            title={editValue ? relName(editValue) : "Select relation"}
+          >
+            {editValue ? relName(editValue) : "Relation"}
+          </button>
+          <div className="nw-req-actions">
+            <Tooltip title="Save">
+              <button className="nw-act-btn nw-act-accept" onClick={() => onSaveEdit(p.suggestedUserEmail)}>
+                <FontAwesomeIcon icon={faCheck} />
+              </button>
+            </Tooltip>
+            <Tooltip title="Cancel edit">
+              <button className="nw-act-btn nw-act-decline" onClick={onCancelEdit}>
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </Tooltip>
+          </div>
+        </div>
+      ) : (
+        <div className="nw-req-right">
+          <span className="nw-rel-row">
+            <RelationChip relation={rel} style={{ fontSize: 11 }} />
+            {edited && <span className="nw-edited-tag">Edited</span>}
+          </span>
           <div className="nw-req-actions" onClick={(e) => e.stopPropagation()}>
             <Tooltip title="Edit relation">
-              <button className="nw-act-btn nw-act-edit" onClick={() => onEdit(p)}>
+              <button className="nw-act-btn nw-act-edit" onClick={() => onStartEdit(p)}>
                 <FontAwesomeIcon icon={faPenToSquare} />
               </button>
             </Tooltip>
             <Tooltip title="Cancel request">
-            <button className="nw-act-btn nw-act-decline" onClick={() => onCancel(p.pendingRelationId)}>
-              <FontAwesomeIcon icon={faXmark} />
-            </button>
-          </Tooltip>
+              <button className="nw-act-btn nw-act-decline" onClick={() => onCancel(p.pendingRelationId)}>
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </Tooltip>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 });
@@ -151,7 +183,10 @@ function RequestsPage() {
   const [pageSize, setPageSize] = useState(initial.pageSize);
   const [cancelId, setCancelId] = useState(null);
   const [editingSent, setEditingSent] = useState(null);
+  const [editingSentEmail, setEditingSentEmail] = useState(null);
+  const [sentEditValue, setSentEditValue] = useState("");
   const [sentPickerOpen, setSentPickerOpen] = useState(false);
+  const [editedSentEmails, setEditedSentEmails] = useState([]);
   const { setPendingCount } = useRefresh();
   const { relName, relCategory, format } = useRelationDisplay();
   const chipsRef = useRef(null);
@@ -624,10 +659,58 @@ function RequestsPage() {
       });
       setEditingSent(null);
       setSentPickerOpen(false);
+      setEditedSentEmails((prev) => (prev.includes(editingSent.suggestedUserEmail) ? prev : [...prev, editingSent.suggestedUserEmail]));
       message.success("Request relation updated");
     } catch (e) {
       message.error(e?.response?.data?.message || "Could not update request relation");
     }
+  };
+
+  const applySentEdit = async (email) => {
+    const item = sent.find((x) => x.suggestedUserEmail === email) || editingSent;
+    if (!item || !sentEditValue) return;
+    try {
+      await api.updateRelation(item.pendingRelationId, sentEditValue);
+      setSent((prev) => prev.map((p) => (
+        p.pendingRelationId === item.pendingRelationId
+          ? { ...p, inferredRelation: sentEditValue }
+          : p
+      )));
+      requestCache.set(accountKey, {
+        ...(requestCache.get(accountKey) || {}),
+        pageSize,
+        format,
+        sent: (requestCache.get(accountKey)?.sent || sent).map((p) =>
+          p.pendingRelationId === item.pendingRelationId
+            ? { ...p, inferredRelation: sentEditValue }
+            : p
+        ),
+        sentTotal,
+      });
+      setEditedSentEmails((prev) => (prev.includes(email) ? prev : [...prev, email]));
+      message.success("Request relation updated");
+    } catch (e) {
+      message.error(e?.response?.data?.message || "Could not update request relation");
+    } finally {
+      setEditingSentEmail(null);
+      setSentEditValue("");
+      setSentPickerOpen(false);
+      setEditingSent(null);
+    }
+  };
+
+  const cancelSentEdit = () => {
+    setEditingSentEmail(null);
+    setSentEditValue("");
+    setSentPickerOpen(false);
+    setEditingSent(null);
+  };
+
+  const startSentEdit = (p) => {
+    setEditingSent(p);
+    setEditingSentEmail(p.suggestedUserEmail);
+    setSentEditValue(p.inferredRelation || "");
+    setSentPickerOpen(true);
   };
 
   const renderPendingRow = useCallback(
@@ -654,12 +737,19 @@ function RequestsPage() {
         avColor={avatarColorFor(p.suggestedUserName)}
         reason={formatSentReason(p.reason)}
         onOpen={openSentProfile}
-        onEdit={(item) => { setEditingSent(item); setSentPickerOpen(true); }}
+        relName={relName}
+        isEditing={editingSentEmail === p.suggestedUserEmail}
+        editValue={editingSentEmail === p.suggestedUserEmail ? sentEditValue : p.inferredRelation}
+        edited={editedSentEmails.includes(p.suggestedUserEmail)}
+        onStartEdit={startSentEdit}
+        onSaveEdit={applySentEdit}
+        onCancelEdit={cancelSentEdit}
+        onOpenPicker={() => setSentPickerOpen(true)}
         onCancel={setCancelId}
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [openSentProfile]
+    [openSentProfile, editedSentEmails, relName, editingSentEmail, sentEditValue]
   );
 
   useEffect(() => {
@@ -852,8 +942,15 @@ function RequestsPage() {
                   avColor={avatarColorFor(p.suggestedUserName)}
                   reason={formatSentReason(p.reason)}
                   onOpen={openSentProfile}
-                   onEdit={(item) => { setEditingSent(item); setSentPickerOpen(true); }}
-                   onCancel={setCancelId}
+                  relName={relName}
+                  isEditing={editingSentEmail === p.suggestedUserEmail}
+                  editValue={editingSentEmail === p.suggestedUserEmail ? sentEditValue : p.inferredRelation}
+                  edited={editedSentEmails.includes(p.suggestedUserEmail)}
+                  onStartEdit={startSentEdit}
+                  onSaveEdit={applySentEdit}
+                  onCancelEdit={cancelSentEdit}
+                  onOpenPicker={() => setSentPickerOpen(true)}
+                  onCancel={setCancelId}
                 />
               ))
             )}
@@ -938,7 +1035,7 @@ function RequestsPage() {
         value={editingSent?.inferredRelation || undefined}
         currentRelation={editingSent?.inferredRelation}
         onClose={() => { setSentPickerOpen(false); setEditingSent(null); }}
-        onPick={saveSentRelation}
+        onPick={(v) => setSentEditValue(v)}
       />
 
       <ConfirmPopup

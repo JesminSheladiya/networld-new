@@ -375,7 +375,9 @@ function AppShellNav() {
     if (!el) return;
     const measure = () => {
       const r = el.getBoundingClientRect();
-      setBottomDims({ w: r.width, h: r.height || 60 });
+      const w = r.width;
+      const h = r.height || 60;
+      setBottomDims((prev) => (prev && prev.w === w && prev.h === h ? prev : { w, h }));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -386,7 +388,6 @@ function AppShellNav() {
   useEffect(() => {
     if (!isCompact || !bottomDims.w || hideBottomNav) return;
     const targetCx = getTargetCx(notchIndex);
-    const widthChanged = bottomPrevWidthRef.current !== bottomDims.w;
     bottomPrevWidthRef.current = bottomDims.w;
 
     const applyCx = (cx) => {
@@ -400,7 +401,7 @@ function AppShellNav() {
 
     if (bottomAnimRef.current.raf) cancelAnimationFrame(bottomAnimRef.current.raf);
     const fromCx = bottomAnimRef.current.cx || targetCx;
-    const duration = fromCx === targetCx || widthChanged ? 0 : 320;
+    const duration = fromCx === targetCx ? 0 : 320;
     const start = performance.now();
     const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
