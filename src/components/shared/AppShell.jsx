@@ -73,8 +73,8 @@ function ProfileMenu() {
   const fullName = user?.fullName || user?.username || "User";
   const nameParts = fullName.split(" ").filter(Boolean);
   const initials = nameParts.length > 1
-      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
-      : fullName.slice(0, 2).toUpperCase();
+    ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+    : fullName.slice(0, 2).toUpperCase();
   const email = user?.email || "user@mail.com";
   const profileAvatar = user?.profilePicture || user?.avatar || user?.image || null;
 
@@ -100,85 +100,87 @@ function ProfileMenu() {
   };
 
   return (
-      <>
-        <Dropdown
-            trigger={["click"]}
-            placement="bottomRight"
-            popupClassName="nw-profile-popup"
-            open={dropdownOpen}
-            onVisibleChange={setDropdownOpen}
-            dropdownRender={() => (
-                <div className="nw-profile-dropdown">
-                  <div className="nw-profile-head">
-                    <Avatar
-                        size={38}
-                        src={profileAvatar}
-                        className="nw-profile-avatar"
-                        style={{
-                          background: "linear-gradient(135deg, rgba(59, 130, 246, 0.85), rgba(37, 99, 235, 0.85))",
-                          color: "#fff",
-                          fontWeight: 700,
-                          flexShrink: 0,
-                          cursor: "pointer",
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          goProfile();
-                        }}
-                    >
-                      {!profileAvatar && initials}
-                    </Avatar>
-                    <div className="nw-profile-meta">
-                      <div className="nw-profile-name">{fullName}</div>
-                       <div className="nw-profile-email">{email}</div>
-                    </div>
-                  </div>
-                  <div className="nw-profile-actions">
-                    <button className="nw-profile-action" onClick={goProfile}>
-                      <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faCircleUser} /></span>
-                      <span>Account setting</span>
-                    </button>
-                    <button className="nw-profile-action" onClick={() => { openPicker(); closeDropdown(); }}>
-                      <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faLanguage} /></span>
-                      <span>Relation Display</span>
-                    </button>
-                    <button className="nw-profile-action" onClick={() => { closeDropdown(); navigate("/profile/sessions"); }}>
-                      <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faShieldHalved} /></span>
-                      <span>Sessions</span>
-                    </button>
-                  </div>
-                  <div className="nw-profile-divider" />
-                  <div className="nw-profile-actions nw-profile-actions-bottom">
-                    <button className="nw-profile-action nw-profile-logout" onClick={handleLogout}>
-                      <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faArrowRightFromBracket} /></span>
-                      <span>Logout</span>
-                    </button>
-                  </div>
-                </div>
-            )}
-        >
-          <button className="nw-avatar-trigger">
-            <Avatar size={38} src={profileAvatar} style={{ backgroundColor: "#1f2937", color: "#fff", fontWeight: 700, borderRadius: "50%" }}>
-              {!profileAvatar && initials}
-            </Avatar>
-          </button>
-        </Dropdown>
+    <>
+      <Dropdown
+        trigger={["click"]}
+        placement="bottomRight"
+        popupClassName="nw-profile-popup"
+        open={dropdownOpen}
+        onVisibleChange={setDropdownOpen}
+        dropdownRender={() => (
+          <div className="nw-profile-dropdown">
+            <div className="nw-profile-head">
+              <Avatar
+                size={38}
+                src={profileAvatar}
+                className="nw-profile-avatar"
+                style={{
+                  background: "linear-gradient(135deg, rgba(59, 130, 246, 0.85), rgba(37, 99, 235, 0.85))",
+                  color: "#fff",
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  cursor: "pointer",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goProfile();
+                }}
+              >
+                {!profileAvatar && initials}
+              </Avatar>
+              <div className="nw-profile-meta">
+                <div className="nw-profile-name">{fullName}</div>
+                <div className="nw-profile-email">{email}</div>
+              </div>
+            </div>
+            <div className="nw-profile-actions">
+              <button className="nw-profile-action" onClick={goProfile}>
+                <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faCircleUser} /></span>
+                <span>Account setting</span>
+              </button>
+              <button className="nw-profile-action" onClick={() => { openPicker(); closeDropdown(); }}>
+                <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faLanguage} /></span>
+                <span>Relation Display</span>
+              </button>
+              <button className="nw-profile-action" onClick={() => { closeDropdown(); navigate("/profile/sessions"); }}>
+                <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faShieldHalved} /></span>
+                <span>Sessions</span>
+              </button>
+            </div>
+            <div className="nw-profile-divider" />
+            <div className="nw-profile-actions nw-profile-actions-bottom">
+              <button className="nw-profile-action nw-profile-logout" onClick={handleLogout}>
+                <span className="nw-profile-action-icon"><FontAwesomeIcon icon={faArrowRightFromBracket} /></span>
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        )}
+      >
+        <button className="nw-avatar-trigger">
+          <Avatar size={38} src={profileAvatar} style={{ backgroundColor: "#1f2937", color: "#fff", fontWeight: 700, borderRadius: "50%" }}>
+            {!profileAvatar && initials}
+          </Avatar>
+        </button>
+      </Dropdown>
 
-        <ConfirmPopup
-            open={logoutOpen}
-            title="Logout?"
-            message="Are you sure you want to logout from NetWorld?"
-            okText="Logout"
-            okIcon={faArrowRightFromBracket}
-            onCancel={() => setLogoutOpen(false)}
-            onOk={confirmLogout}
-        />
-      </>
+      <ConfirmPopup
+        open={logoutOpen}
+        title="Logout?"
+        message="Are you sure you want to logout from NetWorld?"
+        okText="Logout"
+        okIcon={faArrowRightFromBracket}
+        onCancel={() => setLogoutOpen(false)}
+        onOk={confirmLogout}
+      />
+    </>
   );
 }
 
 function AppShellNav() {
+  const navigate = useNavigate();
   const location = useLocation();
+  const [pageDir, setPageDir] = useState(1);
   const scrollPositionsRef = useRef(new Map());
   const previousPathRef = useRef(location.pathname);
 
@@ -419,138 +421,198 @@ function AppShellNav() {
     };
   }, [notchIndex, isCompact, bottomDims.w, bottomDims.h, getTargetCx, hideBottomNav, bottomNavRev]);
 
+  // Mobile: horizontal swipe to switch bottom tabs.
+  useEffect(() => {
+    if (!isCompact) return;
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
+    const isInteractive = (target) => {
+      const el = target && target.closest ? target : null;
+      if (!el) return false;
+      return !!el.closest("input, textarea, select, [contenteditable='true'], .ant-modal, .ant-picker");
+    };
+    const onTouchStart = (e) => {
+      if (!e.touches || e.touches.length !== 1) return;
+      if (isInteractive(e.target)) return;
+      const t = e.touches[0];
+      startX = t.clientX;
+      startY = t.clientY;
+      startTime = Date.now();
+    };
+    const onTouchEnd = (e) => {
+      if (!e.changedTouches || e.changedTouches.length !== 1) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      const dt = Date.now() - startTime;
+      if (dt === 0 || dt > 800) return;
+      if (Math.abs(dx) < 70) return;
+      if (Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (activeIndex < 0) return;
+      const dir = dx < 0 ? 1 : -1;
+      const nextIndex = Math.min(NAV_ITEMS.length - 1, Math.max(0, activeIndex + dir));
+      if (nextIndex === activeIndex) return;
+      setPageDir(dir);
+      navigate(NAV_ITEMS[nextIndex].to, { replace: true });
+    };
+    const onTouchMove = (e) => {
+      if (!e.touches || e.touches.length !== 1) return;
+      if (isInteractive(e.target)) return;
+      const t = e.touches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [isCompact, activeIndex, navigate]);
+
   return (
-      <div className="nw-shell">
-        {!isCompact ? (
-            <header className="nw-topnav">
-              <div className="nw-brand">
-                <span className="nw-brand-dot" />
-                <span className="nw-brand-text">NetWorld</span>
-              </div>
-              <nav className="nw-topnav-links" ref={topNavRef}>
-                <span
-                    className="nw-topnav-indicator"
-                    style={{
-                      left: topIndicator.left,
-                      width: topIndicator.width,
-                      opacity: topIndicator.ready ? 1 : 0,
-                    }}
-                />
-                {NAV_ITEMS.map((item, i) => {
-                  const isSuggestion = item.to === "/discover/suggestions";
-                  const hasSuggestions = isSuggestion && suggestionsCount > 0;
-                  return (
-                      <NavLink
-                          key={item.to}
-                          ref={(el) => (topItemRefs.current[i] = el)}
-                          to={item.to}
-                          replace
-                          className={({ isActive }) => {
-                            const base = isActive ? "nw-topnav-link active" : "nw-topnav-link";
-                            return hasSuggestions ? `${base} suggestion-has-data` : base;
-                          }}
+    <div className="nw-shell">
+      {!isCompact ? (
+        <header className="nw-topnav">
+          <div className="nw-brand">
+            <span className="nw-brand-dot" />
+            <span className="nw-brand-text">NetWorld</span>
+          </div>
+          <nav className="nw-topnav-links" ref={topNavRef}>
+            <span
+              className="nw-topnav-indicator"
+              style={{
+                left: topIndicator.left,
+                width: topIndicator.width,
+                opacity: topIndicator.ready ? 1 : 0,
+              }}
+            />
+            {NAV_ITEMS.map((item, i) => {
+              const isSuggestion = item.to === "/discover/suggestions";
+              const hasSuggestions = isSuggestion && suggestionsCount > 0;
+              return (
+                <NavLink
+                  key={item.to}
+                  ref={(el) => (topItemRefs.current[i] = el)}
+                  to={item.to}
+                  replace
+                  onClick={() => {
+                    if (activeIndex >= 0 && i !== activeIndex) setPageDir(i > activeIndex ? 1 : -1);
+                  }}
+                  className={({ isActive }) => {
+                    const base = isActive ? "nw-topnav-link active" : "nw-topnav-link";
+                    return hasSuggestions ? `${base} suggestion-has-data` : base;
+                  }}
+                >
+                  <span className={hasSuggestions ? "suggestion-icon-glow" : undefined}>{item.icon}</span>
+                  {item.label}
+                  {item.to === "/discover/requests" && pendingCount > 0 && (
+                    <span className="nw-nav-badge" title={pendingCount}>{formatCount(pendingCount)}</span>
+                  )}
+                  {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
+                    <span className="nw-nav-badge" title={suggestionsCount}>{formatCount(suggestionsCount)}</span>
+                  )}
+                </NavLink>
+              );
+            })}
+          </nav>
+          <ProfileMenu />
+        </header>
+      ) : (
+        <>
+          <header className="nw-topbar-mobile">
+            <div className="nw-brand">
+              <span className="nw-brand-dot" />
+              <span className="nw-brand-text">NetWorld</span>
+            </div>
+            <ProfileMenu />
+          </header>
+
+          {!hideBottomNav && (
+            <div className={`nw-bottomnav-wrapper${bottomNavHidden ? " nw-bottomnav-wrapper-hidden" : ""}`}>
+              <nav className="nw-bottomnav" ref={bottomBarRef}>
+                <svg
+                  className="nw-bottomnav-svg"
+                  width={bottomDims.w || "100%"}
+                  height={bottomDims.h || 60}
+                  viewBox={`0 -22 ${bottomDims.w || 1} ${(bottomDims.h || 60) + 22}`}
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <defs>
+                    <linearGradient id="nw-bottombar-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#111827" />
+                      <stop offset="100%" stopColor="#0b0f19" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    ref={bottomPathRef}
+                    d={buildConvexBarPath(
+                      bottomDims.w || 1,
+                      bottomDims.h || 60,
+                      getTargetCx(notchIndex)
+                    )}
+                    fill="url(#nw-bottombar-fill)"
+                    stroke="rgba(56, 189, 248, 0.35)"
+                    strokeWidth="1.25"
+                  />
+                </svg>
+
+                <div className="nw-bottomnav-indicator" ref={bottomIndicatorRef} />
+
+                <ul>
+                  {NAV_ITEMS.map((item, i) => {
+                    const isSuggestion = item.to === "/discover/suggestions";
+                    const hasSuggestions = isSuggestion && suggestionsCount > 0;
+                    const isActive = activeIndex === i;
+                    return (
+                      <li
+                        key={item.to}
+                        ref={(el) => (bottomItemRefs.current[i] = el)}
+                        className={`nw-nav-item ${isActive ? "active" : ""}${hasSuggestions ? " suggestion-has-data" : ""}`}
                       >
-                        <span className={hasSuggestions ? "suggestion-icon-glow" : undefined}>{item.icon}</span>
-                        {item.label}
-                        {item.to === "/discover/requests" && pendingCount > 0 && (
-                            <span className="nw-nav-badge" title={pendingCount}>{formatCount(pendingCount)}</span>
-                        )}
-                        {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
-                            <span className="nw-nav-badge" title={suggestionsCount}>{formatCount(suggestionsCount)}</span>
-                        )}
-                      </NavLink>
-                  );
-                })}
+                        <NavLink to={item.to} replace aria-label={item.label} onClick={() => { if (activeIndex >= 0 && i !== activeIndex) setPageDir(i > activeIndex ? 1 : -1); }}>
+                          <span className={`nw-nav-icon ${hasSuggestions ? "suggestion-icon-glow" : ""}`}>
+                            {item.icon}
+                            {item.to === "/discover/requests" && pendingCount > 0 && (
+                              <span className="nw-nav-badge-dot" title={pendingCount}>{formatCount(pendingCount)}</span>
+                            )}
+                            {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
+                              <span className="nw-nav-badge-dot" title={suggestionsCount}>{formatCount(suggestionsCount)}</span>
+                            )}
+                          </span>
+                          {isActive && <span className="nw-nav-label">{item.label}</span>}
+                        </NavLink>
+                      </li>
+                    );
+                  })}
+                </ul>
               </nav>
-              <ProfileMenu />
-            </header>
-        ) : (
-            <>
-              <header className="nw-topbar-mobile">
-                <div className="nw-brand">
-                  <span className="nw-brand-dot" />
-                  <span className="nw-brand-text">NetWorld</span>
-                </div>
-                <ProfileMenu />
-              </header>
+            </div>
+          )}
+        </>
+      )}
 
-              {!hideBottomNav && (
-               <div className={`nw-bottomnav-wrapper${bottomNavHidden ? " nw-bottomnav-wrapper-hidden" : ""}`}>
-                <nav className="nw-bottomnav" ref={bottomBarRef}>
-                  <svg
-                      className="nw-bottomnav-svg"
-                      width={bottomDims.w || "100%"}
-                      height={bottomDims.h || 60}
-                      viewBox={`0 -22 ${bottomDims.w || 1} ${(bottomDims.h || 60) + 22}`}
-                      preserveAspectRatio="none"
-                      aria-hidden="true"
-                  >
-                    <defs>
-                      <linearGradient id="nw-bottombar-fill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#111827" />
-                        <stop offset="100%" stopColor="#0b0f19" />
-                      </linearGradient>
-                    </defs>
-                    <path
-                        ref={bottomPathRef}
-                        d={buildConvexBarPath(
-                            bottomDims.w || 1,
-                            bottomDims.h || 60,
-                            getTargetCx(notchIndex)
-                        )}
-                        fill="url(#nw-bottombar-fill)"
-                        stroke="rgba(56, 189, 248, 0.35)"
-                        strokeWidth="1.25"
-                    />
-                  </svg>
-
-                  <div className="nw-bottomnav-indicator" ref={bottomIndicatorRef} />
-
-                  <ul>
-                    {NAV_ITEMS.map((item, i) => {
-                      const isSuggestion = item.to === "/discover/suggestions";
-                      const hasSuggestions = isSuggestion && suggestionsCount > 0;
-                      const isActive = activeIndex === i;
-                      return (
-                          <li
-                              key={item.to}
-                              ref={(el) => (bottomItemRefs.current[i] = el)}
-                              className={`nw-nav-item ${isActive ? "active" : ""}${hasSuggestions ? " suggestion-has-data" : ""}`}
-                          >
-                            <NavLink to={item.to} replace aria-label={item.label}>
-                              <span className={`nw-nav-icon ${hasSuggestions ? "suggestion-icon-glow" : ""}`}>
-                                {item.icon}
-                                {item.to === "/discover/requests" && pendingCount > 0 && (
-                                    <span className="nw-nav-badge-dot" title={pendingCount}>{formatCount(pendingCount)}</span>
-                                )}
-                                {item.to === "/discover/suggestions" && suggestionsCount > 0 && (
-                                    <span className="nw-nav-badge-dot" title={suggestionsCount}>{formatCount(suggestionsCount)}</span>
-                                )}
-                              </span>
-                              {isActive && <span className="nw-nav-label">{item.label}</span>}
-                            </NavLink>
-                          </li>
-                      );
-                    })}
-                  </ul>
-                </nav>
-              </div>
-              )}
-            </>
-        )}
-
-        <main className={isCompact ? `nw-content nw-content-compact${hideBottomNav ? " nw-content-no-bottomnav" : ""}` : "nw-content"}>
+      <main className={isCompact ? `nw-content nw-content-compact${hideBottomNav ? " nw-content-no-bottomnav" : ""}` : "nw-content"}>
+        <div key={location.pathname} className={`nw-page-enter ${pageDir > 0 ? "nw-page-enter-right" : "nw-page-enter-left"}`}>
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
+    </div>
   );
 }
 
 function AppShell() {
   return (
-      <RefreshProvider>
-        <AppShellNav />
-      </RefreshProvider>
+    <RefreshProvider>
+      <AppShellNav />
+    </RefreshProvider>
   );
 }
 
