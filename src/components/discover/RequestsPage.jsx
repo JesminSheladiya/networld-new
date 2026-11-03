@@ -35,6 +35,7 @@ const PendingRow = memo(function PendingRow({ p, rel, avColor, reason, onOpen, o
         <Avatar
           size={40}
           src={toDataUrl(p.suggestedUserProfilePic)}
+          imgProps={{ loading: "lazy", decoding: "async" }}
           style={{
             backgroundColor: p.suggestedUserProfilePic ? "transparent" : avColor,
             fontSize: 15,
@@ -87,6 +88,7 @@ const SentRow = memo(function SentRow({
         <Avatar
           size={40}
           src={toDataUrl(p.suggestedUserProfilePic)}
+          imgProps={{ loading: "lazy", decoding: "async" }}
           style={{
             backgroundColor: p.suggestedUserProfilePic ? "transparent" : avColor,
             fontSize: 15,
@@ -174,6 +176,7 @@ function RequestsPage() {
   const [pendingPage, setPendingPage] = useState(initial.tab === "received" ? initial.page - 1 : 0);
   const [loading, setLoading] = useState(() => !cachedRequests?.pending);
   const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreLockRef = useRef(false);
   const [declineId, setDeclineId] = useState(null);
   const [sent, setSent] = useState(() => cachedRequests?.sent || []);
   const [sentTotal, setSentTotal] = useState(() => cachedRequests?.sentTotal || 0);
@@ -443,6 +446,7 @@ function RequestsPage() {
     fetchPending(pendingPage, isCompact && !isInitialLoad).finally(() => {
       if (isCompact && !isInitialLoad) setLoadingMore(false);
       else if (isInitialLoad) setLoading(false);
+      loadingMoreLockRef.current = false;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingPage]);
@@ -471,6 +475,7 @@ function RequestsPage() {
     fetchSent(sentPage, isCompact && !isInitialLoad).finally(() => {
       if (isCompact && !isInitialLoad) setSentLoadingMore(false);
       else if (isInitialLoad) setSentLoading(false);
+      loadingMoreLockRef.current = false;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentPage]);
@@ -479,24 +484,56 @@ function RequestsPage() {
   const sentHasMore = sent.length < sentTotal;
 
   const loadMorePending = useCallback(() => {
-    if (isCompact && pendingHasMore && !loading && !loadingMore) {
+    if (isCompact && pendingHasMore && !loading && !loadingMore && !loadingMoreLockRef.current) {
+      loadingMoreLockRef.current = true;
+      setLoadingMore(true);
       const nextPage = pendingPage + 1;
       setPendingPage(nextPage);
-      // Replace, don't push: infinite scroll must not stack history entries.
       syncUrl({ page: nextPage + 1 }, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCompact, pendingHasMore, loading, loadingMore, pendingPage, syncUrl]);
 
   const loadMoreSent = useCallback(() => {
-    if (isCompact && sentHasMore && !sentLoading && !sentLoadingMore) {
+    if (isCompact && sentHasMore && !sentLoading && !sentLoadingMore && !loadingMoreLockRef.current) {
+      loadingMoreLockRef.current = true;
+      setSentLoadingMore(true);
       const nextPage = sentPage + 1;
       setSentPage(nextPage);
-      // Replace, don't push: infinite scroll must not stack history entries.
       syncUrl({ page: nextPage + 1 }, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCompact, sentHasMore, sentLoading, sentLoadingMore, sentPage, syncUrl]);
+
+  // Safety net: keep auto-loading at the bottom if endReached misses
+  // (fast scrolling / abort / page visibility changes).
+  useEffect(() => {
+    if (!isCompact || tab !== "received" || loading || loadingMore || !pendingHasMore) return;
+    const tryLoad = () => {
+      if (loading || loadingMore) return;
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
+        loadMorePending();
+      }
+    };
+    window.addEventListener("scroll", tryLoad, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", tryLoad);
+    };
+  }, [isCompact, tab, loading, loadingMore, pendingHasMore, loadMorePending, pending.length]);
+
+  useEffect(() => {
+    if (!isCompact || tab !== "sent" || sentLoading || sentLoadingMore || !sentHasMore) return;
+    const tryLoad = () => {
+      if (sentLoading || sentLoadingMore) return;
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
+        loadMoreSent();
+      }
+    };
+    window.addEventListener("scroll", tryLoad, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", tryLoad);
+    };
+  }, [isCompact, tab, sentLoading, sentLoadingMore, sentHasMore, loadMoreSent, sent.length]);
 
   // Sliding pill indicator — same segmented control as Contacts tabs.
   useEffect(() => {
@@ -837,6 +874,7 @@ function RequestsPage() {
              <div className="nw-discover-label">Requests · <span title={pendingTotal}>{pendingTotal.toLocaleString()}</span></div>
             {isCompact ? (
               <Virtuoso
+                atBottomThreshold={1000}
                 useWindowScroll
                 data={pending}
                 endReached={loadMorePending}
@@ -927,6 +965,7 @@ function RequestsPage() {
            <div className="nw-discover-label">Sent · <span title={sentTotal}>{sentTotal.toLocaleString()}</span></div>
             {isCompact ? (
               <Virtuoso
+                atBottomThreshold={1000}
                 useWindowScroll
                 data={sent}
                 endReached={loadMoreSent}

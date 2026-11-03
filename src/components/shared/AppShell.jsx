@@ -447,8 +447,9 @@ function AppShellNav() {
       const dy = t.clientY - startY;
       const dt = Date.now() - startTime;
       if (dt === 0 || dt > 800) return;
-      if (Math.abs(dx) < 70) return;
-      if (Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (Math.abs(dx) < 100) return;
+      if (Math.abs(dx) < Math.abs(dy) * 3) return;
+      if (dt < 120 || dt > 550) return;
       if (activeIndex < 0) return;
       const dir = dx < 0 ? 1 : -1;
       const nextIndex = Math.min(NAV_ITEMS.length - 1, Math.max(0, activeIndex + dir));
@@ -462,7 +463,7 @@ function AppShellNav() {
       const t = e.touches[0];
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
-      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 3) {
         e.preventDefault();
       }
     };

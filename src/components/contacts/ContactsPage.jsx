@@ -40,6 +40,7 @@ const ContactRow = memo(function ContactRow({ rec, onOpen, onEdit }) {
         <Avatar
           size={44}
           src={toDataUrl(rec.profilePicture)}
+          imgProps={{ loading: "lazy", decoding: "async" }}
           style={{
             backgroundColor: rec.profilePicture ? "transparent" : avatarColorFor(rec.name),
             fontSize: 17,
@@ -147,6 +148,7 @@ function ContactsPage() {
   const skipPageEffectOnce = useRef(false);
   const [sortParam, setSortParam] = useState(initial.sortParam);
   const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreLockRef = useRef(false);
   const [loadMoreError, setLoadMoreError] = useState(null);
   const chipsRef = useRef(null);
   const chipRefs = useRef([]);
@@ -332,7 +334,10 @@ function ContactsPage() {
       }
     } finally {
       if (!append && id === reqIdRef.current) setLoading(false);
-      if (append && id === reqIdRef.current) setLoadingMore(false);
+      if (append) {
+        loadingMoreLockRef.current = false;
+        if (id === reqIdRef.current) setLoadingMore(false);
+      }
     }
   };
 
@@ -510,7 +515,8 @@ function ContactsPage() {
   const hasMore = dataSource.length < totalItems;
 
   const loadMore = useCallback(() => {
-    if (isCompact && hasMore && !loading && !loadingMore) {
+    if (isCompact && hasMore && !loading && !loadingMore && !loadingMoreLockRef.current) {
+      loadingMoreLockRef.current = true;
       setLoadMoreError(null);
       setLoadingMore(true);
       const nextPage = page + 1;
@@ -521,6 +527,22 @@ function ContactsPage() {
     }
   }, [isCompact, hasMore, loading, loadingMore, page, syncUrl]);
 
+  // Safety net: if infinite scroll's endReached misses (e.g. during fast
+  // scrolling or after an aborted/append page), keep loading while the user
+  // is at the bottom and more rows remain.
+  useEffect(() => {
+    if (!isCompact || loading || loadingMore || !hasMore) return;
+    const tryLoadMore = () => {
+      if (loading || loadingMore) return;
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
+        loadMore();
+      }
+    };
+    window.addEventListener("scroll", tryLoadMore, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", tryLoadMore);
+    };
+  }, [isCompact, loading, loadingMore, hasMore, loadMore, dataSource.length]);
   const retryLoadMore = useCallback(() => {
     setLoadMoreError(null);
     loadMore();
@@ -717,6 +739,7 @@ function ContactsPage() {
             <>
               <Virtuoso
                 className="nw-contact-list"
+                atBottomThreshold={1000}
                 useWindowScroll
                 data={filtered}
                 endReached={loadMore}
