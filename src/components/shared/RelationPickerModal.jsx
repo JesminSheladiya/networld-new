@@ -7,6 +7,7 @@ const GENDER_LABEL = { M: "Male", F: "Female" };
 
 function RelationPickerModal({ open, title = "Edit Relation", personName, personGender, value, currentRelation, idMode = false, onClose, onPick }) {
   const { relOptionLabel } = useRelationDisplay();
+  const isTouch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   const [relations, setRelations] = useState([]);
   const [val, setVal] = useState(value);
   const [usedUnique, setUsedUnique] = useState([]);
@@ -65,6 +66,7 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, person
       okButtonProps={{ disabled: val === undefined || val === null || val === "" }}
       destroyOnClose
       centered
+      autoFocusButton={null}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ color: "#e2e8f0" }}>
@@ -87,7 +89,8 @@ function RelationPickerModal({ open, title = "Edit Relation", personName, person
           placeholder="Choose a relation"
           value={val}
           onChange={(v) => setVal(v)}
-          showSearch
+          showSearch={!isTouch}
+          autoFocus={false}
           filterOption={(input, option) =>
             (option?.searchText || "").includes(input.trim().toLowerCase())
           }
